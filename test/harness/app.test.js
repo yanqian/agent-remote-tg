@@ -161,3 +161,86 @@ test("app starts /ask tasks in the selected workspace", () => {
     rmSync(repoDir, { recursive: true, force: true });
   }
 });
+
+test("app starts /work tasks in workflow-ready selected workspaces", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  const calls = [];
+  try {
+    for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {
+      writeFileSync(join(repoDir, fileName), "");
+    }
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: join(rootDir, "runtime_state.json"),
+      taskExecutor: {
+        startTask(request) {
+          calls.push(request);
+          return { response: "Task started: task_work_1\nUse /logs task_work_1 to view output." };
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/work Add a requirement" }), "No workspace selected.\nUse /repos then /use <repo>.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/work Add a documentation requirement" }),
+      "Task started: task_work_1\nUse /logs task_work_1 to view output.",
+    );
+    assert.equal(calls[0].type, "work");
+    assert.equal(calls[0].cwd, repoDir);
+    assert.equal(calls[0].command, "codex");
+    assert.deepEqual(calls[0].args.slice(0, 1), ["exec"]);
+    assert.match(calls[0].args[1], /Requirement:\nAdd a documentation requirement/);
+    assert.match(calls[0].args[1], /Preserve all existing feature IDs, ordering, passes, status, attempts, last_error, and unknown fields\./);
+    assert.equal(calls[0].timeoutMs, null);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app rejects /work when an active workflow task already exists in the selected workspace", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  try {
+    for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {
+      writeFileSync(join(repoDir, fileName), "");
+    }
+    const statePath = join(rootDir, "runtime_state.json");
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      taskExecutor: {
+        startTask() {
+          throw new Error("should not start");
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    state.tasks.task_busy_1 = {
+      taskId: "task_busy_1",
+      type: "continue",
+      status: "running",
+      pid: 12345,
+      cwd: repoDir,
+      logPath: join(rootDir, "logs", "task_busy_1.log"),
+      startedAt: "2026-05-12T00:00:00.000Z",
+      finishedAt: null,
+      exitCode: null,
+    };
+    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/work Add another requirement" }),
+      "Active workflow task already running in this workspace: task_busy_1\nUse /status or /logs task_busy_1.",
+    );
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
