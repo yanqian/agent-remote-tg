@@ -111,9 +111,9 @@
     {
       "id": "F013",
       "description": "Create root README.md with the exact required top-level sections, documented command surface, required environment variables, repository workflow model, runtime state and logs explanation, local setup instructions, verification command ./init.sh, and current limitations.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     },

@@ -32,16 +32,17 @@ Implemented behavior:
 - `/run-orch <rounds>` handling that validates integer rounds from 1 through 5 with the specified invalid-rounds response, rejects concurrent active workflow tasks in the selected workspace, and starts a shell-disabled `python3 orchestrator.py --max-rounds <rounds>` task with full task logging.
 - `/status`, `/logs <task_id>`, and `/stop <task_id>` handling for Bot-recorded tasks, including active task and recent finished task display, confined 120-line log tails, unknown task rejection, and SIGTERM only through recorded running task handles.
 - `/help` handling with exact command-surface output.
+- Root `README.md` documenting the project purpose, exact command surface, repository workflow model, runtime state and logs, local setup, verification, and current limitations.
 - Contract verification for exact help output, exact command whitelist, prohibited feature commands, required workflow prompt text, and runtime state schema boundaries.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
 ## Last Completed Feature
 
-`F012` - Implement `/help` and contract verification for the command surface.
+`F013` - Create root `README.md` with required sections and project operation documentation.
 
 ## Next Feature
 
-No remaining features are marked `todo`, `in_progress`, or `blocked` in `feature_list.json`.
+`F014` - Create `docs/deployment.md` with local trusted-host deployment guidance.
 
 ## Known Issues
 
