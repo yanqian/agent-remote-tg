@@ -224,7 +224,7 @@ test("app rejects invalid /run-orch rounds", () => {
 
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/run-orch 6" }),
-      "Usage: /run-orch <rounds>\nrounds must be an integer from 1 through 5.",
+      "Invalid rounds. Use an integer from 1 to 5.",
     );
   } finally {
     rmSync(rootDir, { recursive: true, force: true });

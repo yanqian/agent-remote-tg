@@ -160,7 +160,7 @@ export function handleRunOrch(args, state, taskExecutor) {
 export function parseOrchestratorRounds(args) {
   const text = String(args ?? "").trim();
   if (!/^[1-5]$/.test(text)) {
-    return { ok: false, response: "Usage: /run-orch <rounds>\nrounds must be an integer from 1 through 5." };
+    return { ok: false, response: "Invalid rounds. Use an integer from 1 to 5." };
   }
   return { ok: true, value: Number(text) };
 }

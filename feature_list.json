@@ -84,10 +84,10 @@
     {
       "id": "F010",
       "description": "Implement /run-orch <rounds> with integer validation for 1 through 5, concurrent workflow-task rejection, shell-disabled spawning of python3 orchestrator.py --max-rounds <rounds>, and full task logging.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 1,
-      "last_error": "Invalid `/run-orch` rounds return `Usage: /run-orch <rounds>\\nrounds must be an integer from 1 through 5.`, but SPEC.md requires the invalid rounds response to be exactly `Invalid rounds. Use an integer from 1 to 5.`",
+      "passes": true,
+      "status": "done",
+      "attempts": 2,
+      "last_error": "",
       "priority": "P1"
     },
     {

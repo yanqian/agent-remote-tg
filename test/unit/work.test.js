@@ -201,7 +201,7 @@ test("parseOrchestratorRounds accepts only integers from one through five", () =
   for (const input of ["0", "6", "1.5", "2 rounds", "abc", ""]) {
     assert.deepEqual(parseOrchestratorRounds(input), {
       ok: false,
-      response: "Usage: /run-orch <rounds>\nrounds must be an integer from 1 through 5.",
+      response: "Invalid rounds. Use an integer from 1 to 5.",
     });
   }
 });
@@ -214,7 +214,7 @@ test("handleRunOrch requires valid rounds before workspace readiness", () => {
   });
 
   assert.deepEqual(result, {
-    response: "Usage: /run-orch <rounds>\nrounds must be an integer from 1 through 5.",
+    response: "Invalid rounds. Use an integer from 1 to 5.",
     stateChanged: false,
   });
 });
