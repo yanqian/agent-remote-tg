@@ -37,11 +37,11 @@ Implemented behavior:
 
 ## Last Completed Feature
 
-`F011` - Implement `/status`, `/logs <task_id>`, and `/stop <task_id>`.
+`F012` - Implement `/help` and contract verification for the command surface.
 
 ## Next Feature
 
-`F012` - Await evaluator verification for `/help` and command-surface contract checks.
+No remaining features are marked `todo`, `in_progress`, or `blocked` in `feature_list.json`.
 
 ## Known Issues
 
