@@ -3,6 +3,7 @@ import { authorizeMessage } from "./auth.js";
 import { handleAsk } from "./ask.js";
 import { parseCommand } from "./commands.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
+import { handleLogs, handleStatus, handleStop } from "./task-management.js";
 import { createTaskExecutor } from "./task-executor.js";
 import { handleContinue, handleRunOrch, handleWork } from "./work.js";
 import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
@@ -65,6 +66,12 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor) {
       return handleContinue(parsed.args, state, taskExecutor);
     case "/run-orch":
       return handleRunOrch(parsed.args, state, taskExecutor);
+    case "/status":
+      return handleStatus(state);
+    case "/logs":
+      return handleLogs(parsed.args, taskExecutor);
+    case "/stop":
+      return handleStop(parsed.args, taskExecutor);
     default:
       return {
         response: "Command recognized but not implemented in the current feature set.",

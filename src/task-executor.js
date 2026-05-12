@@ -1,6 +1,6 @@
-import { createWriteStream, mkdirSync } from "node:fs";
+import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { spawn as defaultSpawn } from "node:child_process";
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
 
 export const TASK_TYPES = Object.freeze(["ask", "work", "continue", "run-orch"]);
@@ -175,8 +175,11 @@ export function createTaskExecutor(options) {
     validateTaskId(taskId);
     const state = loadRuntimeState(statePath);
     const task = state.tasks[taskId];
-    if (!task || task.status !== "running") {
-      return { ok: false, response: `Unknown running task: ${taskId}` };
+    if (!task) {
+      return { ok: false, response: `Unknown task: ${taskId}` };
+    }
+    if (task.status !== "running") {
+      return { ok: false, response: `Task is not running: ${taskId}` };
     }
 
     const child = children.get(taskId);
@@ -190,7 +193,34 @@ export function createTaskExecutor(options) {
     return { ok: true, task: nextTask, response: `Stopping task ${taskId}.` };
   }
 
-  return { startTask, stopTask };
+  function readTaskLog(taskId, lineCount = 120) {
+    validateTaskId(taskId);
+    if (!Number.isInteger(lineCount) || lineCount <= 0) {
+      throw new Error("lineCount must be a positive integer.");
+    }
+
+    const state = loadRuntimeState(statePath);
+    const task = state.tasks[taskId];
+    if (!task) {
+      return { ok: false, response: `Unknown task: ${taskId}` };
+    }
+
+    const expectedLogPath = logPathForTask(normalizedLogsDir, taskId);
+    const recordedLogPath = typeof task.logPath === "string" ? resolve(task.logPath) : "";
+    if (recordedLogPath !== expectedLogPath || !isPathInside(normalizedLogsDir, recordedLogPath)) {
+      return { ok: false, response: `Invalid log path for task: ${taskId}` };
+    }
+
+    const content = existsSync(recordedLogPath) ? readFileSync(recordedLogPath, "utf8") : "";
+    const lines = content.length === 0 ? [] : content.replace(/\n$/, "").split(/\r?\n/);
+    const tail = lines.slice(-lineCount).join("\n");
+    return {
+      ok: true,
+      response: truncateTelegramResponse(tail || `(no log output for ${taskId})`),
+    };
+  }
+
+  return { startTask, stopTask, readTaskLog };
 }
 
 export function generateTaskId(existingTasks = {}) {
@@ -205,6 +235,11 @@ export function generateTaskId(existingTasks = {}) {
 export function logPathForTask(logsDir, taskId) {
   validateTaskId(taskId);
   return resolve(logsDir, `${taskId}.log`);
+}
+
+export function isPathInside(parentDir, childPath) {
+  const relativePath = relative(resolve(parentDir), resolve(childPath));
+  return relativePath === "" || (relativePath !== ".." && !relativePath.startsWith(`..${sep}`) && !isAbsolute(relativePath));
 }
 
 export function validateTaskId(taskId) {

@@ -93,9 +93,9 @@
     {
       "id": "F011",
       "description": "Implement task management commands /status, /logs <task_id>, and /stop <task_id>, including active and recent finished task display, last 120 log lines, log path confinement, unknown task rejection, and SIGTERM only for Bot-recorded running tasks.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     },

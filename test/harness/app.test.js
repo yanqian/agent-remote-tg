@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../../src/app.js";
@@ -264,6 +264,71 @@ test("app starts /ask tasks in the selected workspace", () => {
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app handles /status, /logs, and /stop task management commands", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    mkdirSync(logsDir, { recursive: true });
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: null,
+      cwd: null,
+      tasks: {
+        task_done_1: {
+          taskId: "task_done_1",
+          type: "ask",
+          status: "succeeded",
+          pid: null,
+          cwd: "/repo",
+          logPath: join(logsDir, "task_done_1.log"),
+          startedAt: "2026-05-12T00:00:00.000Z",
+          finishedAt: "2026-05-12T00:00:01.000Z",
+          exitCode: 0,
+        },
+        task_run_1: {
+          taskId: "task_run_1",
+          type: "work",
+          status: "running",
+          pid: 12345,
+          cwd: "/repo",
+          logPath: join(logsDir, "task_run_1.log"),
+          startedAt: "2026-05-12T00:00:02.000Z",
+          finishedAt: null,
+          exitCode: null,
+        },
+      },
+    }, null, 2)}\n`);
+    writeFileSync(join(logsDir, "task_done_1.log"), Array.from({ length: 121 }, (_, index) => `done line ${index + 1}`).join("\n"));
+
+    const stoppedTasks = [];
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath,
+      logsDir,
+      taskExecutor: {
+        readTaskLog(taskId, lineCount) {
+          assert.equal(taskId, "task_done_1");
+          assert.equal(lineCount, 120);
+          return { ok: true, response: "done line 2\ndone line 121" };
+        },
+        stopTask(taskId) {
+          stoppedTasks.push(taskId);
+          return { ok: true, response: `Stopping task ${taskId}.` };
+        },
+      },
+    });
+
+    assert.match(app.handleMessage({ chatId: "123", text: "/status" }), /task_run_1\n[\s\S]*status: running[\s\S]*task_done_1/);
+    assert.equal(app.handleMessage({ chatId: "123", text: "/logs task_done_1" }), "done line 2\ndone line 121");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/logs ../secret" }), "Unknown task: ../secret");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/stop task_run_1" }), "Stopping task task_run_1.");
+    assert.deepEqual(stoppedTasks, ["task_run_1"]);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
   }
 });
 

@@ -2,13 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   createTaskExecutor,
   formatTaskCreatedResponse,
   generateTaskId,
+  isPathInside,
   logPathForTask,
   redactForTelegram,
   truncateTelegramResponse,
@@ -27,6 +28,13 @@ test("generateTaskId returns safe unique task IDs", () => {
 test("logPathForTask rejects traversal task IDs", () => {
   assert.throws(() => logPathForTask("/tmp/logs", "../secret"), /Invalid task ID/);
   assert.throws(() => logPathForTask("/tmp/logs", "task_abc/def"), /Invalid task ID/);
+});
+
+test("isPathInside checks log path confinement", () => {
+  assert.equal(isPathInside("/tmp/logs", "/tmp/logs/task_abc_1.log"), true);
+  assert.equal(isPathInside("/tmp/logs", "/tmp/logs/nested/task_abc_1.log"), true);
+  assert.equal(isPathInside("/tmp/logs", "/tmp/logs2/task_abc_1.log"), false);
+  assert.equal(isPathInside("/tmp/logs", "/tmp/secret.log"), false);
 });
 
 test("redactForTelegram hides configured secrets and bounds responses", () => {
@@ -163,6 +171,99 @@ test("stopTask transitions a running recorded child to stopping and sends SIGTER
     const finished = await started.completion;
     assert.equal(finished.status, "stopped");
     assert.equal(finished.exitCode, null);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("stopTask rejects unknown and non-running tasks without SIGTERM", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  const child = createFakeChild({ pid: 4246 });
+  try {
+    const executor = createTaskExecutor({
+      statePath: join(rootDir, "runtime_state.json"),
+      logsDir: join(rootDir, "logs"),
+      spawn() {
+        return child;
+      },
+    });
+
+    assert.deepEqual(executor.stopTask("task_nope_1"), {
+      ok: false,
+      response: "Unknown task: task_nope_1",
+    });
+
+    const started = executor.startTask({
+      type: "ask",
+      cwd: rootDir,
+      command: "codex",
+      args: ["exec", "done"],
+    });
+    child.emit("close", 0, null);
+    await started.completion;
+
+    assert.deepEqual(executor.stopTask(started.task.taskId), {
+      ok: false,
+      response: `Task is not running: ${started.task.taskId}`,
+    });
+    assert.deepEqual(child.killSignals, []);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("readTaskLog returns the last 120 lines and rejects confined path violations", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    mkdirSync(logsDir, { recursive: true });
+    const taskId = "task_abc_1";
+    const logPath = join(logsDir, `${taskId}.log`);
+    writeFileSync(logPath, Array.from({ length: 130 }, (_, index) => `line ${index + 1}`).join("\n"));
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: null,
+      cwd: null,
+      tasks: {
+        [taskId]: {
+          taskId,
+          type: "ask",
+          status: "succeeded",
+          pid: 123,
+          cwd: rootDir,
+          logPath,
+          startedAt: "2026-05-12T00:00:00.000Z",
+          finishedAt: "2026-05-12T00:00:01.000Z",
+          exitCode: 0,
+        },
+        task_bad_1: {
+          taskId: "task_bad_1",
+          type: "ask",
+          status: "failed",
+          pid: null,
+          cwd: rootDir,
+          logPath: join(rootDir, "secret.log"),
+          startedAt: "2026-05-12T00:00:00.000Z",
+          finishedAt: "2026-05-12T00:00:01.000Z",
+          exitCode: 1,
+        },
+      },
+    }, null, 2)}\n`);
+
+    const executor = createTaskExecutor({ statePath, logsDir });
+    const logResult = executor.readTaskLog(taskId);
+
+    assert.equal(logResult.ok, true);
+    assert.equal(logResult.response.startsWith("line 11\n"), true);
+    assert.equal(logResult.response.includes("line 130"), true);
+    assert.deepEqual(executor.readTaskLog("task_nope_1"), {
+      ok: false,
+      response: "Unknown task: task_nope_1",
+    });
+    assert.deepEqual(executor.readTaskLog("task_bad_1"), {
+      ok: false,
+      response: "Invalid log path for task: task_bad_1",
+    });
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }
