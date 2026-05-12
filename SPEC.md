@@ -460,3 +460,62 @@ The deployment document must include this verification command:
 ```
 
 The deployment document must state that `runtime_state.json` and `logs/` are runtime artifacts and must not be used as target repository feature state.
+
+## 10. Repository Organization Requirements
+
+### 10.1 Root Directory Contract
+
+The repository root must keep these source-of-truth and execution entry files at the root:
+
+- `AGENTS.md`
+- `SPEC.md`
+- `feature_list.json`
+- `progress.md`
+- `test_plan.md`
+- `init.sh`
+- `orchestrator.py`
+- `README.md`
+- `package.json`
+
+The repository root must not contain archived drafts, duplicate specs, generated runtime logs, or generated runtime state.
+
+### 10.2 Documentation Directory Contract
+
+The `docs/` directory must contain a `README.md` index that identifies the canonical purpose of each documentation file under `docs/`.
+
+`docs/README.md` must list:
+
+- `deployment.md`
+- `reference/agent-workflow.md`
+- `archive/original-spec.md`
+
+`docs/spec.md` must be moved to `docs/archive/original-spec.md`.
+
+`docs/agent_workflow.md` must be moved to `docs/reference/agent-workflow.md`.
+
+`docs/deployment.md` must remain at `docs/deployment.md`.
+
+After documentation reorganization, no file named `docs/spec.md` or `docs/agent_workflow.md` may remain.
+
+### 10.3 Scripts Directory Contract
+
+The `scripts/` directory must contain reusable verification scripts only.
+
+State validation logic must live in `scripts/verify-state.py`.
+
+`init.sh` must call `python3 scripts/verify-state.py` for feature state validation and banned SPEC wording validation.
+
+`scripts/README.md` must document:
+
+- `verify-state.py`
+- `smoke.js`
+
+`package.json` must expose both `smoke` and `test:smoke`, and both commands must run `node scripts/smoke.js`.
+
+### 10.4 Organization Acceptance Criteria
+
+- `./init.sh` passes after the directory organization changes.
+- `find docs -maxdepth 3 -type f | sort` shows `docs/README.md`, `docs/archive/original-spec.md`, `docs/deployment.md`, and `docs/reference/agent-workflow.md`.
+- `find scripts -maxdepth 2 -type f | sort` shows `scripts/README.md`, `scripts/smoke.js`, and `scripts/verify-state.py`.
+- `package.json` contains `smoke` and `test:smoke` scripts with the exact command `node scripts/smoke.js`.
+- No repository file references `docs/spec.md` or `docs/agent_workflow.md`.
