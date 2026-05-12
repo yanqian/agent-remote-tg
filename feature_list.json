@@ -102,9 +102,9 @@
     {
       "id": "F012",
       "description": "Implement /help and contract verification for the command surface, including exact help output, exact command whitelist, absence of /run-feature and /eval-feature, required prompt text checks, and runtime state schema checks.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     }

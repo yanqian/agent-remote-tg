@@ -31,17 +31,18 @@ Implemented behavior:
 - `/continue <instruction>` handling that rejects concurrent active workflow tasks in the selected workspace, starts a shell-disabled long-running `codex exec` recovery task with the required repository-state reconstruction prompt, and relies on task logs for full output.
 - `/run-orch <rounds>` handling that validates integer rounds from 1 through 5 with the specified invalid-rounds response, rejects concurrent active workflow tasks in the selected workspace, and starts a shell-disabled `python3 orchestrator.py --max-rounds <rounds>` task with full task logging.
 - `/status`, `/logs <task_id>`, and `/stop <task_id>` handling for Bot-recorded tasks, including active task and recent finished task display, confined 120-line log tails, unknown task rejection, and SIGTERM only through recorded running task handles.
+- `/help` handling with exact command-surface output.
+- Contract verification for exact help output, exact command whitelist, prohibited feature commands, required workflow prompt text, and runtime state schema boundaries.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
 ## Last Completed Feature
 
-`F010` - Implement `/run-orch <rounds>` with integer validation and orchestrator spawning.
+`F011` - Implement `/status`, `/logs <task_id>`, and `/stop <task_id>`.
 
 ## Next Feature
 
-`F011` - Await evaluator verification for task management commands, then proceed to `F012`.
+`F012` - Await evaluator verification for `/help` and command-surface contract checks.
 
 ## Known Issues
 
 - Telegram network transport is not implemented.
-- `/help` is recognized by the parser but not implemented as a handler yet.

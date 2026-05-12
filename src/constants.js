@@ -28,6 +28,23 @@ export const NO_WORKSPACE_RESPONSE = "No workspace selected.\nUse /repos then /u
 export const UNAUTHORIZED_RESPONSE = "Unauthorized chat.";
 export const UNKNOWN_COMMAND_RESPONSE = "Unknown command.\nUse /help.";
 
+export const HELP_RESPONSE = [
+  "Available commands:",
+  "/repos - list configured repositories",
+  "/use <repo> - select a repository",
+  "/pwd - show the selected workspace",
+  "/ls - list files in the selected workspace",
+  "/git - show branch, status, and recent commits",
+  "/ask <question> - start a read-only Codex discussion task",
+  "/work <requirement> - delegate a repository workflow task",
+  "/continue <instruction> - resume or recover repository workflow",
+  "/run-orch <rounds> - run 1 to 5 orchestrator rounds",
+  "/status - show active and recent tasks",
+  "/logs <task_id> - show the last 120 task log lines",
+  "/stop <task_id> - stop a running Bot-recorded task",
+  "/help - show this command list",
+].join("\n");
+
 export const DEFAULT_STATE = Object.freeze({
   currentRepo: null,
   cwd: null,

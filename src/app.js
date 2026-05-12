@@ -1,6 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { authorizeMessage } from "./auth.js";
 import { handleAsk } from "./ask.js";
+import { HELP_RESPONSE } from "./constants.js";
 import { parseCommand } from "./commands.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
 import { handleLogs, handleStatus, handleStop } from "./task-management.js";
@@ -72,6 +73,8 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor) {
       return handleLogs(parsed.args, taskExecutor);
     case "/stop":
       return handleStop(parsed.args, taskExecutor);
+    case "/help":
+      return { response: HELP_RESPONSE, stateChanged: false };
     default:
       return {
         response: "Command recognized but not implemented in the current feature set.",

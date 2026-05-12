@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../../src/app.js";
+import { HELP_RESPONSE } from "../../src/constants.js";
 
 test("app rejects unauthorized messages before parsing commands", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
@@ -87,6 +88,20 @@ test("app rejects unknown commands", () => {
       statePath: join(rootDir, "runtime_state.json"),
     });
     assert.equal(app.handleMessage({ chatId: "123", text: "/eval-feature F001" }), "Unknown command.\nUse /help.");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("app returns exact help output", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  try {
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath: join(rootDir, "runtime_state.json"),
+    });
+    assert.equal(app.handleMessage({ chatId: "123", text: "/help" }), HELP_RESPONSE);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }
