@@ -2,7 +2,7 @@
 
 ## Current System Status
 
-The repository has been initialized for long-running agent development.
+The repository has a runnable zero-dependency Node.js scaffold for the first three control-plane features.
 
 Existing durable state files:
 
@@ -14,18 +14,27 @@ Existing durable state files:
 - `init.sh`
 - `orchestrator.py`
 
-No Telegram Bot business logic has been implemented.
+Implemented behavior:
+
+- Startup environment validation for `TELEGRAM_BOT_TOKEN` and `ALLOWED_CHAT_IDS`.
+- Runtime path initialization for `runtime_state.json` and `logs/`.
+- Command whitelist parsing and required-argument validation.
+- Chat ID authorization.
+- Repository whitelist normalization and exact alias lookup.
+- Workspace runtime state load/save with atomic writes.
+- `/repos`, `/use <repo>`, and `/pwd` handlers.
+- Test scripts for build, unit, harness, contract, and smoke verification.
 
 ## Last Completed Feature
 
-None.
+`F003` - Implement repository whitelist and workspace state management.
 
 ## Next Feature
 
-`F001` - Create project scaffold and runtime configuration for a local Telegram Bot.
+`F004` - Implement workspace inspection commands `/ls` and `/git`.
 
 ## Known Issues
 
-- The application source tree does not exist yet.
-- Package manager, language runtime, and test framework are not selected in implemented code yet.
-- `init.sh` performs repository-state and existing-script checks; it will run package scripts automatically after a package manifest is introduced.
+- Telegram network transport is not implemented.
+- `/ls`, `/git`, `/ask`, `/work`, `/continue`, `/run-orch`, `/status`, `/logs`, `/stop`, and `/help` are recognized by the parser but not implemented as handlers yet.
+- Task execution and process logging are not implemented yet.

@@ -3,8 +3,8 @@
     {
       "id": "F001",
       "description": "Create project scaffold and runtime configuration for a local Telegram Bot, including environment validation for TELEGRAM_BOT_TOKEN and ALLOWED_CHAT_IDS, runtime_state.json creation, logs directory creation, and startup failure when ALLOWED_CHAT_IDS is empty outside NODE_ENV=test.",
-      "passes": false,
-      "status": "todo",
+      "passes": true,
+      "status": "done",
       "attempts": 0,
       "last_error": "",
       "priority": "P0"
@@ -12,8 +12,8 @@
     {
       "id": "F002",
       "description": "Implement command parsing and authorization for the documented command whitelist, including rejection of unauthorized chat IDs, unknown slash commands, and missing required arguments.",
-      "passes": false,
-      "status": "todo",
+      "passes": true,
+      "status": "done",
       "attempts": 0,
       "last_error": "",
       "priority": "P0"
@@ -21,8 +21,8 @@
     {
       "id": "F003",
       "description": "Implement repository whitelist and workspace state management, including /repos, /use <repo>, /pwd, atomic runtime_state.json writes, exact alias matching, path normalization, and no-workspace errors.",
-      "passes": false,
-      "status": "todo",
+      "passes": true,
+      "status": "done",
       "attempts": 0,
       "last_error": "",
       "priority": "P0"

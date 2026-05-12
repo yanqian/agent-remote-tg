@@ -1,0 +1,16 @@
+{
+  "name": "agent-remote-tg",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "find src test scripts -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "test:unit": "node --test test/unit/*.test.js",
+    "test:harness": "node --test test/harness/*.test.js",
+    "test:contract": "node --test test/contract/*.test.js",
+    "smoke": "node scripts/smoke.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

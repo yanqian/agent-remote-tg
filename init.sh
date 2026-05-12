@@ -52,11 +52,15 @@ for index, feature in enumerate(data["features"], start=1):
     if fid in seen:
         raise SystemExit(f"duplicate feature id: {fid}")
     seen.add(fid)
-    if feature["passes"] is not False:
-        raise SystemExit(f"initial feature must have passes=false: {fid}")
+    if not isinstance(feature["passes"], bool):
+        raise SystemExit(f"passes must be boolean for {fid}")
     status = feature.get("status", "todo")
     if status not in allowed_statuses:
         raise SystemExit(f"invalid status for {fid}: {status!r}")
+    if feature["passes"] is True and status != "done":
+        raise SystemExit(f"passes=true requires status=done for {fid}")
+    if feature["passes"] is False and status == "done":
+        raise SystemExit(f"passes=false conflicts with status=done for {fid}")
     attempts = feature.get("attempts", 0)
     if not isinstance(attempts, int) or attempts < 0:
         raise SystemExit(f"invalid attempts for {fid}: {attempts!r}")
