@@ -34,16 +34,17 @@ Implemented behavior:
 - `/help` handling with exact command-surface output.
 - Root `README.md` documenting the project purpose, exact command surface, repository workflow model, runtime state and logs, local setup, verification, and current limitations.
 - `docs/deployment.md` documenting local trusted-host deployment, environment variables, repository whitelist guidance, startup, long-running operation, runtime artifact boundaries, verification, operational checks, and failure handling.
+- Reorganized `docs/` with `docs/README.md` as the documentation index, archived original specification content under `docs/archive/original-spec.md`, and agent workflow reference content under `docs/reference/agent-workflow.md`.
 - Contract verification for exact help output, exact command whitelist, prohibited feature commands, required workflow prompt text, and runtime state schema boundaries.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
 ## Last Completed Feature
 
-`F014` - Create `docs/deployment.md` with local trusted-host deployment guidance.
+`F015` - Reorganize documentation files under indexed, reference, and archive locations.
 
 ## Next Feature
 
-No remaining planned features.
+`F016` - Normalize verification scripts by extracting init.sh state validation into scripts/verify-state.py.
 
 ## Known Issues
 

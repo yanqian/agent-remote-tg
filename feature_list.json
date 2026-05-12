@@ -128,10 +128,10 @@
     },
     {
       "id": "F015",
-      "description": "Reorganize documentation files by creating docs/README.md as the documentation index, moving docs/spec.md to docs/archive/original-spec.md, moving docs/agent_workflow.md to docs/reference/agent-workflow.md, keeping docs/deployment.md at docs/deployment.md, and removing all repository references to docs/spec.md and docs/agent_workflow.md.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "description": "Reorganize documentation files by creating docs/README.md as the documentation index, placing the archived original specification at docs/archive/original-spec.md, placing the agent workflow reference at docs/reference/agent-workflow.md, keeping docs/deployment.md at docs/deployment.md, and removing obsolete documentation path references.",
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     },

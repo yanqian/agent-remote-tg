@@ -489,13 +489,13 @@ The `docs/` directory must contain a `README.md` index that identifies the canon
 - `reference/agent-workflow.md`
 - `archive/original-spec.md`
 
-`docs/spec.md` must be moved to `docs/archive/original-spec.md`.
+The archived initial specification draft must live at `docs/archive/original-spec.md`.
 
-`docs/agent_workflow.md` must be moved to `docs/reference/agent-workflow.md`.
+The agent workflow reference must live at `docs/reference/agent-workflow.md`.
 
 `docs/deployment.md` must remain at `docs/deployment.md`.
 
-After documentation reorganization, no file named `docs/spec.md` or `docs/agent_workflow.md` may remain.
+After documentation reorganization, no obsolete pre-reorganization documentation path may remain.
 
 ### 10.3 Scripts Directory Contract
 
@@ -518,4 +518,4 @@ State validation logic must live in `scripts/verify-state.py`.
 - `find docs -maxdepth 3 -type f | sort` shows `docs/README.md`, `docs/archive/original-spec.md`, `docs/deployment.md`, and `docs/reference/agent-workflow.md`.
 - `find scripts -maxdepth 2 -type f | sort` shows `scripts/README.md`, `scripts/smoke.js`, and `scripts/verify-state.py`.
 - `package.json` contains `smoke` and `test:smoke` scripts with the exact command `node scripts/smoke.js`.
-- No repository file references `docs/spec.md` or `docs/agent_workflow.md`.
+- No repository file references obsolete pre-reorganization documentation paths.
