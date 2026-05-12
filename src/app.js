@@ -1,10 +1,13 @@
+import { dirname, resolve } from "node:path";
 import { authorizeMessage } from "./auth.js";
+import { handleAsk } from "./ask.js";
 import { parseCommand } from "./commands.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
+import { createTaskExecutor } from "./task-executor.js";
 import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
 import { requireWorkflowReadyWorkspace } from "./workflow-readiness.js";
 
-export function createApp({ allowedChatIds, repos, statePath }) {
+export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecutor }) {
   if (!Array.isArray(allowedChatIds)) {
     throw new Error("allowedChatIds must be an array.");
   }
@@ -14,6 +17,10 @@ export function createApp({ allowedChatIds, repos, statePath }) {
   if (!statePath) {
     throw new Error("statePath is required.");
   }
+  const executor = taskExecutor ?? createTaskExecutor({
+    statePath,
+    logsDir: logsDir ?? resolve(dirname(statePath), "logs"),
+  });
 
   return {
     handleMessage(message) {
@@ -28,7 +35,7 @@ export function createApp({ allowedChatIds, repos, statePath }) {
       }
 
       const state = loadRuntimeState(statePath);
-      const result = handleParsedCommand(parsed, repos, state);
+      const result = handleParsedCommand(parsed, repos, state, executor);
       if (result.stateChanged) {
         saveRuntimeState(statePath, result.state);
       }
@@ -38,7 +45,7 @@ export function createApp({ allowedChatIds, repos, statePath }) {
   };
 }
 
-export function handleParsedCommand(parsed, repos, state) {
+export function handleParsedCommand(parsed, repos, state, taskExecutor) {
   switch (parsed.command) {
     case "/repos":
       return handleRepos(repos);
@@ -50,6 +57,8 @@ export function handleParsedCommand(parsed, repos, state) {
       return handleLs(state);
     case "/git":
       return handleGit(state);
+    case "/ask":
+      return handleAsk(parsed.args, state, taskExecutor);
     case "/work":
     case "/continue":
     case "/run-orch":

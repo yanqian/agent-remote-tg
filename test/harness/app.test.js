@@ -125,3 +125,39 @@ test("app checks agent workflow readiness for workflow commands", () => {
     rmSync(repoDir, { recursive: true, force: true });
   }
 });
+
+test("app starts /ask tasks in the selected workspace", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  const calls = [];
+  try {
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: join(rootDir, "runtime_state.json"),
+      taskExecutor: {
+        startTask(request) {
+          calls.push(request);
+          return { response: "Task started: task_abc_1\nUse /logs task_abc_1 to view output." };
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/ask Explain" }), "No workspace selected.\nUse /repos then /use <repo>.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/ask Explain the repo" }),
+      "Task started: task_abc_1\nUse /logs task_abc_1 to view output.",
+    );
+    assert.equal(calls[0].type, "ask");
+    assert.equal(calls[0].cwd, repoDir);
+    assert.equal(calls[0].command, "codex");
+    assert.equal(calls[0].args[0], "exec");
+    assert.match(calls[0].args[1], /Do not run orchestrator\.py\./);
+    assert.match(calls[0].args[1], /Question:\nExplain the repo/);
+    assert.equal(calls[0].timeoutMs, 600000);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});

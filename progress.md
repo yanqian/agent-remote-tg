@@ -2,7 +2,7 @@
 
 ## Current System Status
 
-The repository has a runnable zero-dependency Node.js scaffold for the first four control-plane features plus the shared task executor abstraction.
+The repository has a runnable zero-dependency Node.js scaffold for the implemented control-plane features plus the shared task executor abstraction.
 
 Existing durable state files:
 
@@ -25,6 +25,7 @@ Implemented behavior:
 - `/repos`, `/use <repo>`, and `/pwd` handlers.
 - Workspace inspection handlers for `/ls` and `/git`, running shell-disabled commands in the selected workspace with bounded Telegram responses.
 - Task ID generation, shell-disabled task spawning, runtime task metadata persistence, stdout/stderr log persistence, exit code recording, task stop transitions, and Telegram response secret redaction helpers.
+- `/ask <question>` handling that starts a read-only `codex exec` task in the selected workspace, uses the required prompt rules, enforces a 10 minute timeout, persists a full task log, and records final status from the process exit code.
 - Agent-workflow readiness checks for `/work`, `/continue`, and `/run-orch`, requiring `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `init.sh`, and `orchestrator.py` at the selected workspace root before later workflow process spawning can occur.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
@@ -36,6 +37,8 @@ F004 implementation has been completed by the Coding Agent and is awaiting Evalu
 
 F005 implementation has been completed by the Coding Agent and is awaiting Evaluator Agent verification.
 
+F006 implementation has been completed by the Coding Agent and is awaiting Evaluator Agent verification.
+
 F007 implementation has been completed by the Coding Agent and is awaiting Evaluator Agent verification.
 
 ## Next Feature
@@ -45,6 +48,6 @@ Evaluator Agent verification for `F004`.
 ## Known Issues
 
 - Telegram network transport is not implemented.
-- `/ask`, `/status`, `/logs`, `/stop`, and `/help` are recognized by the parser but not implemented as handlers yet.
+- `/status`, `/logs`, `/stop`, and `/help` are recognized by the parser but not implemented as handlers yet.
 - `/work`, `/continue`, and `/run-orch` perform selected-workspace and agent-workflow readiness checks, but do not yet spawn workflow processes.
-- Task executor command integration is not implemented yet; `/ask`, `/work`, `/continue`, `/run-orch`, `/status`, `/logs`, and `/stop` still need their handlers.
+- Task executor command integration is partially implemented for `/ask`; `/work`, `/continue`, `/run-orch`, `/status`, `/logs`, and `/stop` still need their handlers.

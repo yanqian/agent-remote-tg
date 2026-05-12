@@ -42,9 +42,10 @@ export function createTaskExecutor(options) {
     saveRuntimeState(statePath, nextState);
   }
 
-  function startTask({ type, cwd, command, args = [], telegramSecrets = [] }) {
+  function startTask({ type, cwd, command, args = [], telegramSecrets = [], timeoutMs = null }) {
     validateTaskType(type);
     validateSpawnRequest({ cwd, command, args });
+    validateTimeout(timeoutMs);
 
     const state = loadRuntimeState(statePath);
     const taskId = generateTaskId(state.tasks);
@@ -78,6 +79,20 @@ export function createTaskExecutor(options) {
     children.set(taskId, child);
     persistTask(task);
 
+    let timedOut = false;
+    const timeout = timeoutMs === null
+      ? null
+      : setTimeout(() => {
+        timedOut = true;
+        writeLogLine(log, `timeoutMs=${timeoutMs}`);
+        if (typeof child.kill === "function") {
+          child.kill("SIGTERM");
+        }
+      }, timeoutMs);
+    if (timeout && typeof timeout.unref === "function") {
+      timeout.unref();
+    }
+
     if (child.stdout) {
       child.stdout.on("data", (chunk) => {
         log.write(chunk);
@@ -97,6 +112,9 @@ export function createTaskExecutor(options) {
           return;
         }
         finalized = true;
+        if (timeout) {
+          clearTimeout(timeout);
+        }
         for (const line of extraLogLines) {
           writeLogLine(log, line);
         }
@@ -138,6 +156,9 @@ export function createTaskExecutor(options) {
         ];
         if (signal) {
           extraLogLines.push(`signal=${signal}`);
+        }
+        if (timedOut) {
+          extraLogLines.push("timedOut=true");
         }
         finalize(nextTask, extraLogLines);
       });
@@ -207,6 +228,15 @@ export function validateSpawnRequest({ cwd, command, args }) {
   }
   if (!Array.isArray(args) || args.some((arg) => typeof arg !== "string")) {
     throw new Error("args must be an array of strings.");
+  }
+}
+
+export function validateTimeout(timeoutMs) {
+  if (timeoutMs === null) {
+    return;
+  }
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new Error("timeoutMs must be a positive integer or null.");
   }
 }
 

@@ -12,6 +12,7 @@ import {
   logPathForTask,
   redactForTelegram,
   truncateTelegramResponse,
+  validateTimeout,
 } from "../../src/task-executor.js";
 
 test("generateTaskId returns safe unique task IDs", () => {
@@ -165,6 +166,54 @@ test("stopTask transitions a running recorded child to stopping and sends SIGTER
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }
+});
+
+test("startTask enforces timeout with SIGTERM and records failed timeout", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  const child = createFakeChild({ pid: 4245 });
+  try {
+    const executor = createTaskExecutor({
+      statePath: join(rootDir, "runtime_state.json"),
+      logsDir: join(rootDir, "logs"),
+      now: fixedClock([
+        "2026-05-12T00:00:00.000Z",
+        "2026-05-12T00:10:00.000Z",
+      ]),
+      spawn() {
+        return child;
+      },
+    });
+
+    const started = executor.startTask({
+      type: "ask",
+      cwd: rootDir,
+      command: "codex",
+      args: ["exec", "read only"],
+      timeoutMs: 1,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.deepEqual(child.killSignals, ["SIGTERM"]);
+    child.emit("close", null, "SIGTERM");
+
+    const finished = await started.completion;
+    assert.equal(finished.status, "failed");
+    assert.equal(finished.exitCode, null);
+
+    const log = readFileSync(finished.logPath, "utf8");
+    assert.match(log, /timeoutMs=1/);
+    assert.match(log, /timedOut=true/);
+    assert.match(log, /signal=SIGTERM/);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("validateTimeout rejects invalid timeout values", () => {
+  assert.doesNotThrow(() => validateTimeout(null));
+  assert.doesNotThrow(() => validateTimeout(600000));
+  assert.throws(() => validateTimeout(0), /timeoutMs/);
+  assert.throws(() => validateTimeout(1.5), /timeoutMs/);
 });
 
 function createFakeChild({ pid }) {

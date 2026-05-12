@@ -48,9 +48,9 @@
     {
       "id": "F006",
       "description": "Implement /ask <question> as a read-only Codex discussion task that uses the required prompt rules, runs in the selected workspace, enforces a 10 minute timeout, writes a full task log, and marks status from process exit code.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     },
