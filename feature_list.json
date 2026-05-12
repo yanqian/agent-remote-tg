@@ -138,9 +138,9 @@
     {
       "id": "F016",
       "description": "Normalize verification scripts by extracting init.sh state validation into scripts/verify-state.py, updating init.sh to call python3 scripts/verify-state.py, creating scripts/README.md documenting verify-state.py and smoke.js, and adding package.json test:smoke with the exact command node scripts/smoke.js while preserving the existing smoke command.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     }

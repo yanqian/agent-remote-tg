@@ -1,0 +1,30 @@
+# Scripts
+
+Utility scripts used by the repository verification flow.
+
+## verify-state.py
+
+Validates durable planning state for the long-running agent workflow. It checks that `feature_list.json` has a top-level `features` array, required feature fields, unique `Fxxx` IDs, valid status and pass combinations, and non-negative attempt counts. It also checks `SPEC.md` for banned ambiguous wording.
+
+`init.sh` runs this script with:
+
+```bash
+python3 scripts/verify-state.py
+```
+
+## smoke.js
+
+Runs a lightweight startup smoke check for the Node.js application in test mode.
+
+Run it directly with:
+
+```bash
+node scripts/smoke.js
+```
+
+Or through npm with either:
+
+```bash
+npm run smoke
+npm run test:smoke
+```

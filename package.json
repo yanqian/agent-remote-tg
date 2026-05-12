@@ -8,6 +8,7 @@
     "test:unit": "node --test test/unit/*.test.js",
     "test:harness": "node --test test/harness/*.test.js",
     "test:contract": "node --test test/contract/*.test.js",
+    "test:smoke": "node scripts/smoke.js",
     "smoke": "node scripts/smoke.js"
   },
   "engines": {

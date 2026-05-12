@@ -35,6 +35,7 @@ Implemented behavior:
 - Root `README.md` documenting the project purpose, exact command surface, repository workflow model, runtime state and logs, local setup, verification, and current limitations.
 - `docs/deployment.md` documenting local trusted-host deployment, environment variables, repository whitelist guidance, startup, long-running operation, runtime artifact boundaries, verification, operational checks, and failure handling.
 - Reorganized `docs/` with `docs/README.md` as the documentation index, archived original specification content under `docs/archive/original-spec.md`, and agent workflow reference content under `docs/reference/agent-workflow.md`.
+- Verification script normalization for F016: `init.sh` now delegates durable state validation to `scripts/verify-state.py`, `scripts/README.md` documents `verify-state.py` and `smoke.js`, and `package.json` exposes `test:smoke` while preserving `smoke`.
 - Contract verification for exact help output, exact command whitelist, prohibited feature commands, required workflow prompt text, and runtime state schema boundaries.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
@@ -44,7 +45,7 @@ Implemented behavior:
 
 ## Next Feature
 
-`F016` - Normalize verification scripts by extracting init.sh state validation into scripts/verify-state.py.
+`F016` - Implemented and awaiting evaluator verification.
 
 ## Known Issues
 
