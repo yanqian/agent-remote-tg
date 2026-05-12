@@ -4,9 +4,8 @@ import { handleAsk } from "./ask.js";
 import { parseCommand } from "./commands.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
 import { createTaskExecutor } from "./task-executor.js";
-import { handleContinue, handleWork } from "./work.js";
+import { handleContinue, handleRunOrch, handleWork } from "./work.js";
 import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
-import { requireWorkflowReadyWorkspace } from "./workflow-readiness.js";
 
 export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecutor }) {
   if (!Array.isArray(allowedChatIds)) {
@@ -65,23 +64,11 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor) {
     case "/continue":
       return handleContinue(parsed.args, state, taskExecutor);
     case "/run-orch":
-      return handleWorkflowCommand(state);
+      return handleRunOrch(parsed.args, state, taskExecutor);
     default:
       return {
         response: "Command recognized but not implemented in the current feature set.",
         stateChanged: false,
       };
   }
-}
-
-function handleWorkflowCommand(state) {
-  const readiness = requireWorkflowReadyWorkspace(state);
-  if (!readiness.ok) {
-    return { response: readiness.response, stateChanged: false };
-  }
-
-  return {
-    response: "Command recognized but not implemented in the current feature set.",
-    stateChanged: false,
-  };
 }

@@ -123,3 +123,44 @@ export function handleContinue(args, state, taskExecutor) {
 
   return { response: started.response, stateChanged: false };
 }
+
+export function handleRunOrch(args, state, taskExecutor) {
+  const rounds = parseOrchestratorRounds(args);
+  if (!rounds.ok) {
+    return { response: rounds.response, stateChanged: false };
+  }
+
+  const readiness = requireWorkflowReadyWorkspace(state);
+  if (!readiness.ok) {
+    return { response: readiness.response, stateChanged: false };
+  }
+  if (!taskExecutor || typeof taskExecutor.startTask !== "function") {
+    throw new Error("taskExecutor.startTask is required.");
+  }
+
+  const activeTask = findActiveWorkflowTask(state, readiness.cwd);
+  if (activeTask) {
+    return {
+      response: `Active workflow task already running in this workspace: ${activeTask.taskId}\nUse /status or /logs ${activeTask.taskId}.`,
+      stateChanged: false,
+    };
+  }
+
+  const started = taskExecutor.startTask({
+    type: "run-orch",
+    cwd: readiness.cwd,
+    command: "python3",
+    args: ["orchestrator.py", "--max-rounds", String(rounds.value)],
+    timeoutMs: null,
+  });
+
+  return { response: started.response, stateChanged: false };
+}
+
+export function parseOrchestratorRounds(args) {
+  const text = String(args ?? "").trim();
+  if (!/^[1-5]$/.test(text)) {
+    return { ok: false, response: "Usage: /run-orch <rounds>\nrounds must be an integer from 1 through 5." };
+  }
+  return { ok: true, value: Number(text) };
+}

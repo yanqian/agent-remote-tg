@@ -29,19 +29,19 @@ Implemented behavior:
 - Agent-workflow readiness checks for `/work`, `/continue`, and `/run-orch`, requiring `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `init.sh`, and `orchestrator.py` at the selected workspace root before later workflow process spawning can occur.
 - `/work <requirement>` handling that rejects concurrent active workflow tasks in the selected workspace, starts a shell-disabled long-running `codex exec` delegation task with the required workflow prompt, leaves feature-state mutation to the spawned workflow, and relies on task logs for full output.
 - `/continue <instruction>` handling that rejects concurrent active workflow tasks in the selected workspace, starts a shell-disabled long-running `codex exec` recovery task with the required repository-state reconstruction prompt, and relies on task logs for full output.
+- `/run-orch <rounds>` handling that validates integer rounds from 1 through 5, rejects concurrent active workflow tasks in the selected workspace, and starts a shell-disabled `python3 orchestrator.py --max-rounds <rounds>` task with full task logging.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
 ## Last Completed Feature
 
-`F009` - Implement `/continue <instruction>` as a Codex recovery task.
+`F010` - Implement `/run-orch <rounds>` with integer validation and orchestrator spawning.
 
 ## Next Feature
 
-`F010` - Implement `/run-orch <rounds>` with integer validation and orchestrator spawning.
+`F011` - Implement task management commands `/status`, `/logs <task_id>`, and `/stop <task_id>`.
 
 ## Known Issues
 
 - Telegram network transport is not implemented.
 - `/status`, `/logs`, `/stop`, and `/help` are recognized by the parser but not implemented as handlers yet.
-- `/run-orch` performs selected-workspace and agent-workflow readiness checks, but does not yet spawn workflow processes.
-- Task executor command integration is implemented for `/ask`, `/work`, and `/continue`; `/run-orch`, `/status`, `/logs`, and `/stop` still need their handlers.
+- Task executor command integration is implemented for `/ask`, `/work`, `/continue`, and `/run-orch`; `/status`, `/logs`, and `/stop` still need their handlers.

@@ -123,7 +123,7 @@ test("app checks agent workflow readiness for workflow commands", () => {
     );
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/run-orch 1" }),
-      "Command recognized but not implemented in the current feature set.",
+      "Task started: task_continue_1\nUse /logs task_continue_1 to view output.",
     );
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
@@ -168,6 +168,66 @@ test("app starts /continue tasks in workflow-ready selected workspaces", () => {
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app starts /run-orch tasks in workflow-ready selected workspaces", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  const calls = [];
+  try {
+    for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {
+      writeFileSync(join(repoDir, fileName), "");
+    }
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: join(rootDir, "runtime_state.json"),
+      taskExecutor: {
+        startTask(request) {
+          calls.push(request);
+          return { response: "Task started: task_orch_1\nUse /logs task_orch_1 to view output." };
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/run-orch 2" }), "No workspace selected.\nUse /repos then /use <repo>.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/run-orch 2" }),
+      "Task started: task_orch_1\nUse /logs task_orch_1 to view output.",
+    );
+    assert.equal(calls[0].type, "run-orch");
+    assert.equal(calls[0].cwd, repoDir);
+    assert.equal(calls[0].command, "python3");
+    assert.deepEqual(calls[0].args, ["orchestrator.py", "--max-rounds", "2"]);
+    assert.equal(calls[0].timeoutMs, null);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app rejects invalid /run-orch rounds", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  try {
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath: join(rootDir, "runtime_state.json"),
+      taskExecutor: {
+        startTask() {
+          throw new Error("should not start");
+        },
+      },
+    });
+
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/run-orch 6" }),
+      "Usage: /run-orch <rounds>\nrounds must be an integer from 1 through 5.",
+    );
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
   }
 });
 

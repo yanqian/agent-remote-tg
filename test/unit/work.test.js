@@ -8,7 +8,9 @@ import {
   buildWorkPrompt,
   findActiveWorkflowTask,
   handleContinue,
+  handleRunOrch,
   handleWork,
+  parseOrchestratorRounds,
 } from "../../src/work.js";
 
 test("buildWorkPrompt includes the required long-running workflow rules and requirement", () => {
@@ -186,6 +188,98 @@ test("handleContinue starts a codex exec recovery task in the selected workspace
     assert.match(calls[0].args[1], /Instruction:\nResume F009 from repository state/);
     assert.match(calls[0].args[1], /Do not rely on chat history\./);
     assert.match(calls[0].args[1], /Do not reset existing feature state\./);
+    assert.equal(calls[0].timeoutMs, null);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("parseOrchestratorRounds accepts only integers from one through five", () => {
+  assert.deepEqual(parseOrchestratorRounds("1"), { ok: true, value: 1 });
+  assert.deepEqual(parseOrchestratorRounds("5"), { ok: true, value: 5 });
+  assert.deepEqual(parseOrchestratorRounds(" 3 "), { ok: true, value: 3 });
+  for (const input of ["0", "6", "1.5", "2 rounds", "abc", ""]) {
+    assert.deepEqual(parseOrchestratorRounds(input), {
+      ok: false,
+      response: "Usage: /run-orch <rounds>\nrounds must be an integer from 1 through 5.",
+    });
+  }
+});
+
+test("handleRunOrch requires valid rounds before workspace readiness", () => {
+  const result = handleRunOrch("6", { currentRepo: null, cwd: null, tasks: {} }, {
+    startTask() {
+      throw new Error("should not start");
+    },
+  });
+
+  assert.deepEqual(result, {
+    response: "Usage: /run-orch <rounds>\nrounds must be an integer from 1 through 5.",
+    stateChanged: false,
+  });
+});
+
+test("handleRunOrch requires a selected agent-workflow ready workspace", () => {
+  const result = handleRunOrch("1", { currentRepo: null, cwd: null, tasks: {} }, {
+    startTask() {
+      throw new Error("should not start");
+    },
+  });
+
+  assert.deepEqual(result, {
+    response: "No workspace selected.\nUse /repos then /use <repo>.",
+    stateChanged: false,
+  });
+});
+
+test("handleRunOrch rejects concurrent active workflow tasks in the selected workspace", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-run-orch-"));
+  try {
+    writeWorkflowFiles(rootDir);
+    const result = handleRunOrch("2", {
+      currentRepo: "app",
+      cwd: rootDir,
+      tasks: {
+        task_active_1: {
+          taskId: "task_active_1",
+          type: "work",
+          status: "running",
+          cwd: rootDir,
+        },
+      },
+    }, {
+      startTask() {
+        throw new Error("should not start");
+      },
+    });
+
+    assert.deepEqual(result, {
+      response: "Active workflow task already running in this workspace: task_active_1\nUse /status or /logs task_active_1.",
+      stateChanged: false,
+    });
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("handleRunOrch starts a shell-disabled orchestrator task in the selected workspace", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-run-orch-"));
+  const calls = [];
+  try {
+    writeWorkflowFiles(rootDir);
+    const result = handleRunOrch("4", { currentRepo: "app", cwd: rootDir, tasks: {} }, {
+      startTask(request) {
+        calls.push(request);
+        return { response: "Task started: task_orch_1\nUse /logs task_orch_1 to view output." };
+      },
+    });
+
+    assert.equal(result.response, "Task started: task_orch_1\nUse /logs task_orch_1 to view output.");
+    assert.equal(result.stateChanged, false);
+    assert.equal(calls[0].type, "run-orch");
+    assert.equal(calls[0].cwd, rootDir);
+    assert.equal(calls[0].command, "python3");
+    assert.deepEqual(calls[0].args, ["orchestrator.py", "--max-rounds", "4"]);
     assert.equal(calls[0].timeoutMs, null);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
