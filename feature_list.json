@@ -1,0 +1,112 @@
+{
+  "features": [
+    {
+      "id": "F001",
+      "description": "Create project scaffold and runtime configuration for a local Telegram Bot, including environment validation for TELEGRAM_BOT_TOKEN and ALLOWED_CHAT_IDS, runtime_state.json creation, logs directory creation, and startup failure when ALLOWED_CHAT_IDS is empty outside NODE_ENV=test.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F002",
+      "description": "Implement command parsing and authorization for the documented command whitelist, including rejection of unauthorized chat IDs, unknown slash commands, and missing required arguments.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F003",
+      "description": "Implement repository whitelist and workspace state management, including /repos, /use <repo>, /pwd, atomic runtime_state.json writes, exact alias matching, path normalization, and no-workspace errors.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F004",
+      "description": "Implement workspace inspection commands /ls and /git so they run only in the selected workspace and return bounded Telegram responses with branch, short status, and five recent commits for /git.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F005",
+      "description": "Implement the task executor abstraction with shell-disabled process spawning, task ID generation, task metadata persistence, task status transitions, stdout and stderr log persistence, exit code recording, and secret redaction for Telegram responses.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F006",
+      "description": "Implement /ask <question> as a read-only Codex discussion task that uses the required prompt rules, runs in the selected workspace, enforces a 10 minute timeout, writes a full task log, and marks status from process exit code.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F007",
+      "description": "Implement agent-workflow readiness checks for /work, /continue, and /run-orch by requiring AGENTS.md, SPEC.md, feature_list.json, progress.md, init.sh, and orchestrator.py at the selected workspace root before spawning processes.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F008",
+      "description": "Implement /work <requirement> as a Codex delegation task that rejects concurrent active workflow tasks in the same workspace, uses the required long-running workflow prompt, does not directly parse or rewrite target feature state, and logs all output.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F009",
+      "description": "Implement /continue <instruction> as a Codex recovery task that rejects concurrent active workflow tasks in the same workspace, uses the required repository-state reconstruction prompt, and logs all output.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F010",
+      "description": "Implement /run-orch <rounds> with integer validation for 1 through 5, concurrent workflow-task rejection, shell-disabled spawning of python3 orchestrator.py --max-rounds <rounds>, and full task logging.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F011",
+      "description": "Implement task management commands /status, /logs <task_id>, and /stop <task_id>, including active and recent finished task display, last 120 log lines, log path confinement, unknown task rejection, and SIGTERM only for Bot-recorded running tasks.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F012",
+      "description": "Implement /help and contract verification for the command surface, including exact help output, exact command whitelist, absence of /run-feature and /eval-feature, required prompt text checks, and runtime state schema checks.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    }
+  ]
+}

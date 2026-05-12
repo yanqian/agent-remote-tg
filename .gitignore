@@ -1,0 +1,10 @@
+.DS_Store
+*.swp
+*.swo
+node_modules/
+logs/
+runtime_state.json
+.env
+.env.*
+__pycache__/
+*.pyc
