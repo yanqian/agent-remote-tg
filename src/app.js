@@ -2,6 +2,7 @@ import { authorizeMessage } from "./auth.js";
 import { parseCommand } from "./commands.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
 import { handlePwd, handleRepos, handleUse } from "./workspace.js";
+import { requireWorkflowReadyWorkspace } from "./workflow-readiness.js";
 
 export function createApp({ allowedChatIds, repos, statePath }) {
   if (!Array.isArray(allowedChatIds)) {
@@ -45,10 +46,26 @@ export function handleParsedCommand(parsed, repos, state) {
       return handleUse(parsed.args, repos, state);
     case "/pwd":
       return handlePwd(state);
+    case "/work":
+    case "/continue":
+    case "/run-orch":
+      return handleWorkflowCommand(state);
     default:
       return {
         response: "Command recognized but not implemented in the current feature set.",
         stateChanged: false,
       };
   }
+}
+
+function handleWorkflowCommand(state) {
+  const readiness = requireWorkflowReadyWorkspace(state);
+  if (!readiness.ok) {
+    return { response: readiness.response, stateChanged: false };
+  }
+
+  return {
+    response: "Command recognized but not implemented in the current feature set.",
+    stateChanged: false,
+  };
 }

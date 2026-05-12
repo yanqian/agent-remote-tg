@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../../src/app.js";
@@ -55,5 +55,39 @@ test("app rejects unknown commands", () => {
     assert.equal(app.handleMessage({ chatId: "123", text: "/eval-feature F001" }), "Unknown command.\nUse /help.");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("app checks agent workflow readiness for workflow commands", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  try {
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: join(rootDir, "runtime_state.json"),
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/work Add a requirement" }),
+      "Workspace is not agent-workflow ready.\nMissing required files:\n- AGENTS.md\n- SPEC.md\n- feature_list.json\n- progress.md\n- init.sh\n- orchestrator.py",
+    );
+
+    for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {
+      writeFileSync(join(repoDir, fileName), "");
+    }
+
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/continue Resume work" }),
+      "Command recognized but not implemented in the current feature set.",
+    );
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/run-orch 1" }),
+      "Command recognized but not implemented in the current feature set.",
+    );
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
   }
 });

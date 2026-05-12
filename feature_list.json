@@ -57,9 +57,9 @@
     {
       "id": "F007",
       "description": "Implement agent-workflow readiness checks for /work, /continue, and /run-orch by requiring AGENTS.md, SPEC.md, feature_list.json, progress.md, init.sh, and orchestrator.py at the selected workspace root before spawning processes.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     },
