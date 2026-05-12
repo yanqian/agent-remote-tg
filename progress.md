@@ -32,21 +32,11 @@ Implemented behavior:
 
 ## Last Completed Feature
 
-`F003` - Implement repository whitelist and workspace state management.
-
-F004 implementation has been completed by the Coding Agent and is awaiting Evaluator Agent verification.
-
-F005 implementation has been completed by the Coding Agent and is awaiting Evaluator Agent verification.
-
-F006 implementation has been completed by the Coding Agent and is awaiting Evaluator Agent verification.
-
-F007 implementation has been completed by the Coding Agent and is awaiting Evaluator Agent verification.
-
-F008 implementation has been completed by the Coding Agent and is awaiting Evaluator Agent verification.
+`F008` - Implement `/work <requirement>` as a Codex delegation task.
 
 ## Next Feature
 
-Evaluator Agent verification for `F008`.
+`F009` - Implement `/continue <instruction>` as a Codex recovery task.
 
 ## Known Issues
 
