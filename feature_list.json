@@ -30,9 +30,9 @@
     {
       "id": "F004",
       "description": "Implement workspace inspection commands /ls and /git so they run only in the selected workspace and return bounded Telegram responses with branch, short status, and five recent commits for /git.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     },

@@ -1,7 +1,7 @@
 import { authorizeMessage } from "./auth.js";
 import { parseCommand } from "./commands.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
-import { handlePwd, handleRepos, handleUse } from "./workspace.js";
+import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
 import { requireWorkflowReadyWorkspace } from "./workflow-readiness.js";
 
 export function createApp({ allowedChatIds, repos, statePath }) {
@@ -46,6 +46,10 @@ export function handleParsedCommand(parsed, repos, state) {
       return handleUse(parsed.args, repos, state);
     case "/pwd":
       return handlePwd(state);
+    case "/ls":
+      return handleLs(state);
+    case "/git":
+      return handleGit(state);
     case "/work":
     case "/continue":
     case "/run-orch":
