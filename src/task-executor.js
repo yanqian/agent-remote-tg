@@ -1,0 +1,252 @@
+import { createWriteStream, mkdirSync } from "node:fs";
+import { spawn as defaultSpawn } from "node:child_process";
+import { resolve } from "node:path";
+import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
+
+export const TASK_TYPES = Object.freeze(["ask", "work", "continue", "run-orch"]);
+export const TASK_STATUSES = Object.freeze(["running", "stopping", "stopped", "succeeded", "failed"]);
+export const TELEGRAM_RESPONSE_LIMIT = 3500;
+
+const SECRET_NAME_PATTERN = /TOKEN|SECRET|PASSWORD|KEY/i;
+let taskSequence = 0;
+
+export function createTaskExecutor(options) {
+  if (!options || typeof options !== "object") {
+    throw new Error("task executor options are required.");
+  }
+
+  const { statePath, logsDir } = options;
+  if (!statePath) {
+    throw new Error("statePath is required.");
+  }
+  if (!logsDir) {
+    throw new Error("logsDir is required.");
+  }
+
+  const spawn = options.spawn ?? defaultSpawn;
+  const now = options.now ?? (() => new Date());
+  const env = options.env ?? process.env;
+  const children = new Map();
+  const normalizedLogsDir = resolve(logsDir);
+  mkdirSync(normalizedLogsDir, { recursive: true });
+
+  function persistTask(task) {
+    const state = loadRuntimeState(statePath);
+    const nextState = {
+      ...state,
+      tasks: {
+        ...state.tasks,
+        [task.taskId]: task,
+      },
+    };
+    saveRuntimeState(statePath, nextState);
+  }
+
+  function startTask({ type, cwd, command, args = [], telegramSecrets = [] }) {
+    validateTaskType(type);
+    validateSpawnRequest({ cwd, command, args });
+
+    const state = loadRuntimeState(statePath);
+    const taskId = generateTaskId(state.tasks);
+    const startedAt = now().toISOString();
+    const logPath = logPathForTask(normalizedLogsDir, taskId);
+    const task = {
+      taskId,
+      type,
+      status: "running",
+      pid: null,
+      cwd,
+      logPath,
+      startedAt,
+      finishedAt: null,
+      exitCode: null,
+    };
+
+    const log = createWriteStream(logPath, { flags: "a" });
+    writeLogLine(log, `startedAt=${startedAt}`);
+    writeLogLine(log, `cwd=${cwd}`);
+    writeLogLine(log, `argv=${JSON.stringify([command, ...args])}`);
+
+    const child = spawn(command, args, {
+      cwd,
+      shell: false,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    task.pid = typeof child.pid === "number" ? child.pid : null;
+    children.set(taskId, child);
+    persistTask(task);
+
+    if (child.stdout) {
+      child.stdout.on("data", (chunk) => {
+        log.write(chunk);
+      });
+    }
+
+    if (child.stderr) {
+      child.stderr.on("data", (chunk) => {
+        log.write(chunk);
+      });
+    }
+
+    let finalized = false;
+    const completion = new Promise((resolveCompletion) => {
+      function finalize(nextTask, extraLogLines = []) {
+        if (finalized) {
+          return;
+        }
+        finalized = true;
+        for (const line of extraLogLines) {
+          writeLogLine(log, line);
+        }
+        children.delete(taskId);
+        persistTask(nextTask);
+        log.end(() => {
+          resolveCompletion(nextTask);
+        });
+      }
+
+      child.on("error", (error) => {
+        const finishedAt = now().toISOString();
+        const nextTask = {
+          ...task,
+          status: "failed",
+          finishedAt,
+          exitCode: null,
+        };
+        finalize(nextTask, [
+          `error=${error instanceof Error ? error.message : String(error)}`,
+          `finishedAt=${finishedAt}`,
+          "exitCode=null",
+        ]);
+      });
+
+      child.on("close", (code, signal) => {
+        const finishedAt = now().toISOString();
+        const current = loadRuntimeState(statePath).tasks[taskId] ?? task;
+        const status = current.status === "stopping" ? "stopped" : code === 0 ? "succeeded" : "failed";
+        const nextTask = {
+          ...current,
+          status,
+          finishedAt,
+          exitCode: typeof code === "number" ? code : null,
+        };
+        const extraLogLines = [
+          `finishedAt=${finishedAt}`,
+          `exitCode=${nextTask.exitCode === null ? "null" : nextTask.exitCode}`,
+        ];
+        if (signal) {
+          extraLogLines.push(`signal=${signal}`);
+        }
+        finalize(nextTask, extraLogLines);
+      });
+    });
+
+    return {
+      task,
+      completion,
+      response: redactForTelegram(formatTaskCreatedResponse(taskId), env, telegramSecrets),
+    };
+  }
+
+  function stopTask(taskId) {
+    validateTaskId(taskId);
+    const state = loadRuntimeState(statePath);
+    const task = state.tasks[taskId];
+    if (!task || task.status !== "running") {
+      return { ok: false, response: `Unknown running task: ${taskId}` };
+    }
+
+    const child = children.get(taskId);
+    if (!child || typeof child.kill !== "function") {
+      return { ok: false, response: `Task is not active: ${taskId}` };
+    }
+
+    const nextTask = { ...task, status: "stopping" };
+    persistTask(nextTask);
+    child.kill("SIGTERM");
+    return { ok: true, task: nextTask, response: `Stopping task ${taskId}.` };
+  }
+
+  return { startTask, stopTask };
+}
+
+export function generateTaskId(existingTasks = {}) {
+  let taskId;
+  do {
+    taskSequence += 1;
+    taskId = `task_${Date.now().toString(36)}_${taskSequence.toString(36)}`;
+  } while (existingTasks && Object.hasOwn(existingTasks, taskId));
+  return taskId;
+}
+
+export function logPathForTask(logsDir, taskId) {
+  validateTaskId(taskId);
+  return resolve(logsDir, `${taskId}.log`);
+}
+
+export function validateTaskId(taskId) {
+  if (typeof taskId !== "string" || !/^task_[a-z0-9]+_[a-z0-9]+$/.test(taskId)) {
+    throw new Error("Invalid task ID.");
+  }
+}
+
+export function validateTaskType(type) {
+  if (!TASK_TYPES.includes(type)) {
+    throw new Error(`Invalid task type: ${type}`);
+  }
+}
+
+export function validateSpawnRequest({ cwd, command, args }) {
+  if (!cwd || typeof cwd !== "string") {
+    throw new Error("cwd is required.");
+  }
+  if (!command || typeof command !== "string") {
+    throw new Error("command is required.");
+  }
+  if (!Array.isArray(args) || args.some((arg) => typeof arg !== "string")) {
+    throw new Error("args must be an array of strings.");
+  }
+}
+
+export function redactForTelegram(text, env = process.env, extraSecrets = []) {
+  const secrets = collectSecretValues(env, extraSecrets);
+  let redacted = String(text);
+  for (const secret of secrets) {
+    redacted = redacted.split(secret).join("[REDACTED]");
+  }
+  return truncateTelegramResponse(redacted);
+}
+
+export function collectSecretValues(env = process.env, extraSecrets = []) {
+  const values = [];
+  for (const [name, value] of Object.entries(env)) {
+    if (SECRET_NAME_PATTERN.test(name) && typeof value === "string" && value.length > 0) {
+      values.push(value);
+    }
+  }
+  for (const value of extraSecrets) {
+    if (typeof value === "string" && value.length > 0) {
+      values.push(value);
+    }
+  }
+  return [...new Set(values)].sort((a, b) => b.length - a.length);
+}
+
+export function truncateTelegramResponse(text) {
+  const value = String(text);
+  if (value.length <= TELEGRAM_RESPONSE_LIMIT) {
+    return value;
+  }
+  const suffix = "\n[truncated]";
+  return `${value.slice(0, TELEGRAM_RESPONSE_LIMIT - suffix.length)}${suffix}`;
+}
+
+export function formatTaskCreatedResponse(taskId) {
+  return `Task started: ${taskId}\nUse /logs ${taskId} to view output.`;
+}
+
+function writeLogLine(log, line) {
+  log.write(`${line}\n`);
+}

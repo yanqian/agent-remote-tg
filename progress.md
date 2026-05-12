@@ -2,7 +2,7 @@
 
 ## Current System Status
 
-The repository has a runnable zero-dependency Node.js scaffold for the first three control-plane features.
+The repository has a runnable zero-dependency Node.js scaffold for the first three control-plane features plus the shared task executor abstraction.
 
 Existing durable state files:
 
@@ -23,11 +23,14 @@ Implemented behavior:
 - Repository whitelist normalization and exact alias lookup.
 - Workspace runtime state load/save with atomic writes.
 - `/repos`, `/use <repo>`, and `/pwd` handlers.
+- Task ID generation, shell-disabled task spawning, runtime task metadata persistence, stdout/stderr log persistence, exit code recording, task stop transitions, and Telegram response secret redaction helpers.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
 ## Last Completed Feature
 
 `F003` - Implement repository whitelist and workspace state management.
+
+F005 implementation has been completed by the Coding Agent and is awaiting Evaluator Agent verification.
 
 ## Next Feature
 
@@ -37,4 +40,4 @@ Implemented behavior:
 
 - Telegram network transport is not implemented.
 - `/ls`, `/git`, `/ask`, `/work`, `/continue`, `/run-orch`, `/status`, `/logs`, `/stop`, and `/help` are recognized by the parser but not implemented as handlers yet.
-- Task execution and process logging are not implemented yet.
+- Task executor command integration is not implemented yet; `/ask`, `/work`, `/continue`, `/run-orch`, `/status`, `/logs`, and `/stop` still need their handlers.

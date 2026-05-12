@@ -39,9 +39,9 @@
     {
       "id": "F005",
       "description": "Implement the task executor abstraction with shell-disabled process spawning, task ID generation, task metadata persistence, task status transitions, stdout and stderr log persistence, exit code recording, and secret redaction for Telegram responses.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     },
