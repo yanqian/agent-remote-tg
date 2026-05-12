@@ -383,3 +383,80 @@ Manual verification passes only when:
 - Do not execute user input through a shell.
 - Do not use Telegram history as repository context.
 - Do not mark target repository features complete from the Bot.
+
+## 9. Documentation Requirements
+
+### 9.1 README
+
+The repository must include `README.md` at the repository root.
+
+`README.md` must contain these top-level sections in this order:
+
+1. `# Remote Agent Telegram Control Plane`
+2. `## What This Project Does`
+3. `## Command Surface`
+4. `## Repository Workflow Model`
+5. `## Runtime State And Logs`
+6. `## Local Setup`
+7. `## Verification`
+8. `## Current Limitations`
+
+The `## Command Surface` section must document exactly these commands and must not document `/run-feature` or `/eval-feature`:
+
+- `/repos`
+- `/use <repo>`
+- `/pwd`
+- `/ls`
+- `/git`
+- `/ask <question>`
+- `/work <requirement>`
+- `/continue <instruction>`
+- `/run-orch <rounds>`
+- `/status`
+- `/logs <task_id>`
+- `/stop <task_id>`
+- `/help`
+
+The `## Local Setup` section must list the required environment variables:
+
+- `TELEGRAM_BOT_TOKEN`
+- `ALLOWED_CHAT_IDS`
+
+The `## Verification` section must include this command:
+
+```bash
+./init.sh
+```
+
+### 9.2 Deployment Documentation
+
+The repository must include `docs/deployment.md`.
+
+`docs/deployment.md` must contain these top-level sections in this order:
+
+1. `# Deployment`
+2. `## Runtime Host Requirements`
+3. `## Environment Variables`
+4. `## Repository Whitelist`
+5. `## Start Command`
+6. `## Long-Running Operation`
+7. `## Logs And State Files`
+8. `## Verification Before Start`
+9. `## Operational Checks`
+10. `## Failure Handling`
+
+The deployment document must state that the service runs as a local process on a trusted host with access to the whitelisted repositories.
+
+The deployment document must include this start command:
+
+```bash
+npm start
+```
+
+The deployment document must include this verification command:
+
+```bash
+./init.sh
+```
+
+The deployment document must state that `runtime_state.json` and `logs/` are runtime artifacts and must not be used as target repository feature state.

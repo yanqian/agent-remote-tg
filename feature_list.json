@@ -107,6 +107,24 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P1"
+    },
+    {
+      "id": "F013",
+      "description": "Create root README.md with the exact required top-level sections, documented command surface, required environment variables, repository workflow model, runtime state and logs explanation, local setup instructions, verification command ./init.sh, and current limitations.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F014",
+      "description": "Create docs/deployment.md with the exact required top-level sections, trusted local host deployment model, environment variables, repository whitelist guidance, start command npm start, long-running operation guidance, runtime artifact boundaries for runtime_state.json and logs/, verification command ./init.sh, operational checks, and failure handling.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
     }
   ]
 }
