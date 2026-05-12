@@ -75,9 +75,9 @@
     {
       "id": "F009",
       "description": "Implement /continue <instruction> as a Codex recovery task that rejects concurrent active workflow tasks in the same workspace, uses the required repository-state reconstruction prompt, and logs all output.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     },

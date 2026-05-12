@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildWorkPrompt } from "../../src/work.js";
+import { buildContinuePrompt, buildWorkPrompt } from "../../src/work.js";
 
 test("/work prompt contains the required long-running workflow contract", () => {
   const prompt = buildWorkPrompt("Add a safe rollout requirement.");
@@ -22,4 +22,22 @@ test("/work prompt contains the required long-running workflow contract", () => 
   }
 
   assert.match(prompt, /Requirement:\nAdd a safe rollout requirement\./);
+});
+
+test("/continue prompt contains the required recovery contract", () => {
+  const prompt = buildContinuePrompt("Resume the interrupted workflow.");
+
+  for (const requiredText of [
+    "Do not rely on chat history.",
+    "Read AGENTS.md, progress.md, feature_list.json, and git log --oneline -20 before deciding the next action.",
+    "Run ./init.sh before changing files.",
+    "Use orchestrator.py according to AGENTS.md when implementation or evaluation is required.",
+    "Do not overwrite feature_list.json.",
+    "Do not reset existing feature state.",
+    "Stop and report exact conflicts when repository state is unsafe.",
+  ]) {
+    assert.ok(prompt.includes(requiredText), `missing prompt text: ${requiredText}`);
+  }
+
+  assert.match(prompt, /Instruction:\nResume the interrupted workflow\./);
 });

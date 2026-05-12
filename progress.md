@@ -28,19 +28,20 @@ Implemented behavior:
 - `/ask <question>` handling that starts a read-only `codex exec` task in the selected workspace, uses the required prompt rules, enforces a 10 minute timeout, persists a full task log, and records final status from the process exit code.
 - Agent-workflow readiness checks for `/work`, `/continue`, and `/run-orch`, requiring `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `init.sh`, and `orchestrator.py` at the selected workspace root before later workflow process spawning can occur.
 - `/work <requirement>` handling that rejects concurrent active workflow tasks in the selected workspace, starts a shell-disabled long-running `codex exec` delegation task with the required workflow prompt, leaves feature-state mutation to the spawned workflow, and relies on task logs for full output.
+- `/continue <instruction>` handling that rejects concurrent active workflow tasks in the selected workspace, starts a shell-disabled long-running `codex exec` recovery task with the required repository-state reconstruction prompt, and relies on task logs for full output.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
 ## Last Completed Feature
 
-`F008` - Implement `/work <requirement>` as a Codex delegation task.
+`F009` - Implement `/continue <instruction>` as a Codex recovery task.
 
 ## Next Feature
 
-`F009` - Implement `/continue <instruction>` as a Codex recovery task.
+`F010` - Implement `/run-orch <rounds>` with integer validation and orchestrator spawning.
 
 ## Known Issues
 
 - Telegram network transport is not implemented.
 - `/status`, `/logs`, `/stop`, and `/help` are recognized by the parser but not implemented as handlers yet.
-- `/continue` and `/run-orch` perform selected-workspace and agent-workflow readiness checks, but do not yet spawn workflow processes.
-- Task executor command integration is implemented for `/ask` and `/work`; `/continue`, `/run-orch`, `/status`, `/logs`, and `/stop` still need their handlers.
+- `/run-orch` performs selected-workspace and agent-workflow readiness checks, but does not yet spawn workflow processes.
+- Task executor command integration is implemented for `/ask`, `/work`, and `/continue`; `/run-orch`, `/status`, `/logs`, and `/stop` still need their handlers.

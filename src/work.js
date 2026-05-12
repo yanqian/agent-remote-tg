@@ -30,6 +30,29 @@ export function buildWorkPrompt(requirement) {
   ].join("\n");
 }
 
+export function buildContinuePrompt(instruction) {
+  return [
+    "Act as a Codex repository recovery agent for the selected repository.",
+    "",
+    "Instruction:",
+    instruction,
+    "",
+    "Repository-state reconstruction rules:",
+    "Do not rely on chat history.",
+    "Read AGENTS.md, progress.md, feature_list.json, and git log --oneline -20 before deciding the next action.",
+    "Run ./init.sh before changing files.",
+    "Use orchestrator.py according to AGENTS.md when implementation or evaluation is required.",
+    "Do not overwrite feature_list.json.",
+    "Do not reset existing feature state.",
+    "Stop and report exact conflicts when repository state is unsafe.",
+    "",
+    "Bot boundary:",
+    "- The Telegram Bot only delegated this recovery task.",
+    "- Use repository files and git history as the source of truth.",
+    "- Preserve durable state owned by the target repository workflow.",
+  ].join("\n");
+}
+
 export function findActiveWorkflowTask(state, cwd) {
   const tasks = state && state.tasks && typeof state.tasks === "object" ? state.tasks : {};
   for (const task of Object.values(tasks)) {
@@ -67,6 +90,34 @@ export function handleWork(args, state, taskExecutor) {
     cwd: readiness.cwd,
     command: "codex",
     args: ["exec", buildWorkPrompt(args)],
+    timeoutMs: null,
+  });
+
+  return { response: started.response, stateChanged: false };
+}
+
+export function handleContinue(args, state, taskExecutor) {
+  const readiness = requireWorkflowReadyWorkspace(state);
+  if (!readiness.ok) {
+    return { response: readiness.response, stateChanged: false };
+  }
+  if (!taskExecutor || typeof taskExecutor.startTask !== "function") {
+    throw new Error("taskExecutor.startTask is required.");
+  }
+
+  const activeTask = findActiveWorkflowTask(state, readiness.cwd);
+  if (activeTask) {
+    return {
+      response: `Active workflow task already running in this workspace: ${activeTask.taskId}\nUse /status or /logs ${activeTask.taskId}.`,
+      stateChanged: false,
+    };
+  }
+
+  const started = taskExecutor.startTask({
+    type: "continue",
+    cwd: readiness.cwd,
+    command: "codex",
+    args: ["exec", buildContinuePrompt(args)],
     timeoutMs: null,
   });
 

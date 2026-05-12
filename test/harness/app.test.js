@@ -100,6 +100,11 @@ test("app checks agent workflow readiness for workflow commands", () => {
       allowedChatIds: ["123"],
       repos: { app: repoDir },
       statePath: join(rootDir, "runtime_state.json"),
+      taskExecutor: {
+        startTask() {
+          return { response: "Task started: task_continue_1\nUse /logs task_continue_1 to view output." };
+        },
+      },
     });
 
     assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
@@ -114,12 +119,52 @@ test("app checks agent workflow readiness for workflow commands", () => {
 
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/continue Resume work" }),
-      "Command recognized but not implemented in the current feature set.",
+      "Task started: task_continue_1\nUse /logs task_continue_1 to view output.",
     );
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/run-orch 1" }),
       "Command recognized but not implemented in the current feature set.",
     );
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app starts /continue tasks in workflow-ready selected workspaces", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  const calls = [];
+  try {
+    for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {
+      writeFileSync(join(repoDir, fileName), "");
+    }
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: join(rootDir, "runtime_state.json"),
+      taskExecutor: {
+        startTask(request) {
+          calls.push(request);
+          return { response: "Task started: task_continue_1\nUse /logs task_continue_1 to view output." };
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/continue Resume work" }), "No workspace selected.\nUse /repos then /use <repo>.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/continue Resume from repository state" }),
+      "Task started: task_continue_1\nUse /logs task_continue_1 to view output.",
+    );
+    assert.equal(calls[0].type, "continue");
+    assert.equal(calls[0].cwd, repoDir);
+    assert.equal(calls[0].command, "codex");
+    assert.deepEqual(calls[0].args.slice(0, 1), ["exec"]);
+    assert.match(calls[0].args[1], /Instruction:\nResume from repository state/);
+    assert.match(calls[0].args[1], /Read AGENTS\.md, progress\.md, feature_list\.json, and git log --oneline -20 before deciding the next action\./);
+    assert.match(calls[0].args[1], /Stop and report exact conflicts when repository state is unsafe\./);
+    assert.equal(calls[0].timeoutMs, null);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });

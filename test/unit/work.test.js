@@ -3,7 +3,13 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildWorkPrompt, findActiveWorkflowTask, handleWork } from "../../src/work.js";
+import {
+  buildContinuePrompt,
+  buildWorkPrompt,
+  findActiveWorkflowTask,
+  handleContinue,
+  handleWork,
+} from "../../src/work.js";
 
 test("buildWorkPrompt includes the required long-running workflow rules and requirement", () => {
   const prompt = buildWorkPrompt("Add audit logging.");
@@ -18,6 +24,19 @@ test("buildWorkPrompt includes the required long-running workflow rules and requ
   assert.match(prompt, /9\. Run python3 orchestrator\.py --max-rounds 1\./);
   assert.match(prompt, /10\. Treat the task as complete only when the orchestrator and evaluator workflow pass\./);
   assert.match(prompt, /Do not rely on chat history\./);
+});
+
+test("buildContinuePrompt includes the required recovery rules and instruction", () => {
+  const prompt = buildContinuePrompt("Recover the interrupted F009 run.");
+
+  assert.match(prompt, /Instruction:\nRecover the interrupted F009 run\./);
+  assert.match(prompt, /Do not rely on chat history\./);
+  assert.match(prompt, /Read AGENTS\.md, progress\.md, feature_list\.json, and git log --oneline -20 before deciding the next action\./);
+  assert.match(prompt, /Run \.\/init\.sh before changing files\./);
+  assert.match(prompt, /Use orchestrator\.py according to AGENTS\.md when implementation or evaluation is required\./);
+  assert.match(prompt, /Do not overwrite feature_list\.json\./);
+  assert.match(prompt, /Do not reset existing feature state\./);
+  assert.match(prompt, /Stop and report exact conflicts when repository state is unsafe\./);
 });
 
 test("findActiveWorkflowTask detects only active workflow tasks in the same workspace", () => {
@@ -97,6 +116,76 @@ test("handleWork starts a codex exec workflow task in the selected workspace", (
     assert.deepEqual(calls[0].args.slice(0, 1), ["exec"]);
     assert.match(calls[0].args[1], /Requirement:\nAdd docs/);
     assert.match(calls[0].args[1], /Run python3 orchestrator\.py --max-rounds 1\./);
+    assert.equal(calls[0].timeoutMs, null);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("handleContinue requires a selected agent-workflow ready workspace", () => {
+  const result = handleContinue("Resume work", { currentRepo: null, cwd: null, tasks: {} }, {
+    startTask() {
+      throw new Error("should not start");
+    },
+  });
+
+  assert.deepEqual(result, {
+    response: "No workspace selected.\nUse /repos then /use <repo>.",
+    stateChanged: false,
+  });
+});
+
+test("handleContinue rejects concurrent active workflow tasks in the selected workspace", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-continue-"));
+  try {
+    writeWorkflowFiles(rootDir);
+    const result = handleContinue("Resume work", {
+      currentRepo: "app",
+      cwd: rootDir,
+      tasks: {
+        task_active_1: {
+          taskId: "task_active_1",
+          type: "work",
+          status: "running",
+          cwd: rootDir,
+        },
+      },
+    }, {
+      startTask() {
+        throw new Error("should not start");
+      },
+    });
+
+    assert.deepEqual(result, {
+      response: "Active workflow task already running in this workspace: task_active_1\nUse /status or /logs task_active_1.",
+      stateChanged: false,
+    });
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("handleContinue starts a codex exec recovery task in the selected workspace", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-continue-"));
+  const calls = [];
+  try {
+    writeWorkflowFiles(rootDir);
+    const result = handleContinue("Resume F009 from repository state", { currentRepo: "app", cwd: rootDir, tasks: {} }, {
+      startTask(request) {
+        calls.push(request);
+        return { response: "Task started: task_continue_1\nUse /logs task_continue_1 to view output." };
+      },
+    });
+
+    assert.equal(result.response, "Task started: task_continue_1\nUse /logs task_continue_1 to view output.");
+    assert.equal(result.stateChanged, false);
+    assert.equal(calls[0].type, "continue");
+    assert.equal(calls[0].cwd, rootDir);
+    assert.equal(calls[0].command, "codex");
+    assert.deepEqual(calls[0].args.slice(0, 1), ["exec"]);
+    assert.match(calls[0].args[1], /Instruction:\nResume F009 from repository state/);
+    assert.match(calls[0].args[1], /Do not rely on chat history\./);
+    assert.match(calls[0].args[1], /Do not reset existing feature state\./);
     assert.equal(calls[0].timeoutMs, null);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });

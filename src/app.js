@@ -4,7 +4,7 @@ import { handleAsk } from "./ask.js";
 import { parseCommand } from "./commands.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
 import { createTaskExecutor } from "./task-executor.js";
-import { handleWork } from "./work.js";
+import { handleContinue, handleWork } from "./work.js";
 import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
 import { requireWorkflowReadyWorkspace } from "./workflow-readiness.js";
 
@@ -63,6 +63,7 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor) {
     case "/work":
       return handleWork(parsed.args, state, taskExecutor);
     case "/continue":
+      return handleContinue(parsed.args, state, taskExecutor);
     case "/run-orch":
       return handleWorkflowCommand(state);
     default:
