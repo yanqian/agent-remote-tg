@@ -41,11 +41,11 @@ Implemented behavior:
 
 ## Last Completed Feature
 
-`F015` - Reorganize documentation files under indexed, reference, and archive locations.
+`F016` - Normalize verification scripts by extracting state validation into `scripts/verify-state.py`.
 
 ## Next Feature
 
-`F016` - Implemented and awaiting evaluator verification.
+No remaining planned features.
 
 ## Known Issues
 
