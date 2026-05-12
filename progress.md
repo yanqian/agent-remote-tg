@@ -33,16 +33,17 @@ Implemented behavior:
 - `/status`, `/logs <task_id>`, and `/stop <task_id>` handling for Bot-recorded tasks, including active task and recent finished task display, confined 120-line log tails, unknown task rejection, and SIGTERM only through recorded running task handles.
 - `/help` handling with exact command-surface output.
 - Root `README.md` documenting the project purpose, exact command surface, repository workflow model, runtime state and logs, local setup, verification, and current limitations.
+- `docs/deployment.md` documenting local trusted-host deployment, environment variables, repository whitelist guidance, startup, long-running operation, runtime artifact boundaries, verification, operational checks, and failure handling.
 - Contract verification for exact help output, exact command whitelist, prohibited feature commands, required workflow prompt text, and runtime state schema boundaries.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
 ## Last Completed Feature
 
-`F013` - Create root `README.md` with required sections and project operation documentation.
+`F014` - Create `docs/deployment.md` with local trusted-host deployment guidance.
 
 ## Next Feature
 
-`F014` - Create `docs/deployment.md` with local trusted-host deployment guidance.
+No remaining planned features.
 
 ## Known Issues
 
