@@ -65,7 +65,7 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor) {
       return handleWork(parsed.args, state, taskExecutor);
     case "/continue":
       return handleContinue(parsed.args, state, taskExecutor);
-    case "/run-orch":
+    case "/run_orch":
       return handleRunOrch(parsed.args, state, taskExecutor);
     case "/status":
       return handleStatus(state);

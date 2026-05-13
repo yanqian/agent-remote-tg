@@ -88,17 +88,18 @@ git - Show branch, status, and commits
 ask - Start a read-only Codex task
 work - Delegate a repository workflow task
 continue - Resume repository workflow
+run_orch - Run orchestrator rounds
 status - Show active and recent tasks
 logs - Show task log output
 stop - Stop a running task
 help - Show the command list
 ```
 
-Do not add `/run-orch` to the BotFather menu. BotFather rejects command names with hyphens. The service still accepts `/run-orch <rounds>` when the user types it manually in Telegram.
+The `/run_orch` command name is compatible with BotFather because it uses only lowercase letters and an underscore.
 
 ## Long-Running Operation
 
-The `/ask`, `/work`, `/continue`, and `/run-orch` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded.
+The `/ask`, `/work`, `/continue`, and `/run_orch` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded.
 
 Only one active workflow task of type `work`, `continue`, or `run-orch` can run in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect output, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 
@@ -126,6 +127,7 @@ After startup, verify operation from an authorized Telegram chat:
 - `/repos` lists the expected repository aliases and paths.
 - `/use <repo>` selects the intended whitelisted repository.
 - `/pwd`, `/ls`, and `/git` inspect only the selected workspace.
+- `/run_orch 1` starts one orchestrator round only after the selected workspace is agent-workflow ready.
 - `/status` reports active tasks and recent finished tasks.
 
 Before running workflow commands, confirm the selected workspace contains the required agent workflow files and has a clean or intentionally understood working tree.

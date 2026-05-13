@@ -37,7 +37,7 @@ The initialization baseline verifies:
 | F007 | Unit tests prove readiness checks require every agent workflow file before workflow commands spawn. |
 | F008 | Harness and contract tests prove `/work` rejects concurrent workflow tasks and uses the required workflow prompt without direct feature-state mutation. |
 | F009 | Harness and contract tests prove `/continue` rejects concurrent workflow tasks and uses the required recovery prompt. |
-| F010 | Unit and harness tests prove `/run-orch` validates rounds and spawns `python3 orchestrator.py --max-rounds <rounds>` with shell disabled. |
+| F010 | Unit and harness tests prove the orchestrator command validates rounds and spawns `python3 orchestrator.py --max-rounds <rounds>` with shell disabled. |
 | F011 | Unit and harness tests prove `/status`, `/logs`, and `/stop` behavior, including log confinement and SIGTERM restrictions. |
 | F012 | Contract tests prove exact help output, exact command whitelist, absence of prohibited commands, required prompt text, and runtime state schema limits. |
 

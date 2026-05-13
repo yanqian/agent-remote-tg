@@ -28,12 +28,20 @@ test("parseCommand rejects unknown slash commands", () => {
     ok: false,
     response: UNKNOWN_COMMAND_RESPONSE,
   });
+  assert.deepEqual(parseCommand("/run-orch 1"), {
+    ok: false,
+    response: UNKNOWN_COMMAND_RESPONSE,
+  });
 });
 
 test("parseCommand rejects missing required arguments", () => {
   assert.deepEqual(parseCommand("/use   "), {
     ok: false,
     response: "Usage: /use <repo>",
+  });
+  assert.deepEqual(parseCommand("/run_orch   "), {
+    ok: false,
+    response: "Usage: /run_orch <rounds>",
   });
 });
 
@@ -55,7 +63,7 @@ test("help response documents the exact command surface", () => {
     "/ask <question> - start a read-only Codex discussion task",
     "/work <requirement> - delegate a repository workflow task",
     "/continue <instruction> - resume or recover repository workflow",
-    "/run-orch <rounds> - run 1 to 5 orchestrator rounds",
+    "/run_orch <rounds> - run 1 to 5 orchestrator rounds",
     "/status - show active and recent tasks",
     "/logs <task_id> - show the last 120 task log lines",
     "/stop <task_id> - stop a running Bot-recorded task",

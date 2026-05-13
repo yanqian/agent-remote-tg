@@ -16,7 +16,7 @@ Repository development state remains in repository files and git history. Telegr
 - `/ask <question>` - start a read-only Codex discussion task in the selected workspace.
 - `/work <requirement>` - delegate a repository workflow task to Codex.
 - `/continue <instruction>` - resume or recover repository workflow from repository state.
-- `/run-orch <rounds>` - run 1 to 5 orchestrator rounds in the selected workspace.
+- `/run_orch <rounds>` - run 1 to 5 orchestrator rounds in the selected workspace.
 - `/status` - show active tasks and the five most recent finished tasks.
 - `/logs <task_id>` - show the last 120 task log lines.
 - `/stop <task_id>` - stop a running Bot-recorded task with `SIGTERM`.
@@ -35,21 +35,22 @@ git - Show branch, status, and commits
 ask - Start a read-only Codex task
 work - Delegate a repository workflow task
 continue - Resume repository workflow
+run_orch - Run orchestrator rounds
 status - Show active and recent tasks
 logs - Show task log output
 stop - Stop a running task
 help - Show the command list
 ```
 
-BotFather command names must use lowercase letters, digits, and underscores. The supported Bot command `/run-orch <rounds>` contains a hyphen, so it cannot be registered in the BotFather menu. Use `/run-orch <rounds>` by typing it manually in Telegram.
+BotFather command names must use lowercase letters, digits, and underscores. The supported Bot command `/run_orch <rounds>` is compatible with the BotFather command menu.
 
 ## Repository Workflow Model
 
 The Bot is a control plane, not the owner of feature lifecycle decisions. It validates commands, validates the selected workspace, starts local processes with shell execution disabled, records task metadata, and returns bounded Telegram responses.
 
-Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py`. The workflow commands `/work`, `/continue`, and `/run-orch` require the selected workspace to contain the required agent workflow files before any process is spawned.
+Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py`. The workflow commands `/work`, `/continue`, and `/run_orch` require the selected workspace to contain the required agent workflow files before any process is spawned.
 
-`/work` and `/continue` start `codex exec` tasks with prompts that force the spawned agent to reconstruct context from repository files. `/run-orch` starts `python3 orchestrator.py --max-rounds <rounds>`. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace.
+`/work` and `/continue` start `codex exec` tasks with prompts that force the spawned agent to reconstruct context from repository files. `/run_orch` starts `python3 orchestrator.py --max-rounds <rounds>`. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace.
 
 ## Transport Modes
 

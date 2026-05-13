@@ -137,7 +137,7 @@ test("app checks agent workflow readiness for workflow commands", () => {
       "Task started: task_continue_1\nUse /logs task_continue_1 to view output.",
     );
     assert.equal(
-      app.handleMessage({ chatId: "123", text: "/run-orch 1" }),
+      app.handleMessage({ chatId: "123", text: "/run_orch 1" }),
       "Task started: task_continue_1\nUse /logs task_continue_1 to view output.",
     );
   } finally {
@@ -186,7 +186,7 @@ test("app starts /continue tasks in workflow-ready selected workspaces", () => {
   }
 });
 
-test("app starts /run-orch tasks in workflow-ready selected workspaces", () => {
+test("app starts /run_orch tasks in workflow-ready selected workspaces", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
   const calls = [];
@@ -206,10 +206,10 @@ test("app starts /run-orch tasks in workflow-ready selected workspaces", () => {
       },
     });
 
-    assert.equal(app.handleMessage({ chatId: "123", text: "/run-orch 2" }), "No workspace selected.\nUse /repos then /use <repo>.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/run_orch 2" }), "No workspace selected.\nUse /repos then /use <repo>.");
     assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
     assert.equal(
-      app.handleMessage({ chatId: "123", text: "/run-orch 2" }),
+      app.handleMessage({ chatId: "123", text: "/run_orch 2" }),
       "Task started: task_orch_1\nUse /logs task_orch_1 to view output.",
     );
     assert.equal(calls[0].type, "run-orch");
@@ -223,7 +223,7 @@ test("app starts /run-orch tasks in workflow-ready selected workspaces", () => {
   }
 });
 
-test("app rejects invalid /run-orch rounds", () => {
+test("app rejects invalid /run_orch rounds", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   try {
     const app = createApp({
@@ -238,8 +238,12 @@ test("app rejects invalid /run-orch rounds", () => {
     });
 
     assert.equal(
-      app.handleMessage({ chatId: "123", text: "/run-orch 6" }),
+      app.handleMessage({ chatId: "123", text: "/run_orch 6" }),
       "Invalid rounds. Use an integer from 1 to 5.",
+    );
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/run-orch 1" }),
+      "Unknown command.\nUse /help.",
     );
   } finally {
     rmSync(rootDir, { recursive: true, force: true });

@@ -26,10 +26,10 @@ Implemented behavior:
 - Workspace inspection handlers for `/ls` and `/git`, running shell-disabled commands in the selected workspace with bounded Telegram responses.
 - Task ID generation, shell-disabled task spawning, runtime task metadata persistence, stdout/stderr log persistence, exit code recording, task stop transitions, and Telegram response secret redaction helpers.
 - `/ask <question>` handling that starts a read-only `codex exec` task in the selected workspace, uses the required prompt rules, enforces a 10 minute timeout, persists a full task log, and records final status from the process exit code.
-- Agent-workflow readiness checks for `/work`, `/continue`, and `/run-orch`, requiring `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `init.sh`, and `orchestrator.py` at the selected workspace root before later workflow process spawning can occur.
+- Agent-workflow readiness checks for `/work`, `/continue`, and `/run_orch`, requiring `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `init.sh`, and `orchestrator.py` at the selected workspace root before later workflow process spawning can occur.
 - `/work <requirement>` handling that rejects concurrent active workflow tasks in the selected workspace, starts a shell-disabled long-running `codex exec` delegation task with the required workflow prompt, leaves feature-state mutation to the spawned workflow, and relies on task logs for full output.
 - `/continue <instruction>` handling that rejects concurrent active workflow tasks in the selected workspace, starts a shell-disabled long-running `codex exec` recovery task with the required repository-state reconstruction prompt, and relies on task logs for full output.
-- `/run-orch <rounds>` handling that validates integer rounds from 1 through 5 with the specified invalid-rounds response, rejects concurrent active workflow tasks in the selected workspace, and starts a shell-disabled `python3 orchestrator.py --max-rounds <rounds>` task with full task logging.
+- `/run_orch <rounds>` handling that validates integer rounds from 1 through 5 with the specified invalid-rounds response, rejects concurrent active workflow tasks in the selected workspace, and starts a shell-disabled `python3 orchestrator.py --max-rounds <rounds>` task with full task logging.
 - `/status`, `/logs <task_id>`, and `/stop <task_id>` handling for Bot-recorded tasks, including active task and recent finished task display, confined 120-line log tails, unknown task rejection, and SIGTERM only through recorded running task handles.
 - `/help` handling with exact command-surface output.
 - Root `README.md` documenting the project purpose, exact command surface, repository workflow model, runtime state and logs, local setup, verification, and current limitations.
@@ -43,6 +43,7 @@ Implemented behavior:
 - Repository whitelist startup configuration for F019 is implemented: `REPO_WHITELIST_JSON` is required at startup, aliases are restricted to letters, numbers, dots, underscores, and hyphens, configured paths must exist, `npm start` runs `node src/index.js`, README/deployment documentation covers the configuration, and automated coverage verifies valid and invalid whitelist configuration.
 - Telegram long polling transport for F021: `npm run start:polling` runs `node src/polling.js`, polling mode calls Telegram `getUpdates`, dispatches valid message updates through `createApp().handleMessage(...)`, sends replies through Telegram `sendMessage`, persists the next update offset in `runtime_state.json`, and does not require `TELEGRAM_WEBHOOK_URL`.
 - Public server and VPS deployment documentation for F020: webhook-mode docs are generalized beyond provider-specific deployment and cover public server, VPS, VM, container, Cloud Run, hosted Node.js runtime, HTTPS webhook URL, runtime-local repository paths, persistent `runtime_state.json` and `logs/` storage, and `npm start` as the webhook-mode command.
+- BotFather-compatible orchestrator command for F022: Telegram command parsing, help output, tests, README, deployment documentation, and active SPEC references now use `/run_orch <rounds>`; `/run-orch` is rejected as an unknown command.
 
 ## Last Completed Feature
 
@@ -50,8 +51,8 @@ Implemented behavior:
 
 ## Next Feature
 
-`F020` - Pending evaluator verification for generalized public server and VPS webhook deployment documentation.
+All currently planned features are implemented. Pending evaluator verification for `F022`.
 
 ## Known Issues
 
-- F020 implementation is ready for evaluator verification.
+- F022 implementation is ready for evaluator verification.

@@ -33,7 +33,7 @@ The system must implement:
 - Read-only Codex discussion through `/ask <question>`.
 - Repository workflow delegation through `/work <requirement>`.
 - Repository workflow recovery through `/continue <instruction>`.
-- Orchestrator execution through `/run-orch <rounds>`.
+- Orchestrator execution through `/run_orch <rounds>`.
 - Task status inspection through `/status`.
 - Task log inspection through `/logs <task_id>`.
 - Task termination through `/stop <task_id>`.
@@ -102,7 +102,7 @@ A target repository is agent-workflow ready only when these files exist at its r
 - `init.sh`
 - `orchestrator.py`
 
-`/work`, `/continue`, and `/run-orch` must reject a workspace before spawning any process when one or more required files are missing.
+`/work`, `/continue`, and `/run_orch` must reject a workspace before spawning any process when one or more required files are missing.
 
 ### 3.3 Repository Source Of Truth
 
@@ -212,7 +212,7 @@ git status --short
 git log --oneline -5
 ```
 
-When no workspace is selected, `/pwd`, `/ls`, `/git`, `/ask`, `/work`, `/continue`, and `/run-orch` must return:
+When no workspace is selected, `/pwd`, `/ls`, `/git`, `/ask`, `/work`, `/continue`, and `/run_orch` must return:
 
 ```text
 No workspace selected.
@@ -402,7 +402,7 @@ Polling delivery errors must not corrupt `runtime_state.json`.
 
 ### 4.10 Orchestrator Execution
 
-`/run-orch <rounds>` must:
+`/run_orch <rounds>` must:
 
 1. Require an agent-workflow ready selected workspace.
 2. Parse `<rounds>` as a base-10 integer.
@@ -462,7 +462,7 @@ Invalid rounds. Use an integer from 1 to 5.
 - The runtime must provide persistent writable storage for `runtime_state.json` and `logs/`, or must mount a persistent volume for those paths.
 - The runtime must have access to the whitelisted repositories used by `/use`.
 - The runtime must supply `REPO_WHITELIST_JSON` with aliases and paths that exist inside the deployed runtime.
-- The runtime must provide `python3` and `codex` when `/work`, `/continue`, `/ask`, or `/run-orch` are used.
+- The runtime must provide `python3` and `codex` when `/work`, `/continue`, `/ask`, or `/run_orch` are used.
 - Secrets must be supplied through environment configuration, VPS environment files, systemd environment files, process manager configuration, or cloud secret configuration.
 - Secrets must not be committed to git.
 - The webhook service must listen on the port specified by `PORT` when `PORT` is set.
@@ -483,8 +483,8 @@ Invalid rounds. Use an integer from 1 to 5.
 - `/work` rejects non-ready workspaces.
 - `/work` spawns `codex exec` with the required workflow prompt.
 - `/continue` spawns `codex exec` with the required recovery prompt.
-- `/run-orch 1` spawns `python3 orchestrator.py --max-rounds 1` with shell disabled.
-- `/run-orch` rejects non-integers and integers outside `1..5`.
+- `/run_orch 1` spawns `python3 orchestrator.py --max-rounds 1` with shell disabled.
+- `/run_orch` rejects non-integers and integers outside `1..5`.
 - `/status` lists active tasks and five recent finished tasks.
 - `/logs <task_id>` returns bounded log tail.
 - `/stop <task_id>` sends `SIGTERM` only to a Bot-recorded running task.
@@ -581,7 +581,7 @@ The `## Command Surface` section must document exactly these commands and must n
 - `/ask <question>`
 - `/work <requirement>`
 - `/continue <instruction>`
-- `/run-orch <rounds>`
+- `/run_orch <rounds>`
 - `/status`
 - `/logs <task_id>`
 - `/stop <task_id>`
