@@ -3,7 +3,7 @@ import { isAbsolute, resolve } from "node:path";
 
 export function parseRepoWhitelistJson(value) {
   if (!value) {
-    return {};
+    throw new Error("REPO_WHITELIST_JSON is required.");
   }
 
   let parsed;
@@ -41,6 +41,7 @@ export function validateAlias(alias) {
     typeof alias !== "string"
     || alias.trim() === ""
     || alias !== alias.trim()
+    || !/^[A-Za-z0-9._-]+$/.test(alias)
     || alias.includes("..")
     || alias.includes("/")
     || alias.includes("\\")

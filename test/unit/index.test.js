@@ -35,6 +35,15 @@ test("start rejects invalid repository whitelist configuration", () => {
         TELEGRAM_BOT_TOKEN: "token",
         ALLOWED_CHAT_IDS: "123",
         NODE_ENV: "test",
+      }, { rootDir }),
+      /REPO_WHITELIST_JSON is required/,
+    );
+
+    assert.throws(
+      () => start({
+        TELEGRAM_BOT_TOKEN: "token",
+        ALLOWED_CHAT_IDS: "123",
+        NODE_ENV: "test",
         REPO_WHITELIST_JSON: "{",
       }, { rootDir }),
       /REPO_WHITELIST_JSON must be valid JSON/,

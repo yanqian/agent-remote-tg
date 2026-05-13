@@ -18,10 +18,10 @@ test("normalizeRepoConfig resolves relative repository paths", () => {
 
 test("parseRepoWhitelistJson accepts a repository alias map", () => {
   assert.deepEqual(parseRepoWhitelistJson('{"app":"/tmp/app"}'), { app: "/tmp/app" });
-  assert.deepEqual(parseRepoWhitelistJson(""), {});
 });
 
 test("parseRepoWhitelistJson rejects invalid JSON and non-object values", () => {
+  assert.throws(() => parseRepoWhitelistJson(""), /REPO_WHITELIST_JSON is required/);
   assert.throws(() => parseRepoWhitelistJson("{"), /REPO_WHITELIST_JSON must be valid JSON/);
   assert.throws(
     () => parseRepoWhitelistJson('["/tmp/app"]'),
@@ -33,6 +33,8 @@ test("validateAlias rejects traversal and slash aliases", () => {
   assert.throws(() => validateAlias("../repo"), /Invalid repo alias/);
   assert.throws(() => validateAlias("team/repo"), /Invalid repo alias/);
   assert.throws(() => validateAlias(" app"), /Invalid repo alias/);
+  assert.throws(() => validateAlias("team repo"), /Invalid repo alias/);
+  assert.throws(() => validateAlias("team$repo"), /Invalid repo alias/);
 });
 
 test("normalizeRepoConfig validates existing repository paths when required", () => {

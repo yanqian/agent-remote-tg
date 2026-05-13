@@ -26,7 +26,7 @@ export REPO_WHITELIST_JSON='{"agent-remote-tg":"/workspace/agent-remote-tg"}'
 
 ## Repository Whitelist
 
-Configure only trusted local repositories in `REPO_WHITELIST_JSON`. Each alias must be an exact key, and each path must resolve to an existing local directory. Startup validates the JSON shape, aliases, and directory paths before accepting traffic.
+Configure only trusted local repositories in the required `REPO_WHITELIST_JSON` value. Each alias must be an exact key using only letters, numbers, dots, underscores, and hyphens, and each path must resolve to an existing local directory. Startup validates the JSON shape, aliases, and directory paths before accepting traffic.
 
 Use stable aliases that users can type with `/use <repo>`. Do not add broad parent directories, temporary directories, or free-form paths. Workflow commands require the selected repository root to include `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `init.sh`, and `orchestrator.py`.
 

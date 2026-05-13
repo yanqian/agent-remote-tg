@@ -40,15 +40,15 @@ Implemented behavior:
 - Contract verification for exact help output, exact command whitelist, prohibited feature commands, required workflow prompt text, and runtime state schema boundaries.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 - GCP webhook deployment support for F018: `npm start`, `npm run webhook:set`, Telegram `setWebhook` registration with environment validation, fake Telegram API coverage, CLI missing-environment exit coverage, and deployment documentation.
-- Repository whitelist startup configuration for F019 is implemented and ready for evaluator review: `REPO_WHITELIST_JSON` parsing, startup alias/path validation, `npm start` as `node src/index.js`, README/deployment documentation, and automated coverage for valid and invalid whitelist configuration.
+- Repository whitelist startup configuration for F019 is implemented: `REPO_WHITELIST_JSON` is required at startup, aliases are restricted to letters, numbers, dots, underscores, and hyphens, configured paths must exist, `npm start` runs `node src/index.js`, README/deployment documentation covers the configuration, and automated coverage verifies valid and invalid whitelist configuration.
 
 ## Last Completed Feature
 
-`F018` - Implement GCP webhook deployment support with webhook registration script, npm scripts, tests, and deployment documentation.
+`F019` - Implement npm start with `node src/index.js`, required `REPO_WHITELIST_JSON` startup configuration, strict alias/path validation, documentation updates, and automated whitelist coverage.
 
 ## Next Feature
 
-`F019` evaluator review.
+No pending features currently listed.
 
 ## Known Issues
 
