@@ -1,10 +1,31 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import {
   main,
   setTelegramWebhook,
   validateWebhookEnv,
 } from "../../scripts/set-telegram-webhook.js";
+
+const execFileAsync = promisify(execFile);
+const webhookScriptPath = fileURLToPath(new URL("../../scripts/set-telegram-webhook.js", import.meta.url));
+
+async function runWebhookScript(env) {
+  try {
+    const result = await execFileAsync(process.execPath, [webhookScriptPath], {
+      env,
+    });
+    return { code: 0, stdout: result.stdout, stderr: result.stderr };
+  } catch (error) {
+    return {
+      code: error.code,
+      stdout: error.stdout,
+      stderr: error.stderr,
+    };
+  }
+}
 
 test("validateWebhookEnv requires TELEGRAM_BOT_TOKEN", () => {
   assert.throws(
@@ -94,4 +115,22 @@ test("main validates env, sets webhook, and returns a confirmation", async () =>
 
   assert.equal(message, "Telegram webhook set to https://example.com/telegram/webhook");
   assert.equal(calls.length, 1);
+});
+
+test("CLI exits 1 when TELEGRAM_BOT_TOKEN is missing", async () => {
+  const result = await runWebhookScript({
+    TELEGRAM_WEBHOOK_URL: "https://example.com/telegram/webhook",
+  });
+
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /TELEGRAM_BOT_TOKEN is required/);
+});
+
+test("CLI exits 1 when TELEGRAM_WEBHOOK_URL is missing", async () => {
+  const result = await runWebhookScript({
+    TELEGRAM_BOT_TOKEN: "test-token",
+  });
+
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /TELEGRAM_WEBHOOK_URL is required/);
 });
