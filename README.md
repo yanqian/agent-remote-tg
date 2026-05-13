@@ -48,7 +48,7 @@ Set the required environment variables:
 - `ALLOWED_CHAT_IDS` - comma-separated Telegram chat IDs allowed to use the Bot.
 - `REPO_WHITELIST_JSON` - JSON object mapping repository aliases to local repository paths.
 
-Configure the repository whitelist through `REPO_WHITELIST_JSON`. Repository aliases must be exact keys, and each configured path must resolve to an existing local directory.
+Configure the repository whitelist through `REPO_WHITELIST_JSON`. Repository aliases must be exact keys, and each configured path must resolve to an existing local directory. Startup fails when the JSON is invalid, an alias is unsafe, or a path is missing.
 
 Example:
 

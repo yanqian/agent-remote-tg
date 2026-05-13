@@ -1,12 +1,13 @@
 import { createStartupContext } from "./config.js";
 import { createApp } from "./app.js";
-import { normalizeRepoConfig } from "./repositories.js";
+import { normalizeRepoConfig, parseRepoWhitelistJson } from "./repositories.js";
 import { loadRuntimeState } from "./runtime-state.js";
 import { createTelegramHttpServer } from "./telegram-transport.js";
 
 export function start(env = process.env, options = {}) {
   const context = createStartupContext(env, options);
-  const repos = normalizeRepoConfig(options.repos ?? {}, context.rootDir);
+  const rawRepos = options.repos ?? parseRepoWhitelistJson(env.REPO_WHITELIST_JSON);
+  const repos = normalizeRepoConfig(rawRepos, context.rootDir, { requireExisting: true });
   loadRuntimeState(context.statePath);
   const app = options.app ?? createApp({
     allowedChatIds: context.allowedChatIds,

@@ -39,16 +39,17 @@ Implemented behavior:
 - Telegram webhook HTTP transport for F017: `GET /healthz`, `POST /telegram/webhook`, Telegram update parsing, dispatch through the existing app handler, Telegram `sendMessage` replies, invalid JSON handling, non-POST rejection, and `PORT`-based service startup through `src/index.js`.
 - Contract verification for exact help output, exact command whitelist, prohibited feature commands, required workflow prompt text, and runtime state schema boundaries.
 - Test scripts for build, unit, harness, contract, and smoke verification.
-- GCP webhook deployment support for F018 is implemented and ready for evaluator review: `npm start`, `npm run webhook:set`, Telegram `setWebhook` registration with environment validation, fake Telegram API coverage, CLI missing-environment exit coverage, and deployment documentation.
+- GCP webhook deployment support for F018: `npm start`, `npm run webhook:set`, Telegram `setWebhook` registration with environment validation, fake Telegram API coverage, CLI missing-environment exit coverage, and deployment documentation.
+- Repository whitelist startup configuration for F019 is implemented and ready for evaluator review: `REPO_WHITELIST_JSON` parsing, startup alias/path validation, `npm start` as `node src/index.js`, README/deployment documentation, and automated coverage for valid and invalid whitelist configuration.
 
 ## Last Completed Feature
 
-`F017` - Implement Telegram webhook HTTP transport with GET /healthz, POST /telegram/webhook, PORT-based server startup, Telegram update parsing, app handler dispatch, Telegram sendMessage replies, invalid JSON handling, non-POST rejection, and tests with fake HTTP requests and fake Telegram API calls.
+`F018` - Implement GCP webhook deployment support with webhook registration script, npm scripts, tests, and deployment documentation.
 
 ## Next Feature
 
-`F018` evaluator review, then `F019` - Implement npm start with the exact command node src/index.js, add repository whitelist configuration through `REPO_WHITELIST_JSON`, validate whitelist JSON aliases and paths at startup, update README.md and docs/deployment.md with the start command and whitelist configuration, and add automated coverage for valid and invalid whitelist configuration.
+`F019` evaluator review.
 
 ## Known Issues
 
-- Repository whitelist startup configuration through `REPO_WHITELIST_JSON` is not implemented.
+- None known.

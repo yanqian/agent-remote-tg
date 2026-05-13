@@ -1,12 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   formatRepos,
   lookupRepo,
   normalizeRepoConfig,
+  parseRepoWhitelistJson,
   validateAlias,
 } from "../../src/repositories.js";
 
@@ -15,9 +16,39 @@ test("normalizeRepoConfig resolves relative repository paths", () => {
   assert.equal(repos.app, "/tmp/base/repo");
 });
 
+test("parseRepoWhitelistJson accepts a repository alias map", () => {
+  assert.deepEqual(parseRepoWhitelistJson('{"app":"/tmp/app"}'), { app: "/tmp/app" });
+  assert.deepEqual(parseRepoWhitelistJson(""), {});
+});
+
+test("parseRepoWhitelistJson rejects invalid JSON and non-object values", () => {
+  assert.throws(() => parseRepoWhitelistJson("{"), /REPO_WHITELIST_JSON must be valid JSON/);
+  assert.throws(
+    () => parseRepoWhitelistJson('["/tmp/app"]'),
+    /REPO_WHITELIST_JSON must be a JSON object/,
+  );
+});
+
 test("validateAlias rejects traversal and slash aliases", () => {
   assert.throws(() => validateAlias("../repo"), /Invalid repo alias/);
   assert.throws(() => validateAlias("team/repo"), /Invalid repo alias/);
+  assert.throws(() => validateAlias(" app"), /Invalid repo alias/);
+});
+
+test("normalizeRepoConfig validates existing repository paths when required", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repos-"));
+  const repoDir = join(rootDir, "repo");
+  try {
+    mkdirSync(repoDir);
+    const repos = normalizeRepoConfig({ app: repoDir }, rootDir, { requireExisting: true });
+    assert.equal(repos.app, repoDir);
+    assert.throws(
+      () => normalizeRepoConfig({ missing: join(rootDir, "missing") }, rootDir, { requireExisting: true }),
+      /Repo path is not available: missing/,
+    );
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
 });
 
 test("lookupRepo requires exact aliases and existing directories", () => {
