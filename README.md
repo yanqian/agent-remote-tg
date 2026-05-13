@@ -30,6 +30,26 @@ Target repositories are expected to keep durable agent state in files such as `A
 
 `/work` and `/continue` start `codex exec` tasks with prompts that force the spawned agent to reconstruct context from repository files. `/run-orch` starts `python3 orchestrator.py --max-rounds <rounds>`. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace.
 
+## Transport Modes
+
+Webhook mode runs an HTTP server for public HTTPS deployments. Start it with:
+
+```bash
+npm start
+```
+
+The `npm start` script runs `node src/index.js`.
+
+Polling mode runs on a local machine without a public inbound address. The required command is:
+
+```bash
+npm run start:polling
+```
+
+The `start:polling` script must run `node src/polling.js`.
+
+Both modes must dispatch Telegram messages into the same `createApp().handleMessage(...)` application path and must send Bot replies through Telegram `sendMessage`.
+
 ## Runtime State And Logs
 
 Runtime state is stored in `runtime_state.json`. It contains the selected repository alias, selected workspace path, and Bot-started task metadata. It must not contain target repository feature objects.
@@ -62,13 +82,21 @@ Install dependencies if the project gains external dependencies later:
 npm install
 ```
 
-Run the service with the required environment available:
+Run webhook mode with the required environment available:
 
 ```bash
 npm start
 ```
 
 The `npm start` script must run `node src/index.js`.
+
+Run local polling mode with the required environment available:
+
+```bash
+npm run start:polling
+```
+
+The `start:polling` script must run `node src/polling.js`.
 
 ## Verification
 
@@ -82,7 +110,7 @@ The script checks required project files, validates `feature_list.json`, verifie
 
 ## Current Limitations
 
-- Telegram network transport is not implemented.
+- Telegram polling transport is not implemented.
 - Only configured local repositories can be selected.
 - Arbitrary shell command execution is not supported.
 - Free-form absolute path workspace selection is not supported.

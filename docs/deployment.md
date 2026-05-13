@@ -32,7 +32,7 @@ Use stable aliases that users can type with `/use <repo>`. Do not add broad pare
 
 ## Start Command
 
-Start the service from the project root with the required environment available:
+Start webhook mode from the project root with the required environment available:
 
 ```bash
 npm start
@@ -40,13 +40,21 @@ npm start
 
 The `npm start` script must run `node src/index.js`.
 
+Start local polling mode from the project root with the required environment available:
+
+```bash
+npm run start:polling
+```
+
+The `start:polling` script must run `node src/polling.js`.
+
 Run the service under a local process supervisor when unattended operation is needed. The supervisor should preserve the working directory, environment variables, and access to the whitelisted repository paths.
 
-For GCP webhook deployment:
+For public server or VPS webhook deployment:
 
-1. Deploy the Node.js service to Cloud Run or another GCP runtime that exposes a public HTTPS URL.
+1. Deploy the Node.js service to a VPS, VM, container, Cloud Run service, or hosted Node.js runtime that exposes a public HTTPS URL.
 2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, `REPO_WHITELIST_JSON`, `TELEGRAM_WEBHOOK_URL`, and `PORT` in the deployed service environment.
-3. Set `TELEGRAM_WEBHOOK_URL` to the deployed HTTPS URL plus `/telegram/webhook`, for example `https://example.run.app/telegram/webhook`.
+3. Set `TELEGRAM_WEBHOOK_URL` to the deployed HTTPS URL plus `/telegram/webhook`, for example `https://bot.example.com/telegram/webhook`.
 4. Provide persistent writable storage for `runtime_state.json` and `logs/`.
 5. Ensure every whitelisted repository path exists inside the runtime.
 6. Start the service with `npm start`.
@@ -55,6 +63,17 @@ For GCP webhook deployment:
 9. Send `/help` from an authorized Telegram chat.
 
 The `webhook:set` script validates that `TELEGRAM_BOT_TOKEN` is present, validates that `TELEGRAM_WEBHOOK_URL` is a valid HTTPS URL, and calls Telegram `setWebhook` with the configured URL.
+
+For local polling deployment:
+
+1. Run the Node.js service on the local machine that contains the whitelisted repositories.
+2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, and `REPO_WHITELIST_JSON`.
+3. Do not configure `TELEGRAM_WEBHOOK_URL` for polling mode.
+4. Start polling with `npm run start:polling`.
+5. Send `/help` from an authorized Telegram chat.
+6. Verify that `/repos` returns aliases loaded from `REPO_WHITELIST_JSON`.
+
+Polling mode must call Telegram `getUpdates`, dispatch valid message updates into the same app handler used by webhook mode, send replies through Telegram `sendMessage`, and persist the next update offset in `runtime_state.json`.
 
 ## Long-Running Operation
 

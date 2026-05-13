@@ -48,8 +48,10 @@ Implemented behavior:
 
 ## Next Feature
 
-No pending features currently listed.
+`F020` - Generalize webhook deployment documentation and requirements from GCP-specific deployment to public server and VPS deployment.
+
+`F021` - Implement Telegram long polling transport with `npm run start:polling` and `node src/polling.js`.
 
 ## Known Issues
 
-- None known.
+- Telegram polling transport is not implemented.

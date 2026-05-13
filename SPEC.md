@@ -38,8 +38,9 @@ The system must implement:
 - Task log inspection through `/logs <task_id>`.
 - Task termination through `/stop <task_id>`.
 - Command discovery through `/help`.
-- Telegram webhook transport for receiving Telegram updates over HTTPS.
-- GCP deployment support for running the webhook service.
+- Telegram webhook transport for receiving Telegram updates over HTTPS on a public server.
+- Telegram long polling transport for receiving Telegram updates from a local machine without a public inbound address.
+- Public server and VPS deployment support for running the webhook service.
 - Runtime task state persistence in `runtime_state.json`.
 - Full task output persistence in `logs/<task_id>.log`.
 - Automated verification for parser, authorization, workspace, task execution, runtime state, prompts, and command surface.
@@ -60,7 +61,7 @@ The system must not implement:
 - `/run-feature`.
 - `/eval-feature`.
 - Web dashboard.
-- GCP resource provisioning automation.
+- Cloud resource provisioning automation.
 - Scheduled task execution.
 - Multiple active workflow tasks in one workspace.
 
@@ -352,7 +353,54 @@ The script must exit `1` when `TELEGRAM_BOT_TOKEN` or `TELEGRAM_WEBHOOK_URL` is 
 
 The script must exit `1` when Telegram returns `ok: false`.
 
-### 4.9 Orchestrator Execution
+### 4.9 Telegram Long Polling Transport
+
+The project must provide a local polling transport that receives Telegram updates by calling:
+
+```text
+GET https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getUpdates
+```
+
+The polling transport must run from this npm command:
+
+```text
+npm run start:polling
+```
+
+The exact `start:polling` command must be:
+
+```text
+node src/polling.js
+```
+
+The polling transport must not require `TELEGRAM_WEBHOOK_URL` or a public inbound network address.
+
+The polling transport must read:
+
+- `TELEGRAM_BOT_TOKEN`
+- `ALLOWED_CHAT_IDS`
+- `REPO_WHITELIST_JSON`
+
+The polling transport must call Telegram `getUpdates` with an offset that prevents the same update from being processed twice after it has been handled.
+
+For every valid message update, the polling transport must call the existing Bot application message handler with:
+
+```json
+{
+  "chatId": "<message.chat.id as string>",
+  "text": "<message.text>"
+}
+```
+
+The polling transport must send the handler response back to Telegram through `sendMessage`.
+
+Updates without `message.chat.id` or `message.text` must advance the offset and must not execute a command.
+
+The polling transport must persist the last processed Telegram update offset in `runtime_state.json`.
+
+Polling delivery errors must not corrupt `runtime_state.json`.
+
+### 4.10 Orchestrator Execution
 
 `/run-orch <rounds>` must:
 
@@ -367,7 +415,7 @@ Invalid rounds response:
 Invalid rounds. Use an integer from 1 to 5.
 ```
 
-### 4.10 Task Status, Logs, And Stop
+### 4.11 Task Status, Logs, And Stop
 
 `/status` must return all `running` and `stopping` tasks plus the five most recent finished tasks.
 
@@ -408,15 +456,16 @@ Invalid rounds. Use an integer from 1 to 5.
 - Tests must avoid real Codex execution.
 - Tests must verify spawned command argv through mocks or fakes.
 
-### 5.5 GCP Deployment
+### 5.5 Public Server And VPS Deployment
 
-- The supported GCP runtime must be a container or Node.js service with a public HTTPS URL.
-- The GCP runtime must provide persistent writable storage for `runtime_state.json` and `logs/`, or must mount a persistent volume for those paths.
-- The GCP runtime must have access to the whitelisted repositories used by `/use`.
-- The GCP runtime must supply `REPO_WHITELIST_JSON` with aliases and paths that exist inside the deployed runtime.
-- The GCP runtime must provide `python3` and `codex` when `/work`, `/continue`, `/ask`, or `/run-orch` are used.
-- Secrets must be supplied through GCP secret or environment configuration and must not be committed to git.
-- The service must listen on the port specified by `PORT` when `PORT` is set.
+- The supported webhook runtime must be a VPS, VM, container, or Node.js service with a public HTTPS URL.
+- The runtime must provide persistent writable storage for `runtime_state.json` and `logs/`, or must mount a persistent volume for those paths.
+- The runtime must have access to the whitelisted repositories used by `/use`.
+- The runtime must supply `REPO_WHITELIST_JSON` with aliases and paths that exist inside the deployed runtime.
+- The runtime must provide `python3` and `codex` when `/work`, `/continue`, `/ask`, or `/run-orch` are used.
+- Secrets must be supplied through environment configuration, VPS environment files, systemd environment files, process manager configuration, or cloud secret configuration.
+- Secrets must not be committed to git.
+- The webhook service must listen on the port specified by `PORT` when `PORT` is set.
 
 ## 6. Acceptance Criteria
 
@@ -451,6 +500,8 @@ Invalid rounds. Use an integer from 1 to 5.
 - `/telegram/webhook` rejects non-`POST` requests with HTTP status `405`.
 - Updates without message text return HTTP status `200` without command execution.
 - The webhook registration script registers `TELEGRAM_WEBHOOK_URL` through Telegram `setWebhook`.
+- `npm run start:polling` starts the polling transport with `node src/polling.js`.
+- The polling transport calls Telegram `getUpdates`, dispatches valid message updates into the existing app handler, sends replies through Telegram `sendMessage`, persists the next update offset, and does not require a public inbound address.
 
 ## 7. Verification Plan
 
@@ -469,6 +520,7 @@ Required checks:
 - Repository whitelist configuration tests for valid JSON, invalid JSON, invalid aliases, non-string path values, missing paths, and successful `/repos` output.
 - Webhook transport tests with fake HTTP requests and fake Telegram API calls.
 - Webhook registration tests with fake Telegram API calls.
+- Polling transport tests with fake Telegram API calls for `getUpdates`, offset advancement, app handler dispatch, and `sendMessage` replies.
 
 Manual verification sequence:
 
@@ -513,10 +565,11 @@ The repository must include `README.md` at the repository root.
 2. `## What This Project Does`
 3. `## Command Surface`
 4. `## Repository Workflow Model`
-5. `## Runtime State And Logs`
-6. `## Local Setup`
-7. `## Verification`
-8. `## Current Limitations`
+5. `## Transport Modes`
+6. `## Runtime State And Logs`
+7. `## Local Setup`
+8. `## Verification`
+9. `## Current Limitations`
 
 The `## Command Surface` section must document exactly these commands and must not document `/run-feature` or `/eval-feature`:
 
@@ -568,6 +621,12 @@ The deployment document must include this start command:
 
 ```bash
 npm start
+```
+
+The deployment document must include this polling start command:
+
+```bash
+npm run start:polling
 ```
 
 The deployment document must include this verification command:
@@ -637,7 +696,7 @@ State validation logic must live in `scripts/verify-state.py`.
 - `package.json` contains `smoke` and `test:smoke` scripts with the exact command `node scripts/smoke.js`.
 - No repository file references obsolete pre-reorganization documentation paths.
 
-## 11. Webhook GCP Deployment Requirements
+## 11. Public Server And VPS Webhook Deployment Requirements
 
 ### 11.1 Required Environment
 
@@ -664,6 +723,7 @@ Invalid JSON, non-object JSON, empty aliases, invalid aliases, non-string path v
 `package.json` must include:
 
 - `start`
+- `start:polling`
 - `webhook:set`
 
 The exact `start` command must be:
@@ -676,6 +736,12 @@ The exact `webhook:set` command must be:
 
 ```text
 node scripts/set-telegram-webhook.js
+```
+
+The exact `start:polling` command must be:
+
+```text
+node src/polling.js
 ```
 
 ### 11.3 Required HTTP Endpoints
@@ -705,12 +771,20 @@ Automated tests must verify:
 
 ### 11.5 Documentation Requirements
 
-`docs/deployment.md` must document GCP webhook deployment steps:
+`docs/deployment.md` must document public server and VPS webhook deployment steps:
 
-1. Build or deploy the Node.js service.
+1. Build or deploy the Node.js service on a public server, VPS, VM, container, or hosted Node.js runtime with HTTPS.
 2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, `REPO_WHITELIST_JSON`, `TELEGRAM_WEBHOOK_URL`, and `PORT`.
 3. Ensure persistent storage for `runtime_state.json` and `logs/`.
 4. Ensure whitelisted repositories are available to the runtime.
 5. Run `npm run webhook:set`.
 6. Verify `/healthz`.
 7. Send `/help` from an authorized Telegram chat.
+
+`docs/deployment.md` must document local polling deployment steps:
+
+1. Run the service on the local machine that has the target repositories.
+2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, and `REPO_WHITELIST_JSON`.
+3. Start polling with `npm run start:polling`.
+4. Send `/help` from an authorized Telegram chat.
+5. Verify that `/repos` returns aliases loaded from `REPO_WHITELIST_JSON`.

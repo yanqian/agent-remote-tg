@@ -170,6 +170,24 @@
       "attempts": 2,
       "last_error": "",
       "priority": "P1"
+    },
+    {
+      "id": "F020",
+      "description": "Generalize webhook deployment documentation and requirements from GCP-specific deployment to public server and VPS deployment, including VPS, VM, container, Cloud Run, hosted Node.js runtime, HTTPS webhook URL, runtime-local repository paths, persistent runtime_state.json and logs storage, and npm start as the webhook-mode command.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F021",
+      "description": "Implement Telegram long polling transport with npm run start:polling using the exact command node src/polling.js, Telegram getUpdates polling, update offset persistence in runtime_state.json, dispatch of valid messages into createApp().handleMessage(...), Telegram sendMessage replies, no TELEGRAM_WEBHOOK_URL requirement, and fake Telegram API tests.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }
