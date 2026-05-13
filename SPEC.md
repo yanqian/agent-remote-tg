@@ -920,3 +920,77 @@ When both the app handler and polling transport write `runtime_state.json` durin
 - Run `npm run test:unit`.
 - Run `npm run test:harness`.
 - Run `./init.sh`.
+
+## 14. Telegram Task Result Extraction Requirements
+
+### 14.1 Goal
+
+Store the final user-facing result of each completed Bot task separately from the raw process log, and make Telegram task result retrieval return the final result instead of raw process output.
+
+### 14.2 Scope
+
+Include:
+
+- Continue writing full process output to `logs/<task_id>.log` on disk.
+- Extract a final result from task logs when a task finishes.
+- Persist the extracted final result in the task metadata in `runtime_state.json`.
+- Redact secrets from the extracted final result before it is stored or returned to Telegram.
+- Bound the stored and returned final result to the existing Telegram response limit.
+- Change `/logs <task_id>` so Telegram returns the stored final result for finished tasks.
+- Make `/logs <task_id>` avoid returning raw process log tail content to Telegram.
+- For running or stopping tasks, make `/logs <task_id>` return task status and a message that the final result is not available yet.
+- Preserve local log files for debugging outside Telegram.
+- Add tests for final result extraction from Codex logs that include tool output before the final answer.
+- Add tests proving `/logs <task_id>` returns the final result and not raw process log lines.
+
+Exclude:
+
+- Do not remove local log files.
+- Do not add Telegram access to arbitrary raw log content.
+- Do not add a new command name.
+- Do not change task IDs.
+- Do not change task spawning commands.
+
+### 14.3 Core Concepts
+
+Raw task log is the full local audit trail stored under `logs/`.
+
+Final task result is the last user-facing answer extracted from raw process output after tool output and internal execution traces are removed.
+
+Telegram task result retrieval must show the final task result and must not stream raw process logs.
+
+### 14.4 Core Flow
+
+1. User starts `/ask`, `/work`, `/continue`, or `/run_orch`.
+2. The task executor writes stdout and stderr to `logs/<task_id>.log`.
+3. When the child process exits, the task executor reads the local log file.
+4. The task executor extracts the final user-facing result from the log.
+5. The task executor redacts secrets and bounds the final result.
+6. The task executor stores the final result in the task metadata.
+7. User sends `/logs <task_id>`.
+8. Telegram receives the final result for finished tasks.
+
+### 14.5 Constraints
+
+- `/logs <task_id>` must not return raw `exec`, `sed`, `rg`, source-code, test-output, or diff log sections for finished tasks when a final result exists.
+- `/logs <task_id>` must return `Task is <status>. Final result is not available yet.` for `running` and `stopping` tasks.
+- Finished tasks with no extractable result must return `(no final result for <task_id>)`.
+- Final result extraction must handle Codex logs containing `codex` answer markers followed by duplicated final text and trailing `tokens used` lines.
+- Secret redaction rules used for Telegram responses must apply to stored final results.
+
+### 14.6 Acceptance Criteria
+
+- Task metadata supports a `finalResult` string for completed tasks.
+- `readTaskLog` returns task final result for `succeeded`, `failed`, and `stopped` tasks.
+- `readTaskLog` does not return raw process log tail content for finished tasks.
+- Unit tests cover extracting the final answer from a Codex log containing command output before the final answer.
+- Unit tests cover running-task `/logs` response.
+- Unit tests cover fallback when no final result can be extracted.
+- `./init.sh` passes.
+
+### 14.7 Verification Plan
+
+- Run `npm run test:unit`.
+- Run `npm run test:harness`.
+- Run `npm run test:contract`.
+- Run `./init.sh`.
