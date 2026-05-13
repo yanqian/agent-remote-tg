@@ -10,6 +10,7 @@ FEATURES_PATH = Path("feature_list.json")
 PROGRESS_PATH = Path("progress.md")
 MAX_ROUNDS = 5
 MAX_ATTEMPTS = 3
+COMMIT_SUMMARY_LIMIT = 100
 
 
 class OrchestratorError(Exception):
@@ -101,6 +102,26 @@ def mark_failed(fid: str, error: str, max_attempts: int) -> None:
     feature["status"] = "blocked" if attempts >= max_attempts else "todo"
     feature["last_error"] = error.strip()[:2000]
     save_state(data)
+
+
+def feature_summary(feature: dict, limit: int = COMMIT_SUMMARY_LIMIT) -> str:
+    description = " ".join(str(feature.get("description", "")).split())
+    if not description:
+        return "No feature description"
+
+    sentence_end = description.find(".")
+    if 0 <= sentence_end < limit:
+        description = description[:sentence_end]
+
+    if len(description) <= limit:
+        return description
+
+    return description[: limit - 1].rstrip() + "…"
+
+
+def commit_message(action: str, feature: dict) -> str:
+    fid = str(feature["id"])
+    return f"{action} {fid}: {feature_summary(feature)}"
 
 
 def status_entries() -> dict[str, str]:
@@ -322,7 +343,7 @@ def main() -> int:
         if coding_result.returncode != 0:
             error = f"coding agent exited with code {coding_result.returncode}"
             mark_failed(fid, error, args.max_attempts)
-            commit_round(fid, f"Block {fid}", baseline, args.dry_run)
+            commit_round(fid, commit_message("Block", feature), baseline, args.dry_run)
             print(f"Failed: {fid}: {error}", flush=True)
             continue
 
@@ -330,7 +351,7 @@ def main() -> int:
         if evaluator.returncode != 0:
             error = f"evaluator agent exited with code {evaluator.returncode}"
             mark_failed(fid, error, args.max_attempts)
-            commit_round(fid, f"Block {fid}", baseline, args.dry_run)
+            commit_round(fid, commit_message("Block", feature), baseline, args.dry_run)
             print(f"Evaluation failed: {fid}: {error}", flush=True)
             continue
 
@@ -338,12 +359,12 @@ def main() -> int:
         if not passed:
             error = reason or "Evaluator rejected the feature."
             mark_failed(fid, error, args.max_attempts)
-            commit_round(fid, f"Block {fid}", baseline, args.dry_run)
+            commit_round(fid, commit_message("Block", feature), baseline, args.dry_run)
             print(f"Evaluation failed: {fid}: {error}", flush=True)
             continue
 
         mark_done(fid)
-        commit_round(fid, f"Complete {fid}", baseline, args.dry_run)
+        commit_round(fid, commit_message("Complete", feature), baseline, args.dry_run)
         print(f"Done: {fid}", flush=True)
 
     return 0
