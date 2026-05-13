@@ -44,15 +44,16 @@ Implemented behavior:
 - Telegram long polling transport for F021: `npm run start:polling` runs `node src/polling.js`, polling mode calls Telegram `getUpdates`, dispatches valid message updates through `createApp().handleMessage(...)`, sends replies through Telegram `sendMessage`, persists the next update offset in `runtime_state.json`, and does not require `TELEGRAM_WEBHOOK_URL`.
 - Public server and VPS deployment documentation for F020: webhook-mode docs are generalized beyond provider-specific deployment and cover public server, VPS, VM, container, Cloud Run, hosted Node.js runtime, HTTPS webhook URL, runtime-local repository paths, persistent `runtime_state.json` and `logs/` storage, and `npm start` as the webhook-mode command.
 - BotFather-compatible orchestrator command for F022: Telegram command parsing, help output, tests, README, deployment documentation, and active SPEC references now use `/run_orch <rounds>`; `/run-orch` is rejected as an unknown command.
+- Polling runtime state preservation for F023: advancing `telegramUpdateOffset` now reloads current runtime state before saving the offset, preserving app handler state changes such as `/use <repo>` workspace selection and task metadata written while handling updates, while still advancing offsets for valid update IDs and ignored non-message updates.
 
 ## Last Completed Feature
 
-`F021` - Implement Telegram long polling transport with `npm run start:polling`, Telegram `getUpdates` polling, update offset persistence, dispatch through `createApp().handleMessage(...)`, Telegram `sendMessage` replies, no `TELEGRAM_WEBHOOK_URL` requirement, and fake Telegram API coverage.
+`F022` - Rename the Telegram orchestrator command from `/run-orch <rounds>` to BotFather-compatible `/run_orch <rounds>`, remove `/run-orch` from the supported command whitelist, preserve existing rounds validation and `python3 orchestrator.py --max-rounds <rounds>` execution behavior, update help output, tests, README.md, docs/deployment.md, progress.md, and SPEC.md references, and document `run_orch` in the BotFather command menu.
 
 ## Next Feature
 
-All currently planned features are implemented. Pending evaluator verification for `F022`.
+`F023` is implemented and ready for evaluator verification.
 
 ## Known Issues
 
-- F022 implementation is ready for evaluator verification.
+- F023 implementation is ready for evaluator verification.

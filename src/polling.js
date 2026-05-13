@@ -105,11 +105,19 @@ export async function pollOnce({
       });
     }
 
-    state.telegramUpdateOffset = updateId + 1;
-    saveRuntimeState(statePath, state);
+    persistTelegramUpdateOffset(statePath, updateId + 1);
   }
 
   return updates.length;
+}
+
+function persistTelegramUpdateOffset(statePath, nextOffset) {
+  const state = loadRuntimeState(statePath);
+  const currentOffset = state.telegramUpdateOffset;
+  const telegramUpdateOffset = currentOffset === null || nextOffset > currentOffset
+    ? nextOffset
+    : currentOffset;
+  saveRuntimeState(statePath, { ...state, telegramUpdateOffset });
 }
 
 export async function getTelegramUpdates({
