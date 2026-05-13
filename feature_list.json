@@ -147,9 +147,9 @@
     {
       "id": "F017",
       "description": "Implement Telegram webhook HTTP transport with GET /healthz, POST /telegram/webhook, PORT-based server startup, Telegram update parsing, app handler dispatch, Telegram sendMessage replies, invalid JSON handling, non-POST rejection, and tests with fake HTTP requests and fake Telegram API calls.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     },

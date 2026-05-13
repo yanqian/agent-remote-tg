@@ -36,6 +36,7 @@ Implemented behavior:
 - `docs/deployment.md` documenting local trusted-host deployment, environment variables, repository whitelist guidance, startup, long-running operation, runtime artifact boundaries, verification, operational checks, and failure handling.
 - Reorganized `docs/` with `docs/README.md` as the documentation index, archived original specification content under `docs/archive/original-spec.md`, and agent workflow reference content under `docs/reference/agent-workflow.md`.
 - Verification script normalization for F016: `init.sh` now delegates durable state validation to `scripts/verify-state.py`, `scripts/README.md` documents `verify-state.py` and `smoke.js`, and `package.json` exposes `test:smoke` while preserving `smoke`.
+- Telegram webhook HTTP transport for F017: `GET /healthz`, `POST /telegram/webhook`, Telegram update parsing, dispatch through the existing app handler, Telegram `sendMessage` replies, invalid JSON handling, non-POST rejection, and `PORT`-based service startup through `src/index.js`.
 - Contract verification for exact help output, exact command whitelist, prohibited feature commands, required workflow prompt text, and runtime state schema boundaries.
 - Test scripts for build, unit, harness, contract, and smoke verification.
 
@@ -45,8 +46,9 @@ Implemented behavior:
 
 ## Next Feature
 
-No remaining planned features.
+`F017` is implemented in the current coding pass and is awaiting evaluator verification. `F018` remains the next planned implementation after F017 passes.
 
 ## Known Issues
 
-- Telegram network transport is not implemented.
+- Telegram webhook registration and GCP deployment support are not implemented.
+- Repository whitelist startup configuration through `REPO_WHITELIST_JSON` is not implemented.
