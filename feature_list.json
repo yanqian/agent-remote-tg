@@ -197,6 +197,15 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F023",
+      "description": "Fix polling runtime state persistence so advancing telegramUpdateOffset after a handled update reloads and preserves app handler state changes, including /use <repo> currentRepo and cwd changes plus task metadata writes, while still advancing offsets for valid update IDs and ignored non-message updates, with automated polling tests for workspace preservation and task metadata preservation.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }

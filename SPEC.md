@@ -857,3 +857,66 @@ BotFather command names must contain only lowercase letters, digits, and undersc
 - Run `npm run test:harness`.
 - Run `npm run test:contract`.
 - Run `./init.sh`.
+
+## 13. Polling Runtime State Preservation Requirements
+
+### 13.1 Goal
+
+Fix polling mode so saving `telegramUpdateOffset` after a handled Telegram update does not overwrite runtime state changes written by the app handler.
+
+### 13.2 Scope
+
+Include:
+
+- Preserve `currentRepo` and `cwd` written by `/use <repo>` when polling mode advances `telegramUpdateOffset`.
+- Preserve `tasks` written by task-creating commands when polling mode advances `telegramUpdateOffset`.
+- Keep advancing `telegramUpdateOffset` after each valid Telegram `update_id`.
+- Keep ignoring updates without `message.chat.id` or `message.text` while still advancing `telegramUpdateOffset`.
+- Add automated coverage that reproduces `/use <repo>` followed by offset persistence in polling mode.
+- Add automated coverage that task metadata created by a handled command is not overwritten by polling offset persistence.
+
+Exclude:
+
+- Do not change webhook transport behavior.
+- Do not change the runtime state schema.
+- Do not change command responses.
+- Do not change Telegram API request shapes.
+- Do not add message history storage.
+
+### 13.3 Core Concepts
+
+The app handler owns command state mutations such as selected workspace and task records.
+
+Polling transport owns Telegram update offset advancement.
+
+When both the app handler and polling transport write `runtime_state.json` during the same update, the polling transport must merge the latest persisted runtime state with the new `telegramUpdateOffset`.
+
+### 13.4 Core Flow
+
+1. Polling mode loads the current runtime state to read the current `telegramUpdateOffset`.
+2. Polling mode fetches updates from Telegram.
+3. Polling mode dispatches a valid message update to `createApp().handleMessage(...)`.
+4. The app handler writes command state changes to `runtime_state.json` when the command changes state.
+5. Polling mode reloads the latest runtime state after the app handler returns.
+6. Polling mode writes the reloaded state with `telegramUpdateOffset` set to `update_id + 1`.
+7. A later `/pwd` command sees the workspace selected by the previous `/use <repo>` command.
+
+### 13.5 Constraints
+
+- Polling mode must not write a stale runtime state object after `app.handleMessage(...)` returns.
+- Polling mode must preserve `currentRepo`, `cwd`, and `tasks` fields from the latest persisted runtime state.
+- Polling mode must persist `telegramUpdateOffset` for updates that contain no executable message.
+- Polling mode must not execute a Telegram update more than once after `sendMessage` delivery fails.
+
+### 13.6 Acceptance Criteria
+
+- A polling test proves `/use app` persists `currentRepo` and `cwd` after `telegramUpdateOffset` is advanced.
+- A polling test proves task metadata written by a handled command remains present after `telegramUpdateOffset` is advanced.
+- Existing polling tests continue to pass.
+- `./init.sh` passes.
+
+### 13.7 Verification Plan
+
+- Run `npm run test:unit`.
+- Run `npm run test:harness`.
+- Run `./init.sh`.
