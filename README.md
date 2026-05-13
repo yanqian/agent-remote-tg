@@ -32,13 +32,21 @@ Target repositories are expected to keep durable agent state in files such as `A
 
 ## Transport Modes
 
-Webhook mode runs an HTTP server for public HTTPS deployments. Start it with:
+Webhook mode runs an HTTP server for public HTTPS deployments on a VPS, VM, container, Cloud Run service, or hosted Node.js runtime. The deployed runtime must expose a public HTTPS URL for Telegram, keep the whitelisted repository paths available inside that runtime, and provide persistent writable storage for `runtime_state.json` and `logs/`.
+
+Start webhook mode with:
 
 ```bash
 npm start
 ```
 
 The `npm start` script runs `node src/index.js`.
+
+Register the public webhook URL with Telegram by setting `TELEGRAM_WEBHOOK_URL` to the deployed HTTPS URL ending in `/telegram/webhook`, then running:
+
+```bash
+npm run webhook:set
+```
 
 Polling mode runs on a local machine without a public inbound address. The required command is:
 
@@ -57,6 +65,8 @@ Runtime state is stored in `runtime_state.json`. It contains the selected reposi
 Task logs are stored under `logs/` as `logs/<task_id>.log`. Logs include command argv, timestamps, stdout, stderr, and exit code. Telegram responses are bounded, while full process output remains in the task log.
 
 Runtime artifacts are local to this control-plane process and survive process restart. Target repository source of truth remains in the target repository files and git history.
+
+For webhook deployments, repository paths in `REPO_WHITELIST_JSON` must be runtime-local paths that exist in the VPS, VM, container, Cloud Run service, or hosted Node.js runtime. Persist or mount `runtime_state.json` and `logs/` so selected workspace state, task records, polling offsets, and task logs survive process restarts and redeploys.
 
 ## Local Setup
 

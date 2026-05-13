@@ -2,9 +2,9 @@
 
 ## Runtime Host Requirements
 
-Run the service as a local process on a trusted host with access to the whitelisted repositories. The host must have Node.js 20 or newer, local access to the selected repository paths, and the `codex` and `python3` commands available when workflow commands are expected to run.
+Run the service as a local process on a trusted host with access to the whitelisted repositories. The host can be a VPS, VM, container, Cloud Run service, or hosted Node.js runtime, but webhook mode must expose a public HTTPS URL that Telegram can reach. The host must have Node.js 20 or newer, runtime-local access to the selected repository paths, and the `codex` and `python3` commands available when workflow commands are expected to run.
 
-The trusted host model is intentional. This project is not cloud deployment automation, and it does not provide an isolation boundary for untrusted operators or untrusted repository paths.
+The trusted host model is intentional. This project is not provider-specific deployment automation, and it does not provide an isolation boundary for untrusted operators or untrusted repository paths.
 
 ## Environment Variables
 
@@ -26,9 +26,9 @@ export REPO_WHITELIST_JSON='{"agent-remote-tg":"/workspace/agent-remote-tg"}'
 
 ## Repository Whitelist
 
-Configure only trusted local repositories in the required `REPO_WHITELIST_JSON` value. Each alias must be an exact key using only letters, numbers, dots, underscores, and hyphens, and each path must resolve to an existing local directory. Startup validates the JSON shape, aliases, and directory paths before accepting traffic.
+Configure only trusted runtime-local repositories in the required `REPO_WHITELIST_JSON` value. Each alias must be an exact key using only letters, numbers, dots, underscores, and hyphens, and each path must resolve to an existing local directory in the running VPS, VM, container, Cloud Run service, hosted Node.js runtime, or local polling host. Startup validates the JSON shape, aliases, and directory paths before accepting traffic.
 
-Use stable aliases that users can type with `/use <repo>`. Do not add broad parent directories, temporary directories, or free-form paths. Workflow commands require the selected repository root to include `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `init.sh`, and `orchestrator.py`.
+Use stable aliases that users can type with `/use <repo>`. Do not add broad parent directories, temporary directories, or free-form paths. In containerized or hosted deployments, mount or clone each target repository at the exact runtime-local path configured in `REPO_WHITELIST_JSON`. Workflow commands require the selected repository root to include `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `init.sh`, and `orchestrator.py`.
 
 ## Start Command
 
@@ -52,11 +52,11 @@ Run the service under a local process supervisor when unattended operation is ne
 
 For public server or VPS webhook deployment:
 
-1. Deploy the Node.js service to a VPS, VM, container, Cloud Run service, or hosted Node.js runtime that exposes a public HTTPS URL.
+1. Deploy the Node.js service to a public server, VPS, VM, container, Cloud Run service, or hosted Node.js runtime that exposes a public HTTPS URL.
 2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, `REPO_WHITELIST_JSON`, `TELEGRAM_WEBHOOK_URL`, and `PORT` in the deployed service environment.
 3. Set `TELEGRAM_WEBHOOK_URL` to the deployed HTTPS URL plus `/telegram/webhook`, for example `https://bot.example.com/telegram/webhook`.
-4. Provide persistent writable storage for `runtime_state.json` and `logs/`.
-5. Ensure every whitelisted repository path exists inside the runtime.
+4. Provide persistent writable storage for `runtime_state.json` and `logs/`, or mount a persistent volume for those paths.
+5. Ensure every whitelisted repository path exists inside the runtime at the exact path configured in `REPO_WHITELIST_JSON`.
 6. Start the service with `npm start`.
 7. Register the webhook with Telegram by running `npm run webhook:set` in an environment with `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_URL` set.
 8. Verify `GET /healthz` returns `ok`.
@@ -85,7 +85,7 @@ Only one active workflow task of type `work`, `continue`, or `run-orch` can run 
 
 `runtime_state.json` stores the selected repository alias, selected workspace path, Bot task metadata, and Telegram polling update offset. `logs/` stores full task output as `logs/<task_id>.log`.
 
-`runtime_state.json` and `logs/` are runtime artifacts and must not be used as target repository feature state. Target repository source of truth remains in `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, `orchestrator.py`, and git history.
+`runtime_state.json` and `logs/` are runtime artifacts and must not be used as target repository feature state. For VPS, VM, container, Cloud Run, and hosted Node.js webhook deployments, these paths must be on persistent storage so selected workspace state, Bot task metadata, polling offsets, and task logs survive process restarts and redeploys. Target repository source of truth remains in `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, `orchestrator.py`, and git history.
 
 ## Verification Before Start
 

@@ -42,18 +42,16 @@ Implemented behavior:
 - GCP webhook deployment support for F018: `npm start`, `npm run webhook:set`, Telegram `setWebhook` registration with environment validation, fake Telegram API coverage, CLI missing-environment exit coverage, and deployment documentation.
 - Repository whitelist startup configuration for F019 is implemented: `REPO_WHITELIST_JSON` is required at startup, aliases are restricted to letters, numbers, dots, underscores, and hyphens, configured paths must exist, `npm start` runs `node src/index.js`, README/deployment documentation covers the configuration, and automated coverage verifies valid and invalid whitelist configuration.
 - Telegram long polling transport for F021: `npm run start:polling` runs `node src/polling.js`, polling mode calls Telegram `getUpdates`, dispatches valid message updates through `createApp().handleMessage(...)`, sends replies through Telegram `sendMessage`, persists the next update offset in `runtime_state.json`, and does not require `TELEGRAM_WEBHOOK_URL`.
+- Public server and VPS deployment documentation for F020: webhook-mode docs are generalized beyond provider-specific deployment and cover public server, VPS, VM, container, Cloud Run, hosted Node.js runtime, HTTPS webhook URL, runtime-local repository paths, persistent `runtime_state.json` and `logs/` storage, and `npm start` as the webhook-mode command.
 
 ## Last Completed Feature
 
-`F019` - Implement npm start with `node src/index.js`, required `REPO_WHITELIST_JSON` startup configuration, strict alias/path validation, documentation updates, and automated whitelist coverage.
+`F021` - Implement Telegram long polling transport with `npm run start:polling`, Telegram `getUpdates` polling, update offset persistence, dispatch through `createApp().handleMessage(...)`, Telegram `sendMessage` replies, no `TELEGRAM_WEBHOOK_URL` requirement, and fake Telegram API coverage.
 
 ## Next Feature
 
-`F020` - Generalize webhook deployment documentation and requirements from GCP-specific deployment to public server and VPS deployment.
-
-`F021` - Pending evaluator verification for the implemented Telegram long polling transport.
+`F020` - Pending evaluator verification for generalized public server and VPS webhook deployment documentation.
 
 ## Known Issues
 
-- F020 remains pending.
-- F021 implementation is ready for evaluator verification.
+- F020 implementation is ready for evaluator verification.
