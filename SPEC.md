@@ -37,6 +37,8 @@ The system must implement:
 - Task log inspection through `/logs <task_id>`.
 - Task termination through `/stop <task_id>`.
 - Command discovery through `/help`.
+- Telegram webhook transport for receiving Telegram updates over HTTPS.
+- GCP deployment support for running the webhook service.
 - Runtime task state persistence in `runtime_state.json`.
 - Full task output persistence in `logs/<task_id>.log`.
 - Automated verification for parser, authorization, workspace, task execution, runtime state, prompts, and command surface.
@@ -57,7 +59,7 @@ The system must not implement:
 - `/run-feature`.
 - `/eval-feature`.
 - Web dashboard.
-- Cloud deployment automation.
+- GCP resource provisioning automation.
 - Scheduled task execution.
 - Multiple active workflow tasks in one workspace.
 
@@ -255,7 +257,85 @@ Do not reset existing feature state.
 Stop and report exact conflicts when repository state is unsafe.
 ```
 
-### 4.7 Orchestrator Execution
+### 4.7 Telegram Webhook Transport
+
+The service must expose an HTTP webhook endpoint for Telegram updates.
+
+The webhook endpoint path must be:
+
+```text
+/telegram/webhook
+```
+
+The service must accept only `POST` requests on `/telegram/webhook`.
+
+The service must reject non-`POST` requests to `/telegram/webhook` with HTTP status `405`.
+
+The service must parse the Telegram update JSON body.
+
+The service must process only message updates that contain:
+
+- `message.chat.id`
+- `message.text`
+
+Updates without `message.chat.id` or `message.text` must return HTTP status `200` with no command execution.
+
+For a valid message update, the service must call the existing Bot application message handler with:
+
+```json
+{
+  "chatId": "<message.chat.id as string>",
+  "text": "<message.text>"
+}
+```
+
+The service must send the handler response back to Telegram by calling:
+
+```text
+POST https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/sendMessage
+```
+
+The `sendMessage` request body must include:
+
+- `chat_id`
+- `text`
+
+The webhook HTTP response must return status `200` after the service attempts to send the Telegram reply.
+
+Invalid JSON request bodies must return HTTP status `400`.
+
+The webhook transport must not expose arbitrary command execution, workspace paths outside the repository whitelist, or environment variable dumps.
+
+### 4.8 Webhook Registration
+
+The project must provide a script for registering the Telegram webhook URL.
+
+The script path must be:
+
+```text
+scripts/set-telegram-webhook.js
+```
+
+The script must read:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_URL`
+
+The script must call:
+
+```text
+POST https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook
+```
+
+The request body must include:
+
+- `url`
+
+The script must exit `1` when `TELEGRAM_BOT_TOKEN` or `TELEGRAM_WEBHOOK_URL` is missing.
+
+The script must exit `1` when Telegram returns `ok: false`.
+
+### 4.9 Orchestrator Execution
 
 `/run-orch <rounds>` must:
 
@@ -270,7 +350,7 @@ Invalid rounds response:
 Invalid rounds. Use an integer from 1 to 5.
 ```
 
-### 4.8 Task Status, Logs, And Stop
+### 4.10 Task Status, Logs, And Stop
 
 `/status` must return all `running` and `stopping` tasks plus the five most recent finished tasks.
 
@@ -311,6 +391,15 @@ Invalid rounds. Use an integer from 1 to 5.
 - Tests must avoid real Codex execution.
 - Tests must verify spawned command argv through mocks or fakes.
 
+### 5.5 GCP Deployment
+
+- The supported GCP runtime must be a container or Node.js service with a public HTTPS URL.
+- The GCP runtime must provide persistent writable storage for `runtime_state.json` and `logs/`, or must mount a persistent volume for those paths.
+- The GCP runtime must have access to the whitelisted repositories used by `/use`.
+- The GCP runtime must provide `python3` and `codex` when `/work`, `/continue`, `/ask`, or `/run-orch` are used.
+- Secrets must be supplied through GCP secret or environment configuration and must not be committed to git.
+- The service must listen on the port specified by `PORT` when `PORT` is set.
+
 ## 6. Acceptance Criteria
 
 - Bot starts with `TELEGRAM_BOT_TOKEN` and non-empty `ALLOWED_CHAT_IDS`.
@@ -337,6 +426,11 @@ Invalid rounds. Use an integer from 1 to 5.
 - Runtime state survives process restart.
 - Task logs survive process restart.
 - Runtime state does not contain target repository feature objects.
+- `/telegram/webhook` accepts valid Telegram message updates and sends handler responses through Telegram `sendMessage`.
+- `/telegram/webhook` rejects invalid JSON with HTTP status `400`.
+- `/telegram/webhook` rejects non-`POST` requests with HTTP status `405`.
+- Updates without message text return HTTP status `200` without command execution.
+- The webhook registration script registers `TELEGRAM_WEBHOOK_URL` through Telegram `setWebhook`.
 
 ## 7. Verification Plan
 
@@ -352,6 +446,8 @@ Required checks:
 - Harness test command when a harness test script exists.
 - Contract test command when a contract test script exists.
 - Smoke test command when a smoke test script exists.
+- Webhook transport tests with fake HTTP requests and fake Telegram API calls.
+- Webhook registration tests with fake Telegram API calls.
 
 Manual verification sequence:
 
@@ -519,3 +615,72 @@ State validation logic must live in `scripts/verify-state.py`.
 - `find scripts -maxdepth 2 -type f | sort` shows `scripts/README.md`, `scripts/smoke.js`, and `scripts/verify-state.py`.
 - `package.json` contains `smoke` and `test:smoke` scripts with the exact command `node scripts/smoke.js`.
 - No repository file references obsolete pre-reorganization documentation paths.
+
+## 11. Webhook GCP Deployment Requirements
+
+### 11.1 Required Environment
+
+The deployed service must receive these environment variables:
+
+- `TELEGRAM_BOT_TOKEN`
+- `ALLOWED_CHAT_IDS`
+- `TELEGRAM_WEBHOOK_URL`
+- `PORT`
+
+`PORT` must default to `3000` when it is not set.
+
+### 11.2 Required NPM Scripts
+
+`package.json` must include:
+
+- `start`
+- `webhook:set`
+
+The exact `start` command must be:
+
+```text
+node src/server.js
+```
+
+The exact `webhook:set` command must be:
+
+```text
+node scripts/set-telegram-webhook.js
+```
+
+### 11.3 Required HTTP Endpoints
+
+The service must expose:
+
+- `GET /healthz`
+- `POST /telegram/webhook`
+
+`GET /healthz` must return HTTP status `200` and response body:
+
+```text
+ok
+```
+
+### 11.4 Verification Requirements
+
+Automated tests must verify:
+
+- `GET /healthz` returns `200` and `ok`.
+- `POST /telegram/webhook` passes authorized command text into the app handler.
+- `POST /telegram/webhook` calls Telegram `sendMessage` with the handler response.
+- Invalid JSON returns `400`.
+- Non-`POST` webhook requests return `405`.
+- `scripts/set-telegram-webhook.js` exits `1` when required environment variables are missing.
+- `scripts/set-telegram-webhook.js` sends the configured webhook URL to Telegram.
+
+### 11.5 Documentation Requirements
+
+`docs/deployment.md` must document GCP webhook deployment steps:
+
+1. Build or deploy the Node.js service.
+2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, `TELEGRAM_WEBHOOK_URL`, and `PORT`.
+3. Ensure persistent storage for `runtime_state.json` and `logs/`.
+4. Ensure whitelisted repositories are available to the runtime.
+5. Run `npm run webhook:set`.
+6. Verify `/healthz`.
+7. Send `/help` from an authorized Telegram chat.

@@ -143,6 +143,24 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P1"
+    },
+    {
+      "id": "F017",
+      "description": "Implement Telegram webhook HTTP transport with GET /healthz, POST /telegram/webhook, PORT-based server startup, Telegram update parsing, app handler dispatch, Telegram sendMessage replies, invalid JSON handling, non-POST rejection, and tests with fake HTTP requests and fake Telegram API calls.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F018",
+      "description": "Implement GCP webhook deployment support by adding package.json start and webhook:set scripts, creating scripts/set-telegram-webhook.js, validating TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_URL, calling Telegram setWebhook, documenting GCP deployment steps in docs/deployment.md, and testing webhook registration behavior with fake Telegram API calls.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
     }
   ]
 }
