@@ -83,7 +83,7 @@ Only one active workflow task of type `work`, `continue`, or `run-orch` can run 
 
 ## Logs And State Files
 
-`runtime_state.json` stores the selected repository alias, selected workspace path, and Bot task metadata. `logs/` stores full task output as `logs/<task_id>.log`.
+`runtime_state.json` stores the selected repository alias, selected workspace path, Bot task metadata, and Telegram polling update offset. `logs/` stores full task output as `logs/<task_id>.log`.
 
 `runtime_state.json` and `logs/` are runtime artifacts and must not be used as target repository feature state. Target repository source of truth remains in `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, `orchestrator.py`, and git history.
 

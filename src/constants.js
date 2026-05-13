@@ -49,4 +49,5 @@ export const DEFAULT_STATE = Object.freeze({
   currentRepo: null,
   cwd: null,
   tasks: {},
+  telegramUpdateOffset: null,
 });

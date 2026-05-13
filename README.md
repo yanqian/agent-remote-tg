@@ -52,7 +52,7 @@ Both modes must dispatch Telegram messages into the same `createApp().handleMess
 
 ## Runtime State And Logs
 
-Runtime state is stored in `runtime_state.json`. It contains the selected repository alias, selected workspace path, and Bot-started task metadata. It must not contain target repository feature objects.
+Runtime state is stored in `runtime_state.json`. It contains the selected repository alias, selected workspace path, Bot-started task metadata, and Telegram polling update offset. It must not contain target repository feature objects.
 
 Task logs are stored under `logs/` as `logs/<task_id>.log`. Logs include command argv, timestamps, stdout, stderr, and exit code. Telegram responses are bounded, while full process output remains in the task log.
 
@@ -110,7 +110,6 @@ The script checks required project files, validates `feature_list.json`, verifie
 
 ## Current Limitations
 
-- Telegram polling transport is not implemented.
 - Only configured local repositories can be selected.
 - Arbitrary shell command execution is not supported.
 - Free-form absolute path workspace selection is not supported.

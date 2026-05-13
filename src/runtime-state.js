@@ -8,6 +8,7 @@ export function defaultState() {
     currentRepo: DEFAULT_STATE.currentRepo,
     cwd: DEFAULT_STATE.cwd,
     tasks: {},
+    telegramUpdateOffset: DEFAULT_STATE.telegramUpdateOffset,
   };
 }
 
@@ -41,9 +42,17 @@ export function normalizeRuntimeState(state) {
     tasks: state.tasks && typeof state.tasks === "object" && !Array.isArray(state.tasks)
       ? state.tasks
       : {},
+    telegramUpdateOffset: normalizeTelegramUpdateOffset(state.telegramUpdateOffset),
   };
 }
 
 export function statePathFor(rootDir) {
   return resolve(rootDir, "runtime_state.json");
+}
+
+function normalizeTelegramUpdateOffset(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }

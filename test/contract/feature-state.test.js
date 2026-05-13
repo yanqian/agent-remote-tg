@@ -17,11 +17,12 @@ test("first three features are defined for the implemented initialization scope"
   assert.match(descriptions.F003, /repository whitelist and workspace state management/);
 });
 
-test("runtime state schema is limited to workspace and Bot task metadata", () => {
+test("runtime state schema is limited to workspace, polling offset, and Bot task metadata", () => {
   assert.deepEqual(defaultState(), {
     currentRepo: null,
     cwd: null,
     tasks: {},
+    telegramUpdateOffset: null,
   });
 
   const normalized = normalizeRuntimeState({
@@ -34,11 +35,13 @@ test("runtime state schema is limited to workspace and Bot task metadata", () =>
         status: "succeeded",
       },
     },
+    telegramUpdateOffset: 101,
     features: [{ id: "F999", passes: true }],
     progress: { current: "F999" },
   });
 
-  assert.deepEqual(Object.keys(normalized), ["currentRepo", "cwd", "tasks"]);
+  assert.deepEqual(Object.keys(normalized), ["currentRepo", "cwd", "tasks", "telegramUpdateOffset"]);
+  assert.equal(normalized.telegramUpdateOffset, 101);
   assert.equal(Object.hasOwn(normalized, "features"), false);
   assert.equal(Object.hasOwn(normalized, "progress"), false);
 });

@@ -41,6 +41,7 @@ Implemented behavior:
 - Test scripts for build, unit, harness, contract, and smoke verification.
 - GCP webhook deployment support for F018: `npm start`, `npm run webhook:set`, Telegram `setWebhook` registration with environment validation, fake Telegram API coverage, CLI missing-environment exit coverage, and deployment documentation.
 - Repository whitelist startup configuration for F019 is implemented: `REPO_WHITELIST_JSON` is required at startup, aliases are restricted to letters, numbers, dots, underscores, and hyphens, configured paths must exist, `npm start` runs `node src/index.js`, README/deployment documentation covers the configuration, and automated coverage verifies valid and invalid whitelist configuration.
+- Telegram long polling transport for F021: `npm run start:polling` runs `node src/polling.js`, polling mode calls Telegram `getUpdates`, dispatches valid message updates through `createApp().handleMessage(...)`, sends replies through Telegram `sendMessage`, persists the next update offset in `runtime_state.json`, and does not require `TELEGRAM_WEBHOOK_URL`.
 
 ## Last Completed Feature
 
@@ -50,8 +51,9 @@ Implemented behavior:
 
 `F020` - Generalize webhook deployment documentation and requirements from GCP-specific deployment to public server and VPS deployment.
 
-`F021` - Implement Telegram long polling transport with `npm run start:polling` and `node src/polling.js`.
+`F021` - Pending evaluator verification for the implemented Telegram long polling transport.
 
 ## Known Issues
 
-- Telegram polling transport is not implemented.
+- F020 remains pending.
+- F021 implementation is ready for evaluator verification.

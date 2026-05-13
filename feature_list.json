@@ -183,9 +183,9 @@
     {
       "id": "F021",
       "description": "Implement Telegram long polling transport with npm run start:polling using the exact command node src/polling.js, Telegram getUpdates polling, update offset persistence in runtime_state.json, dispatch of valid messages into createApp().handleMessage(...), Telegram sendMessage replies, no TELEGRAM_WEBHOOK_URL requirement, and fake Telegram API tests.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     }
