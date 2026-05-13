@@ -158,8 +158,8 @@
       "description": "Implement GCP webhook deployment support by adding package.json start and webhook:set scripts, creating scripts/set-telegram-webhook.js, validating TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_URL, calling Telegram setWebhook, documenting GCP deployment steps in docs/deployment.md, and testing webhook registration behavior with fake Telegram API calls.",
       "passes": false,
       "status": "todo",
-      "attempts": 0,
-      "last_error": "",
+      "attempts": 1,
+      "last_error": "SPEC.md requires automated tests to verify scripts/set-telegram-webhook.js exits 1 when required environment variables are missing, but the test suite only covers exported validation functions and does not run the CLI script/process exit path.",
       "priority": "P1"
     },
     {

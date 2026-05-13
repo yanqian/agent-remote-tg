@@ -44,13 +44,17 @@ Run the service under a local process supervisor when unattended operation is ne
 
 For GCP webhook deployment:
 
-1. Deploy the Node.js service with a public HTTPS URL.
-2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, `REPO_WHITELIST_JSON`, `TELEGRAM_WEBHOOK_URL`, and `PORT`.
-3. Provide persistent writable storage for `runtime_state.json` and `logs/`.
-4. Ensure every whitelisted repository path exists inside the runtime.
-5. Run `npm run webhook:set`.
-6. Verify `GET /healthz` returns `ok`.
-7. Send `/help` from an authorized Telegram chat.
+1. Deploy the Node.js service to Cloud Run or another GCP runtime that exposes a public HTTPS URL.
+2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, `REPO_WHITELIST_JSON`, `TELEGRAM_WEBHOOK_URL`, and `PORT` in the deployed service environment.
+3. Set `TELEGRAM_WEBHOOK_URL` to the deployed HTTPS URL plus `/telegram/webhook`, for example `https://example.run.app/telegram/webhook`.
+4. Provide persistent writable storage for `runtime_state.json` and `logs/`.
+5. Ensure every whitelisted repository path exists inside the runtime.
+6. Start the service with `npm start`.
+7. Register the webhook with Telegram by running `npm run webhook:set` in an environment with `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_URL` set.
+8. Verify `GET /healthz` returns `ok`.
+9. Send `/help` from an authorized Telegram chat.
+
+The `webhook:set` script validates that `TELEGRAM_BOT_TOKEN` is present, validates that `TELEGRAM_WEBHOOK_URL` is a valid HTTPS URL, and calls Telegram `setWebhook` with the configured URL.
 
 ## Long-Running Operation
 

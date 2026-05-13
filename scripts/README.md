@@ -28,3 +28,13 @@ Or through npm with either:
 npm run smoke
 npm run test:smoke
 ```
+
+## set-telegram-webhook.js
+
+Registers the deployed Telegram webhook URL with Telegram. It requires `TELEGRAM_BOT_TOKEN` and an HTTPS `TELEGRAM_WEBHOOK_URL`.
+
+Run it through npm with:
+
+```bash
+npm run webhook:set
+```

@@ -39,16 +39,16 @@ Implemented behavior:
 - Telegram webhook HTTP transport for F017: `GET /healthz`, `POST /telegram/webhook`, Telegram update parsing, dispatch through the existing app handler, Telegram `sendMessage` replies, invalid JSON handling, non-POST rejection, and `PORT`-based service startup through `src/index.js`.
 - Contract verification for exact help output, exact command whitelist, prohibited feature commands, required workflow prompt text, and runtime state schema boundaries.
 - Test scripts for build, unit, harness, contract, and smoke verification.
+- GCP webhook deployment support for F018: `npm start`, `npm run webhook:set`, Telegram `setWebhook` registration with environment validation, fake Telegram API coverage, and deployment documentation.
 
 ## Last Completed Feature
 
-`F016` - Normalize verification scripts by extracting state validation into `scripts/verify-state.py`.
+`F018` - Implement GCP webhook deployment support with webhook registration script, npm scripts, tests, and deployment documentation.
 
 ## Next Feature
 
-`F017` is implemented in the current coding pass and is awaiting evaluator verification. `F018` remains the next planned implementation after F017 passes.
+`F019` - Implement npm start with the exact command node src/index.js, add repository whitelist configuration through `REPO_WHITELIST_JSON`, validate whitelist JSON aliases and paths at startup, update README.md and docs/deployment.md with the start command and whitelist configuration, and add automated coverage for valid and invalid whitelist configuration.
 
 ## Known Issues
 
-- Telegram webhook registration and GCP deployment support are not implemented.
 - Repository whitelist startup configuration through `REPO_WHITELIST_JSON` is not implemented.
