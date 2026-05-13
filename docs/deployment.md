@@ -75,6 +75,27 @@ For local polling deployment:
 
 Polling mode must call Telegram `getUpdates`, dispatch valid message updates into the same app handler used by webhook mode, send replies through Telegram `sendMessage`, and persist the next update offset in `runtime_state.json`.
 
+## BotFather Command Menu
+
+Configure the Telegram command menu through BotFather `/setcommands`:
+
+```text
+repos - List configured repositories
+use - Select a repository by alias
+pwd - Show the selected workspace
+ls - List selected workspace files
+git - Show branch, status, and commits
+ask - Start a read-only Codex task
+work - Delegate a repository workflow task
+continue - Resume repository workflow
+status - Show active and recent tasks
+logs - Show task log output
+stop - Stop a running task
+help - Show the command list
+```
+
+Do not add `/run-orch` to the BotFather menu. BotFather rejects command names with hyphens. The service still accepts `/run-orch <rounds>` when the user types it manually in Telegram.
+
 ## Long-Running Operation
 
 The `/ask`, `/work`, `/continue`, and `/run-orch` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded.

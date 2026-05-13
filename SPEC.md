@@ -788,3 +788,72 @@ Automated tests must verify:
 3. Start polling with `npm run start:polling`.
 4. Send `/help` from an authorized Telegram chat.
 5. Verify that `/repos` returns aliases loaded from `REPO_WHITELIST_JSON`.
+
+## 12. BotFather-Compatible Orchestrator Command Requirements
+
+### 12.1 Goal
+
+Rename the Telegram orchestrator command from `/run-orch <rounds>` to `/run_orch <rounds>` so the command can be registered in the BotFather command menu.
+
+### 12.2 Scope
+
+Include:
+
+- Replace the supported command `/run-orch` with `/run_orch`.
+- Preserve the existing rounds validation for integer values from `1` through `5`.
+- Preserve the existing execution behavior: spawn `python3 orchestrator.py --max-rounds <rounds>` with shell execution disabled in the selected workflow-ready workspace.
+- Preserve concurrent workflow task rejection for active `work`, `continue`, and orchestrator tasks in the same workspace.
+- Update command parsing, help output, command-surface contract tests, harness tests, README command surface, README BotFather command menu, deployment documentation, progress documentation, and SPEC references.
+- Register `/run_orch` in the BotFather command menu documentation.
+
+Exclude:
+
+- Do not add a compatibility alias for `/run-orch`.
+- Do not change the orchestrator Python script behavior.
+- Do not change allowed round values.
+- Do not add new workflow commands.
+- Do not change task log format.
+
+### 12.3 Core Concepts
+
+`/run_orch <rounds>` is the only Telegram command that starts orchestrator rounds.
+
+`/run-orch` is not a supported Telegram command after this change.
+
+BotFather command names must contain only lowercase letters, digits, and underscores.
+
+### 12.4 Core Flow
+
+1. Authorized user sends `/run_orch <rounds>`.
+2. The command parser recognizes `/run_orch`.
+3. The app validates `<rounds>` as an integer from `1` through `5`.
+4. The app verifies that a workflow-ready workspace is selected.
+5. The app rejects the request when an active workflow task already exists in the selected workspace.
+6. The app starts a recorded task that runs `python3 orchestrator.py --max-rounds <rounds>` with shell execution disabled.
+7. The app returns the task ID and log command to Telegram.
+
+### 12.5 Constraints
+
+- `/run-orch` must return `Unknown command.\nUse /help.`.
+- `/help` must list `/run_orch <rounds>` and must not list `/run-orch <rounds>`.
+- The command whitelist must include `/run_orch` and must not include `/run-orch`.
+- BotFather command menu documentation must include `run_orch - Run orchestrator rounds`.
+- Documentation must not instruct users to configure `run-orch` in BotFather.
+
+### 12.6 Acceptance Criteria
+
+- `src/constants.js` exposes `/run_orch` in the command whitelist.
+- Missing argument handling returns `Usage: /run_orch <rounds>`.
+- Existing `/run-orch` tests are updated to `/run_orch`.
+- A test verifies `/run-orch 1` is rejected as an unknown command.
+- README command surface documents `/run_orch <rounds>`.
+- README BotFather command menu includes `run_orch - Run orchestrator rounds`.
+- `docs/deployment.md` documents `/run_orch <rounds>` for long-running operation and operational checks.
+- `./init.sh` passes.
+
+### 12.7 Verification Plan
+
+- Run `npm run test:unit`.
+- Run `npm run test:harness`.
+- Run `npm run test:contract`.
+- Run `./init.sh`.

@@ -22,6 +22,27 @@ Repository development state remains in repository files and git history. Telegr
 - `/stop <task_id>` - stop a running Bot-recorded task with `SIGTERM`.
 - `/help` - show the command list.
 
+## BotFather Command Menu
+
+Use BotFather `/setcommands` with this command menu:
+
+```text
+repos - List configured repositories
+use - Select a repository by alias
+pwd - Show the selected workspace
+ls - List selected workspace files
+git - Show branch, status, and commits
+ask - Start a read-only Codex task
+work - Delegate a repository workflow task
+continue - Resume repository workflow
+status - Show active and recent tasks
+logs - Show task log output
+stop - Stop a running task
+help - Show the command list
+```
+
+BotFather command names must use lowercase letters, digits, and underscores. The supported Bot command `/run-orch <rounds>` contains a hyphen, so it cannot be registered in the BotFather menu. Use `/run-orch <rounds>` by typing it manually in Telegram.
+
 ## Repository Workflow Model
 
 The Bot is a control plane, not the owner of feature lifecycle decisions. It validates commands, validates the selected workspace, starts local processes with shell execution disabled, records task metadata, and returns bounded Telegram responses.
