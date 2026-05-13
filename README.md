@@ -46,8 +46,15 @@ Set the required environment variables:
 
 - `TELEGRAM_BOT_TOKEN` - Telegram Bot token used by the local Bot process.
 - `ALLOWED_CHAT_IDS` - comma-separated Telegram chat IDs allowed to use the Bot.
+- `REPO_WHITELIST_JSON` - JSON object mapping repository aliases to local repository paths.
 
-Configure the repository whitelist in the host process options used to start the app. Repository aliases must be exact keys, and each configured path must resolve to an existing local directory.
+Configure the repository whitelist through `REPO_WHITELIST_JSON`. Repository aliases must be exact keys, and each configured path must resolve to an existing local directory.
+
+Example:
+
+```bash
+export REPO_WHITELIST_JSON='{"agent-remote-tg":"/Users/armstrong/Project/agent-remote-tg"}'
+```
 
 Install dependencies if the project gains external dependencies later:
 
@@ -55,11 +62,13 @@ Install dependencies if the project gains external dependencies later:
 npm install
 ```
 
-Run the startup entry point with the required environment available:
+Run the service with the required environment available:
 
 ```bash
-node src/index.js
+npm start
 ```
+
+The `npm start` script must run `node src/index.js`.
 
 ## Verification
 

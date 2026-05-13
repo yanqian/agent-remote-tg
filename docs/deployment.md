@@ -12,12 +12,21 @@ Set these variables before starting the service:
 
 - `TELEGRAM_BOT_TOKEN` - Telegram Bot token used by the local Bot process.
 - `ALLOWED_CHAT_IDS` - comma-separated Telegram chat IDs allowed to use the Bot.
+- `REPO_WHITELIST_JSON` - JSON object mapping repository aliases to local repository paths.
+- `TELEGRAM_WEBHOOK_URL` - public HTTPS webhook URL registered with Telegram.
+- `PORT` - HTTP port used by the service. When unset, the service uses `3000`.
 
 `ALLOWED_CHAT_IDS` must be non-empty outside `NODE_ENV=test`. Keep the Bot token out of source control, runtime logs, and target repository state files.
 
+Example repository whitelist:
+
+```bash
+export REPO_WHITELIST_JSON='{"agent-remote-tg":"/workspace/agent-remote-tg"}'
+```
+
 ## Repository Whitelist
 
-Configure only trusted local repositories in the repository whitelist passed to the host process. Each alias must be an exact key, and each path must resolve to an existing local directory.
+Configure only trusted local repositories in `REPO_WHITELIST_JSON`. Each alias must be an exact key, and each path must resolve to an existing local directory.
 
 Use stable aliases that users can type with `/use <repo>`. Do not add broad parent directories, temporary directories, or free-form paths. Workflow commands require the selected repository root to include `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `init.sh`, and `orchestrator.py`.
 
@@ -29,7 +38,19 @@ Start the service from the project root with the required environment available:
 npm start
 ```
 
+The `npm start` script must run `node src/index.js`.
+
 Run the service under a local process supervisor when unattended operation is needed. The supervisor should preserve the working directory, environment variables, and access to the whitelisted repository paths.
+
+For GCP webhook deployment:
+
+1. Deploy the Node.js service with a public HTTPS URL.
+2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, `REPO_WHITELIST_JSON`, `TELEGRAM_WEBHOOK_URL`, and `PORT`.
+3. Provide persistent writable storage for `runtime_state.json` and `logs/`.
+4. Ensure every whitelisted repository path exists inside the runtime.
+5. Run `npm run webhook:set`.
+6. Verify `GET /healthz` returns `ok`.
+7. Send `/help` from an authorized Telegram chat.
 
 ## Long-Running Operation
 

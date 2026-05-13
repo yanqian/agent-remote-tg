@@ -161,6 +161,15 @@
       "attempts": 0,
       "last_error": "",
       "priority": "P1"
+    },
+    {
+      "id": "F019",
+      "description": "Implement npm start with the exact command node src/index.js, add repository whitelist configuration through REPO_WHITELIST_JSON, validate whitelist JSON aliases and paths at startup, update README.md and docs/deployment.md with the start command and whitelist configuration, and add automated coverage for valid and invalid whitelist configuration.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
     }
   ]
 }

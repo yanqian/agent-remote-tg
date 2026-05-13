@@ -27,6 +27,7 @@ The system must implement:
 - Telegram Bot startup from environment configuration.
 - Chat ID authorization through `ALLOWED_CHAT_IDS`.
 - A fixed repository whitelist.
+- Repository whitelist configuration through `REPO_WHITELIST_JSON`.
 - Workspace selection through `/use <repo>`.
 - Workspace inspection through `/repos`, `/pwd`, `/ls`, and `/git`.
 - Read-only Codex discussion through `/ask <question>`.
@@ -74,6 +75,22 @@ The Bot must not decide which target repository feature is next, whether a featu
 ### 3.2 Target Repository
 
 A target repository is a local directory listed in the repository whitelist.
+
+The repository whitelist must come from `REPO_WHITELIST_JSON`.
+
+`REPO_WHITELIST_JSON` must be a JSON object whose keys are repository aliases and whose values are local repository paths.
+
+Example:
+
+```json
+{"agent-remote-tg":"/workspace/agent-remote-tg"}
+```
+
+Repository aliases must match `/^[A-Za-z0-9._-]+$/`.
+
+Each repository path must be normalized to an absolute path before use.
+
+Startup must fail with exit code `1` when `REPO_WHITELIST_JSON` is missing, invalid JSON, not a JSON object, contains an empty alias, contains an invalid alias, contains a non-string path value, or contains a path that does not resolve to an existing local directory.
 
 A target repository is agent-workflow ready only when these files exist at its root:
 
@@ -396,6 +413,7 @@ Invalid rounds. Use an integer from 1 to 5.
 - The supported GCP runtime must be a container or Node.js service with a public HTTPS URL.
 - The GCP runtime must provide persistent writable storage for `runtime_state.json` and `logs/`, or must mount a persistent volume for those paths.
 - The GCP runtime must have access to the whitelisted repositories used by `/use`.
+- The GCP runtime must supply `REPO_WHITELIST_JSON` with aliases and paths that exist inside the deployed runtime.
 - The GCP runtime must provide `python3` and `codex` when `/work`, `/continue`, `/ask`, or `/run-orch` are used.
 - Secrets must be supplied through GCP secret or environment configuration and must not be committed to git.
 - The service must listen on the port specified by `PORT` when `PORT` is set.
@@ -404,8 +422,10 @@ Invalid rounds. Use an integer from 1 to 5.
 
 - Bot starts with `TELEGRAM_BOT_TOKEN` and non-empty `ALLOWED_CHAT_IDS`.
 - Bot exits with failure when `ALLOWED_CHAT_IDS` is empty outside `NODE_ENV=test`.
+- Bot exits with failure when `REPO_WHITELIST_JSON` is missing or invalid.
+- Bot exits with failure when `REPO_WHITELIST_JSON` references a path that does not resolve to an existing local directory.
 - Unauthorized chat IDs receive `Unauthorized chat.` and do not spawn processes.
-- `/repos` returns configured repo aliases and absolute paths.
+- `/repos` returns repo aliases and absolute paths loaded from `REPO_WHITELIST_JSON`.
 - `/use <repo>` persists the selected workspace.
 - `/pwd` returns the selected workspace path.
 - `/ls` runs `ls -la` in the selected workspace.
@@ -446,6 +466,7 @@ Required checks:
 - Harness test command when a harness test script exists.
 - Contract test command when a contract test script exists.
 - Smoke test command when a smoke test script exists.
+- Repository whitelist configuration tests for valid JSON, invalid JSON, invalid aliases, non-string path values, missing paths, and successful `/repos` output.
 - Webhook transport tests with fake HTTP requests and fake Telegram API calls.
 - Webhook registration tests with fake Telegram API calls.
 
@@ -624,10 +645,19 @@ The deployed service must receive these environment variables:
 
 - `TELEGRAM_BOT_TOKEN`
 - `ALLOWED_CHAT_IDS`
+- `REPO_WHITELIST_JSON`
 - `TELEGRAM_WEBHOOK_URL`
 - `PORT`
 
 `PORT` must default to `3000` when it is not set.
+
+`REPO_WHITELIST_JSON` must contain a JSON object mapping exact repository aliases to local repository paths:
+
+```json
+{"agent-remote-tg":"/workspace/agent-remote-tg"}
+```
+
+Invalid JSON, non-object JSON, empty aliases, invalid aliases, non-string path values, and missing repository paths must fail startup with exit code `1`.
 
 ### 11.2 Required NPM Scripts
 
@@ -639,7 +669,7 @@ The deployed service must receive these environment variables:
 The exact `start` command must be:
 
 ```text
-node src/server.js
+node src/index.js
 ```
 
 The exact `webhook:set` command must be:
@@ -678,7 +708,7 @@ Automated tests must verify:
 `docs/deployment.md` must document GCP webhook deployment steps:
 
 1. Build or deploy the Node.js service.
-2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, `TELEGRAM_WEBHOOK_URL`, and `PORT`.
+2. Configure `TELEGRAM_BOT_TOKEN`, `ALLOWED_CHAT_IDS`, `REPO_WHITELIST_JSON`, `TELEGRAM_WEBHOOK_URL`, and `PORT`.
 3. Ensure persistent storage for `runtime_state.json` and `logs/`.
 4. Ensure whitelisted repositories are available to the runtime.
 5. Run `npm run webhook:set`.
