@@ -8,6 +8,9 @@ export const TASK_STATUSES = Object.freeze(["running", "stopping", "stopped", "s
 export const TELEGRAM_RESPONSE_LIMIT = 3500;
 
 const SECRET_NAME_PATTERN = /TOKEN|SECRET|PASSWORD|KEY/i;
+const CAPTURED_LOG_LIMIT = 200000;
+const ACTIVE_STATUSES = new Set(["running", "stopping"]);
+const FINISHED_STATUSES = new Set(["stopped", "succeeded", "failed"]);
 let taskSequence = 0;
 
 export function createTaskExecutor(options) {
@@ -64,9 +67,22 @@ export function createTaskExecutor(options) {
     };
 
     const log = createWriteStream(logPath, { flags: "a" });
-    writeLogLine(log, `startedAt=${startedAt}`);
-    writeLogLine(log, `cwd=${cwd}`);
-    writeLogLine(log, `argv=${JSON.stringify([command, ...args])}`);
+    let capturedLog = "";
+    const writeTaskLog = (value) => {
+      const text = String(value);
+      log.write(text);
+      capturedLog = `${capturedLog}${text}`;
+      if (capturedLog.length > CAPTURED_LOG_LIMIT) {
+        capturedLog = capturedLog.slice(capturedLog.length - CAPTURED_LOG_LIMIT);
+      }
+    };
+    const writeTaskLogLine = (line) => {
+      writeTaskLog(`${line}\n`);
+    };
+
+    writeTaskLogLine(`startedAt=${startedAt}`);
+    writeTaskLogLine(`cwd=${cwd}`);
+    writeTaskLogLine(`argv=${JSON.stringify([command, ...args])}`);
 
     const child = spawn(command, args, {
       cwd,
@@ -84,7 +100,7 @@ export function createTaskExecutor(options) {
       ? null
       : setTimeout(() => {
         timedOut = true;
-        writeLogLine(log, `timeoutMs=${timeoutMs}`);
+        writeTaskLogLine(`timeoutMs=${timeoutMs}`);
         if (typeof child.kill === "function") {
           child.kill("SIGTERM");
         }
@@ -95,13 +111,13 @@ export function createTaskExecutor(options) {
 
     if (child.stdout) {
       child.stdout.on("data", (chunk) => {
-        log.write(chunk);
+        writeTaskLog(chunk);
       });
     }
 
     if (child.stderr) {
       child.stderr.on("data", (chunk) => {
-        log.write(chunk);
+        writeTaskLog(chunk);
       });
     }
 
@@ -116,12 +132,16 @@ export function createTaskExecutor(options) {
           clearTimeout(timeout);
         }
         for (const line of extraLogLines) {
-          writeLogLine(log, line);
+          writeTaskLogLine(line);
         }
+        const finalResult = redactForTelegram(extractFinalResultFromLog(capturedLog), env, telegramSecrets);
+        const taskToPersist = FINISHED_STATUSES.has(nextTask.status)
+          ? { ...nextTask, finalResult }
+          : nextTask;
         children.delete(taskId);
-        persistTask(nextTask);
+        persistTask(taskToPersist);
         log.end(() => {
-          resolveCompletion(nextTask);
+          resolveCompletion(taskToPersist);
         });
       }
 
@@ -205,10 +225,21 @@ export function createTaskExecutor(options) {
       return { ok: false, response: `Unknown task: ${taskId}` };
     }
 
+    if (ACTIVE_STATUSES.has(task.status)) {
+      return { ok: true, response: `Task is ${task.status}. Final result is not available yet.` };
+    }
+
     const expectedLogPath = logPathForTask(normalizedLogsDir, taskId);
     const recordedLogPath = typeof task.logPath === "string" ? resolve(task.logPath) : "";
     if (recordedLogPath !== expectedLogPath || !isPathInside(normalizedLogsDir, recordedLogPath)) {
       return { ok: false, response: `Invalid log path for task: ${taskId}` };
+    }
+
+    if (FINISHED_STATUSES.has(task.status)) {
+      return {
+        ok: true,
+        response: task.finalResult ? truncateTelegramResponse(task.finalResult) : `(no final result for ${taskId})`,
+      };
     }
 
     const content = existsSync(recordedLogPath) ? readFileSync(recordedLogPath, "utf8") : "";
@@ -312,6 +343,93 @@ export function formatTaskCreatedResponse(taskId) {
   return `Task started: ${taskId}\nUse /logs ${taskId} to view output.`;
 }
 
-function writeLogLine(log, line) {
-  log.write(`${line}\n`);
+export function extractFinalResultFromLog(rawLog) {
+  const normalized = stripAnsi(String(rawLog ?? "")).replace(/\r\n/g, "\n").trimEnd();
+  if (normalized.length === 0) {
+    return "";
+  }
+
+  const lines = normalized.split("\n");
+  const markerIndex = findLastAnswerMarkerIndex(lines);
+  if (markerIndex === -1) {
+    return "";
+  }
+
+  const markerText = extractInlineMarkerText(lines[markerIndex]);
+  const resultLines = markerText ? [markerText, ...lines.slice(markerIndex + 1)] : lines.slice(markerIndex + 1);
+  const cleaned = trimNoiseLines(resultLines).join("\n").trim();
+  return collapseDuplicatedFinalText(cleaned);
+}
+
+function findLastAnswerMarkerIndex(lines) {
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index].trim();
+    if (/^(?:codex|assistant|final answer)\s*:?\s*$/i.test(line)) {
+      return index;
+    }
+    if (/^(?:codex|assistant|final answer)\s*:\s+\S/i.test(line)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function extractInlineMarkerText(line) {
+  const match = line.trim().match(/^(?:codex|assistant|final answer)\s*:\s+([\s\S]+)$/i);
+  return match ? match[1] : "";
+}
+
+function trimNoiseLines(lines) {
+  let start = 0;
+  let end = lines.length;
+  while (start < end && lines[start].trim() === "") {
+    start += 1;
+  }
+  while (end > start && isTrailingNoiseLine(lines[end - 1])) {
+    end -= 1;
+  }
+  return lines.slice(start, end);
+}
+
+function isTrailingNoiseLine(line) {
+  const value = line.trim();
+  return value === ""
+    || /^tokens used\b/i.test(value)
+    || /^total tokens\b/i.test(value)
+    || /^input tokens\b/i.test(value)
+    || /^output tokens\b/i.test(value)
+    || /^finishedAt=/.test(value)
+    || /^exitCode=/.test(value)
+    || /^signal=/.test(value)
+    || /^timedOut=/.test(value);
+}
+
+function collapseDuplicatedFinalText(text) {
+  if (!text) {
+    return "";
+  }
+  const paragraphs = text.split(/\n{2,}/);
+  if (paragraphs.length % 2 === 0) {
+    const midpoint = paragraphs.length / 2;
+    const left = paragraphs.slice(0, midpoint).join("\n\n").trim();
+    const right = paragraphs.slice(midpoint).join("\n\n").trim();
+    if (left && left === right) {
+      return left;
+    }
+  }
+
+  const lines = text.split("\n");
+  if (lines.length % 2 === 0) {
+    const midpoint = lines.length / 2;
+    const left = lines.slice(0, midpoint).join("\n").trim();
+    const right = lines.slice(midpoint).join("\n").trim();
+    if (left && left === right) {
+      return left;
+    }
+  }
+  return text;
+}
+
+function stripAnsi(text) {
+  return text.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "");
 }

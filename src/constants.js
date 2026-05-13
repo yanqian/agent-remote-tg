@@ -40,7 +40,7 @@ export const HELP_RESPONSE = [
   "/continue <instruction> - resume or recover repository workflow",
   "/run_orch <rounds> - run 1 to 5 orchestrator rounds",
   "/status - show active and recent tasks",
-  "/logs <task_id> - show the last 120 task log lines",
+  "/logs <task_id> - show the task final result",
   "/stop <task_id> - stop a running Bot-recorded task",
   "/help - show this command list",
 ].join("\n");

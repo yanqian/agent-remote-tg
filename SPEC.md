@@ -419,7 +419,7 @@ Invalid rounds. Use an integer from 1 to 5.
 
 `/status` must return all `running` and `stopping` tasks plus the five most recent finished tasks.
 
-`/logs <task_id>` must return the last 120 log lines for a known task and reject unknown IDs.
+`/logs <task_id>` must return the stored final task result for a known finished task, return a not-available-yet status for active tasks, and reject unknown IDs.
 
 `/stop <task_id>` must send `SIGTERM` only to a Bot-recorded `running` task and must preserve that task log.
 
@@ -486,7 +486,7 @@ Invalid rounds. Use an integer from 1 to 5.
 - `/run_orch 1` spawns `python3 orchestrator.py --max-rounds 1` with shell disabled.
 - `/run_orch` rejects non-integers and integers outside `1..5`.
 - `/status` lists active tasks and five recent finished tasks.
-- `/logs <task_id>` returns bounded log tail.
+- `/logs <task_id>` returns the stored final task result.
 - `/stop <task_id>` sends `SIGTERM` only to a Bot-recorded running task.
 - `/help` lists exactly the documented commands.
 - Unknown slash commands return `Unknown command.\nUse /help.`.

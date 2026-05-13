@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   createTaskExecutor,
+  extractFinalResultFromLog,
   formatTaskCreatedResponse,
   generateTaskId,
   isPathInside,
@@ -55,7 +56,36 @@ test("formatTaskCreatedResponse includes task ID and log instruction", () => {
   );
 });
 
-test("startTask spawns without shell, persists metadata, logs output, and records success", async () => {
+test("extractFinalResultFromLog returns the final Codex answer after tool output", () => {
+  const finalResult = extractFinalResultFromLog([
+    "startedAt=2026-05-12T00:00:00.000Z",
+    "cwd=/repo",
+    "argv=[\"codex\",\"exec\",\"prompt\"]",
+    "$ rg -n \"thing\" src",
+    "src/app.js:1:raw source output",
+    "diff --git a/src/app.js b/src/app.js",
+    "+++ b/src/app.js",
+    "codex",
+    "",
+    "Implemented F024 final result handling.",
+    "",
+    "Verification: npm run test:unit passed.",
+    "",
+    "Implemented F024 final result handling.",
+    "",
+    "Verification: npm run test:unit passed.",
+    "",
+    "tokens used: 1234",
+    "finishedAt=2026-05-12T00:00:01.000Z",
+    "exitCode=0",
+  ].join("\n"));
+
+  assert.equal(finalResult, "Implemented F024 final result handling.\n\nVerification: npm run test:unit passed.");
+  assert.equal(finalResult.includes("raw source output"), false);
+  assert.equal(finalResult.includes("diff --git"), false);
+});
+
+test("startTask spawns without shell, persists metadata, logs output, final result, and records success", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
   const calls = [];
   try {
@@ -92,14 +122,15 @@ test("startTask spawns without shell, persists metadata, logs output, and record
     assert.equal(calls[0].options.cwd, rootDir);
     assert.equal(calls[0].options.shell, false);
 
-    child.stdout.write("stdout line\n");
     child.stderr.write("stderr line\n");
+    child.stdout.write("stdout line\ncodex\nDone with secret-token.\n");
     child.emit("close", 0, null);
 
     const finished = await started.completion;
     assert.equal(finished.status, "succeeded");
     assert.equal(finished.exitCode, 0);
     assert.equal(finished.finishedAt, "2026-05-12T00:00:01.000Z");
+    assert.equal(finished.finalResult, "Done with [REDACTED].");
 
     const state = JSON.parse(readFileSync(statePath, "utf8"));
     assert.deepEqual(state.tasks[started.task.taskId], finished);
@@ -108,6 +139,7 @@ test("startTask spawns without shell, persists metadata, logs output, and record
     assert.match(log, /startedAt=2026-05-12T00:00:00.000Z/);
     assert.match(log, /argv=\["codex","exec","say secret-token"\]/);
     assert.match(log, /stdout line/);
+    assert.match(log, /Done with secret-token/);
     assert.match(log, /stderr line/);
     assert.match(log, /exitCode=0/);
   } finally {
@@ -212,7 +244,7 @@ test("stopTask rejects unknown and non-running tasks without SIGTERM", async () 
   }
 });
 
-test("readTaskLog returns the last 120 lines and rejects confined path violations", () => {
+test("readTaskLog returns final results for finished tasks and rejects confined path violations", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
   try {
     const statePath = join(rootDir, "runtime_state.json");
@@ -220,7 +252,7 @@ test("readTaskLog returns the last 120 lines and rejects confined path violation
     mkdirSync(logsDir, { recursive: true });
     const taskId = "task_abc_1";
     const logPath = join(logsDir, `${taskId}.log`);
-    writeFileSync(logPath, Array.from({ length: 130 }, (_, index) => `line ${index + 1}`).join("\n"));
+    writeFileSync(logPath, Array.from({ length: 130 }, (_, index) => `raw line ${index + 1}`).join("\n"));
     writeFileSync(statePath, `${JSON.stringify({
       currentRepo: null,
       cwd: null,
@@ -235,6 +267,7 @@ test("readTaskLog returns the last 120 lines and rejects confined path violation
           startedAt: "2026-05-12T00:00:00.000Z",
           finishedAt: "2026-05-12T00:00:01.000Z",
           exitCode: 0,
+          finalResult: "final answer only",
         },
         task_bad_1: {
           taskId: "task_bad_1",
@@ -254,8 +287,8 @@ test("readTaskLog returns the last 120 lines and rejects confined path violation
     const logResult = executor.readTaskLog(taskId);
 
     assert.equal(logResult.ok, true);
-    assert.equal(logResult.response.startsWith("line 11\n"), true);
-    assert.equal(logResult.response.includes("line 130"), true);
+    assert.equal(logResult.response, "final answer only");
+    assert.equal(logResult.response.includes("raw line"), false);
     assert.deepEqual(executor.readTaskLog("task_nope_1"), {
       ok: false,
       response: "Unknown task: task_nope_1",
@@ -263,6 +296,79 @@ test("readTaskLog returns the last 120 lines and rejects confined path violation
     assert.deepEqual(executor.readTaskLog("task_bad_1"), {
       ok: false,
       response: "Invalid log path for task: task_bad_1",
+    });
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("readTaskLog returns not-available status for running tasks", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    mkdirSync(logsDir, { recursive: true });
+    const taskId = "task_run_1";
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: null,
+      cwd: null,
+      tasks: {
+        [taskId]: {
+          taskId,
+          type: "work",
+          status: "running",
+          pid: 123,
+          cwd: rootDir,
+          logPath: join(logsDir, `${taskId}.log`),
+          startedAt: "2026-05-12T00:00:00.000Z",
+          finishedAt: null,
+          exitCode: null,
+        },
+      },
+    }, null, 2)}\n`);
+
+    const executor = createTaskExecutor({ statePath, logsDir });
+    assert.deepEqual(executor.readTaskLog(taskId), {
+      ok: true,
+      response: "Task is running. Final result is not available yet.",
+    });
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("readTaskLog returns no-result fallback for finished tasks without final result", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    mkdirSync(logsDir, { recursive: true });
+    const taskId = "task_empty_1";
+    const logPath = join(logsDir, `${taskId}.log`);
+    writeFileSync(logPath, "raw command output only\n");
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: null,
+      cwd: null,
+      tasks: {
+        [taskId]: {
+          taskId,
+          type: "run-orch",
+          status: "failed",
+          pid: null,
+          cwd: rootDir,
+          logPath,
+          startedAt: "2026-05-12T00:00:00.000Z",
+          finishedAt: "2026-05-12T00:00:01.000Z",
+          exitCode: 1,
+          finalResult: "",
+        },
+      },
+    }, null, 2)}\n`);
+
+    const executor = createTaskExecutor({ statePath, logsDir });
+    assert.deepEqual(executor.readTaskLog(taskId), {
+      ok: true,
+      response: `(no final result for ${taskId})`,
     });
   } finally {
     rmSync(rootDir, { recursive: true, force: true });

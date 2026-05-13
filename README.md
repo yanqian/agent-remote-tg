@@ -18,7 +18,7 @@ Repository development state remains in repository files and git history. Telegr
 - `/continue <instruction>` - resume or recover repository workflow from repository state.
 - `/run_orch <rounds>` - run 1 to 5 orchestrator rounds in the selected workspace.
 - `/status` - show active tasks and the five most recent finished tasks.
-- `/logs <task_id>` - show the last 120 task log lines.
+- `/logs <task_id>` - show the stored final task result.
 - `/stop <task_id>` - stop a running Bot-recorded task with `SIGTERM`.
 - `/help` - show the command list.
 
@@ -37,7 +37,7 @@ work - Delegate a repository workflow task
 continue - Resume repository workflow
 run_orch - Run orchestrator rounds
 status - Show active and recent tasks
-logs - Show task log output
+logs - Show task final result
 stop - Stop a running task
 help - Show the command list
 ```

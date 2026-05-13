@@ -45,15 +45,16 @@ Implemented behavior:
 - Public server and VPS deployment documentation for F020: webhook-mode docs are generalized beyond provider-specific deployment and cover public server, VPS, VM, container, Cloud Run, hosted Node.js runtime, HTTPS webhook URL, runtime-local repository paths, persistent `runtime_state.json` and `logs/` storage, and `npm start` as the webhook-mode command.
 - BotFather-compatible orchestrator command for F022: Telegram command parsing, help output, tests, README, deployment documentation, and active SPEC references now use `/run_orch <rounds>`; `/run-orch` is rejected as an unknown command.
 - Polling runtime state preservation for F023: advancing `telegramUpdateOffset` now reloads current runtime state before saving the offset, preserving app handler state changes such as `/use <repo>` workspace selection and task metadata written while handling updates, while still advancing offsets for valid update IDs and ignored non-message updates.
+- Task final-result handling for F024: completed Bot tasks now persist a redacted `finalResult` extracted from Codex-style logs while preserving raw local log files, `/logs <task_id>` returns final results for finished tasks, active tasks report that the final result is not available yet, and missing final results use an explicit fallback instead of exposing raw process output.
 
 ## Last Completed Feature
 
-`F022` - Rename the Telegram orchestrator command from `/run-orch <rounds>` to BotFather-compatible `/run_orch <rounds>`, remove `/run-orch` from the supported command whitelist, preserve existing rounds validation and `python3 orchestrator.py --max-rounds <rounds>` execution behavior, update help output, tests, README.md, docs/deployment.md, progress.md, and SPEC.md references, and document `run_orch` in the BotFather command menu.
+`F023` - Fix polling runtime state persistence so advancing `telegramUpdateOffset` after a handled update reloads and preserves app handler state changes, including `/use <repo>` currentRepo and cwd changes plus task metadata writes, while still advancing offsets for valid update IDs and ignored non-message updates, with automated polling tests for workspace preservation and task metadata preservation.
 
 ## Next Feature
 
-`F023` is implemented and ready for evaluator verification.
+`F024` is implemented and ready for evaluator verification.
 
 ## Known Issues
 
-- F023 implementation is ready for evaluator verification.
+- F024 implementation is ready for evaluator verification.

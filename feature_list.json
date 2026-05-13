@@ -210,9 +210,9 @@
     {
       "id": "F024",
       "description": "Extract and persist a redacted finalResult for each completed Bot task from its process log, keep full raw logs on disk, change /logs <task_id> to return the stored final result instead of raw process log tails for finished tasks, return a not-available-yet status message for running or stopping tasks, avoid exposing raw exec/source/test/diff process output to Telegram, and add automated coverage for Codex logs with tool output before the final answer, running-task responses, and no-result fallback.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     }

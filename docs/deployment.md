@@ -101,7 +101,7 @@ The `/run_orch` command name is compatible with BotFather because it uses only l
 
 The `/ask`, `/work`, `/continue`, and `/run_orch` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded.
 
-Only one active workflow task of type `work`, `continue`, or `run-orch` can run in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect output, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
+Only one active workflow task of type `work`, `continue`, or `run-orch` can run in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 
 ## Logs And State Files
 
