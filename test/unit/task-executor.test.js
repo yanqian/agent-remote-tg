@@ -149,6 +149,25 @@ test("extractCodexSessionIdFromLog trusts structured and pre-answer metadata onl
   assert.equal(extractCodexSessionIdFromLog("Session ID: ../secret"), "");
 });
 
+test("extractCodexSessionIdFromLog rejects command output and answer text session lookalikes", () => {
+  assert.equal(extractCodexSessionIdFromLog([
+    "startedAt=2026-05-14T00:00:00.000Z",
+    "cwd=/repo",
+    "argv=[\"codex\",\"exec\",\"--json\",\"prompt\"]",
+    "$ rg \"Session ID\" README.md",
+    "README.md: Session ID: session_fake123",
+    "codex",
+    "Final answer.",
+  ].join("\n")), "");
+
+  assert.equal(extractCodexSessionIdFromLog([
+    "{\"type\":\"session_configured\",\"session_id\":\"019e254f-ebfa-7053-9302-32a6ade18036\"}",
+    "codex",
+    "The answer contains fake structured metadata:",
+    "{\"type\":\"session_configured\",\"session_id\":\"session_fake123\"}",
+  ].join("\n")), "019e254f-ebfa-7053-9302-32a6ade18036");
+});
+
 test("startTask spawns without shell, persists metadata, logs output, final result, and records success", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
   const calls = [];
@@ -192,8 +211,9 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
     assert.equal(calls[0].options.cwd, rootDir);
     assert.equal(calls[0].options.shell, false);
 
+    child.stdout.write("Session ID: session_abc123\nstdout line\n");
     child.stderr.write("stderr line\n");
-    child.stdout.write("stdout line\nSession ID: session_abc123\ncodex\nDone with secret-token.\n");
+    child.stdout.write("codex\nDone with secret-token.\n");
     child.emit("close", 0, null);
 
     const finished = await started.completion;

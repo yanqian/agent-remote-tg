@@ -429,23 +429,38 @@ export function extractCodexSessionIdFromLog(rawLog) {
 
   let found = "";
   let assistantOutputStarted = false;
+  let preAnswerMetadataOpen = true;
   for (const line of normalized.split("\n")) {
+    if (isAssistantOutputStartLine(line)) {
+      assistantOutputStarted = true;
+      preAnswerMetadataOpen = false;
+      continue;
+    }
+
+    if (assistantOutputStarted) {
+      continue;
+    }
+
     const structuredSessionId = extractStructuredCodexSessionId(line);
     if (structuredSessionId) {
       found = structuredSessionId;
       continue;
     }
 
-    if (isAssistantOutputStartLine(line)) {
-      assistantOutputStarted = true;
+    if (isInitialTaskLogMetadataLine(line)) {
       continue;
     }
 
-    if (!assistantOutputStarted) {
+    if (preAnswerMetadataOpen) {
       const metadataSessionId = extractPreAnswerSessionMetadata(line);
       if (metadataSessionId) {
         found = metadataSessionId;
+        continue;
       }
+    }
+
+    if (line.trim() !== "") {
+      preAnswerMetadataOpen = false;
     }
   }
   return found;
@@ -522,6 +537,14 @@ function extractPreAnswerSessionMetadata(line) {
     }
   }
   return "";
+}
+
+function isInitialTaskLogMetadataLine(line) {
+  const trimmed = line.trim();
+  return trimmed === ""
+    || /^startedAt=/.test(trimmed)
+    || /^cwd=/.test(trimmed)
+    || /^argv=/.test(trimmed);
 }
 
 function isAssistantOutputStartLine(line) {
