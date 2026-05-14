@@ -233,6 +233,51 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F027",
+      "description": "Add ask session runtime schema support by storing ask session bindings keyed by authorized Telegram chatId and selected repository alias, preserving existing runtime_state.json fields, extracting Codex session IDs from ask task output when available, persisting codexSessionId and repo alias on ask task metadata, validating the expanded state shape, and adding unit coverage for state normalization and session ID extraction.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F028",
+      "description": "Make plain /ask <message> session-aware so it starts a new Codex ask task when no current chatId plus repo binding exists, resumes the bound Codex session with codex exec resume <session_id> <message> when a binding exists, keeps shell execution disabled, records task chatId, repo alias, and codexSessionId metadata, and adds unit and harness coverage for both new-session and resume paths.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F029",
+      "description": "Implement /ask subcommands for ask session management: /ask new <message> forces a new Codex ask session and replaces the current binding after session discovery, /ask resume <session_id> <message> stores the binding and resumes that session, /ask resume --last <message> runs codex exec resume --last and stores the discovered session ID, /ask exit removes only the current chatId plus repo binding, /ask session reports the current binding or explicit no-session-selected response, and /ask -- <message> treats reserved subcommand words as a literal question, with parser, help, contract, unit, and harness coverage.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F030",
+      "description": "Enhance /status and /logs <task_id> so tasks with codexSessionId metadata display the Codex session ID alongside existing task status and final result information, without exposing raw process logs or changing task IDs, and add task-management tests for session ID display and no-session fallback.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F031",
+      "description": "Preserve /work, /continue, and /run_orch as repository workflow task commands while ask session support is added, keeping their current command argv, concurrency rules, repository-state recovery semantics, task metadata, and tests unchanged except for explicit regression coverage proving they do not use ask session bindings or Codex ask resume behavior.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
     }
   ]
 }

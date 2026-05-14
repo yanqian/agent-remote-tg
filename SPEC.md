@@ -1130,3 +1130,148 @@ Duplicate final answer is the same answer text appearing on both sides of a toke
 
 - Run `npm run test:unit`.
 - Run `./init.sh`.
+
+## 17. Codex Ask Session Requirements
+
+### 17.1 Goal
+
+Make `/ask` behave as a Telegram entry point into a Codex ask session for the selected repository, so follow-up `/ask` messages continue the current chat-and-repository session instead of starting unrelated one-shot conversations.
+
+### 17.2 Scope
+
+Include:
+
+- Add durable runtime metadata for ask session bindings keyed by authorized Telegram `chatId` and selected repository alias.
+- Extract and persist the Codex session ID from ask task output when a Codex ask task creates or resumes a session.
+- Preserve task metadata for each ask invocation, including task ID, status, final result, originating chat ID, selected repository alias, and Codex session ID when known.
+- Change plain `/ask <message>` so it resumes the current ask session for the current `chatId` and selected repository when a binding exists.
+- Change plain `/ask <message>` so it creates a new Codex ask session when no binding exists.
+- Bind the current `chatId` and selected repository to a newly created Codex ask session after the session ID is known.
+- Add `/ask new <message>` to force creation of a new Codex ask session and replace the current binding for the current `chatId` and selected repository.
+- Add `/ask resume <session_id> <message>` to bind the current `chatId` and selected repository to the provided Codex session ID and send the message to that session.
+- Add `/ask resume --last <message>` to resume Codex CLI's most recent session through `codex exec resume --last`.
+- Add `/ask exit` to remove the current ask session binding for the current `chatId` and selected repository without deleting Codex session files.
+- Add `/ask session` to show the current ask session binding for the current `chatId` and selected repository.
+- Add a parser rule for literal user questions that begin with reserved ask subcommand words: `/ask -- <message>` must treat `<message>` as a normal question.
+- Enhance `/status` output to show Codex session IDs for tasks that have them.
+- Enhance `/logs <task_id>` output to show the Codex session ID for tasks that have one.
+- Keep `/work`, `/continue`, and `/run_orch` as task-based workflow commands and do not convert them to chat sessions.
+
+Exclude:
+
+- Do not store Telegram message history as the source of ask context.
+- Do not simulate conversation context by concatenating previous final results into prompts.
+- Do not delete Codex session files.
+- Do not change repository workflow rules for `/work`, `/continue`, or `/run_orch`.
+- Do not allow ask sessions to cross authorized chat boundaries.
+- Do not allow ask sessions to cross selected repository aliases by default.
+
+### 17.3 Core Concepts
+
+Ask session binding is runtime metadata that maps one authorized Telegram chat and one selected repository alias to one Codex session ID.
+
+Codex session ID is the identifier used by Codex CLI resume commands to continue an existing Codex conversation.
+
+Plain ask is `/ask <message>` with no recognized ask subcommand. Plain ask sends the message to the current binding when one exists, and creates a new session when no binding exists.
+
+Ask subcommands are reserved first tokens after `/ask`: `new`, `resume`, `exit`, and `session`.
+
+Literal ask escape is `/ask -- <message>`, which treats `<message>` as the user question even when it begins with a reserved ask subcommand word.
+
+Workflow commands are `/work`, `/continue`, and `/run_orch`. Workflow commands reconstruct context from repository files and git history, not from Codex ask sessions.
+
+### 17.4 Core Flows
+
+Plain ask with no existing binding:
+
+1. User selects a repository with `/use <repo>`.
+2. User sends `/ask <message>`.
+3. The app starts a Codex ask task in the selected repository.
+4. The app records the task with type `ask`, originating `chatId`, selected repository alias, and no session ID until one is discovered.
+5. The app returns the existing immediate task-start response.
+6. When task output contains a Codex session ID, the app stores it on the task metadata.
+7. The app stores or updates the ask session binding for the current `chatId` and repository alias.
+
+Plain ask with an existing binding:
+
+1. User sends `/ask <follow-up>`.
+2. The app finds the current ask session binding for the current `chatId` and selected repository alias.
+3. The app starts a task using `codex exec resume <session_id> <follow-up>` in the selected repository.
+4. The app records the task with the bound Codex session ID.
+5. The completion push and `/logs` return the final result for that follow-up task.
+
+New ask session:
+
+1. User sends `/ask new <message>`.
+2. The app starts a new Codex ask task without resuming the existing binding.
+3. When the new task exposes a Codex session ID, the app replaces the binding for the current `chatId` and selected repository alias.
+
+Resume specific ask session:
+
+1. User sends `/ask resume <session_id> <message>`.
+2. The app validates the session ID syntax.
+3. The app stores the binding for the current `chatId` and selected repository alias.
+4. The app starts a task using `codex exec resume <session_id> <message>`.
+
+Resume last ask session:
+
+1. User sends `/ask resume --last <message>`.
+2. The app starts a task using `codex exec resume --last <message>`.
+3. When the task output contains a Codex session ID, the app stores it as the binding for the current `chatId` and selected repository alias.
+
+Exit ask session:
+
+1. User sends `/ask exit`.
+2. The app removes the binding for the current `chatId` and selected repository alias.
+3. The app returns a confirmation containing the repository alias.
+4. The Codex session remains resumable by explicit session ID outside the binding.
+
+Show ask session:
+
+1. User sends `/ask session`.
+2. The app returns the current binding for the current `chatId` and selected repository alias.
+3. When no binding exists, the app returns an explicit no-session-selected response.
+
+### 17.5 Constraints
+
+- Ask session state must live in `runtime_state.json`.
+- Ask session state must preserve existing `currentRepo`, `cwd`, `tasks`, and `telegramUpdateOffset` fields.
+- Ask session keys must include `chatId` and repository alias.
+- Plain `/ask <message>` must not resume a session bound to another chat.
+- Plain `/ask <message>` must not resume a session bound to another repository alias.
+- `/ask resume --last` must document and return that `--last` uses Codex CLI's most recent session in the runtime user account.
+- Ask session commands must still require a selected workspace.
+- Ask session task spawning must keep shell execution disabled.
+- `/work`, `/continue`, and `/run_orch` must keep their current commands and concurrency rules.
+- Unit, harness, and contract tests must cover ask subcommand parsing, binding persistence, resume command argv, exit behavior, and status/log session display.
+
+### 17.6 Acceptance Criteria
+
+- `runtime_state.json` supports ask session bindings without losing existing runtime state fields.
+- `/ask <message>` with no binding starts a new Codex ask task.
+- `/ask <message>` with an existing binding starts `codex exec resume <session_id> <message>`.
+- `/ask new <message>` starts a new Codex ask task and replaces the current binding when the new session ID is discovered.
+- `/ask resume <session_id> <message>` stores the binding and starts `codex exec resume <session_id> <message>`.
+- `/ask resume --last <message>` starts `codex exec resume --last <message>` and stores the discovered session ID when available.
+- `/ask exit` removes only the current `chatId` and repository alias binding.
+- `/ask session` reports the current binding or an explicit no-session-selected response.
+- `/ask -- new architecture means what?` is treated as a normal ask message, not an ask subcommand.
+- `/status` includes Codex session IDs for tasks that have them.
+- `/logs <task_id>` includes the Codex session ID for tasks that have one.
+- `/work`, `/continue`, and `/run_orch` behavior remains unchanged.
+- `./init.sh` passes.
+
+### 17.7 Subfeatures
+
+- F027: Add ask session runtime schema, session ID extraction, task metadata persistence, and state validation.
+- F028: Make plain `/ask <message>` session-aware for current chat and repository.
+- F029: Add `/ask new`, `/ask resume`, `/ask exit`, `/ask session`, and `/ask --` parsing and behavior.
+- F030: Show Codex session IDs in `/status` and `/logs` for tasks that have them.
+- F031: Preserve `/work`, `/continue`, and `/run_orch` task-model behavior with regression tests while ask sessions are added.
+
+### 17.8 Verification Plan
+
+- Run `npm run test:unit`.
+- Run `npm run test:harness`.
+- Run `npm run test:contract`.
+- Run `./init.sh`.

@@ -51,12 +51,12 @@ Implemented behavior:
 
 ## Last Completed Feature
 
-`F025` - Automatically send Telegram completion messages for Bot-started tasks using stored final results, with originating chat metadata, send-failure tolerance, and polling-mode fake Telegram API coverage.
+`F026` - Enhance final-result extraction so duplicated Codex answers separated by token-usage output are collapsed to one final answer without `tokens used` or token-count lines.
 
 ## Next Feature
 
-`F026` is implemented and ready for evaluator verification.
+`F027` is planned for ask session runtime schema, Codex session ID extraction, ask task session metadata, and state validation.
 
 ## Known Issues
 
-- F026 implementation is ready for evaluator verification.
+- Ask currently starts independent one-shot Codex tasks. F027-F031 define the planned ask session model and related command behavior.
