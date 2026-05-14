@@ -375,7 +375,7 @@ export function extractFinalResultFromLog(rawLog) {
 
   const markerText = extractInlineMarkerText(lines[markerIndex]);
   const resultLines = markerText ? [markerText, ...lines.slice(markerIndex + 1)] : lines.slice(markerIndex + 1);
-  const cleaned = trimNoiseLines(resultLines).join("\n").trim();
+  const cleaned = trimNoiseLines(removeTokenUsageBlocks(resultLines)).join("\n").trim();
   return collapseDuplicatedFinalText(cleaned);
 }
 
@@ -407,6 +407,31 @@ function trimNoiseLines(lines) {
     end -= 1;
   }
   return lines.slice(start, end);
+}
+
+function removeTokenUsageBlocks(lines) {
+  const cleaned = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const value = lines[index].trim();
+    if (!/^tokens used\b/i.test(value)) {
+      cleaned.push(lines[index]);
+      continue;
+    }
+
+    while (index + 1 < lines.length) {
+      const nextValue = lines[index + 1].trim();
+      if (nextValue === "" || isTokenCountLine(nextValue)) {
+        index += 1;
+        continue;
+      }
+      break;
+    }
+  }
+  return cleaned;
+}
+
+function isTokenCountLine(value) {
+  return /^[\d,]+(?:\s+tokens?)?$/i.test(value);
 }
 
 function isTrailingNoiseLine(line) {

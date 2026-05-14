@@ -228,9 +228,9 @@
     {
       "id": "F026",
       "description": "Enhance extractFinalResultFromLog so Codex output containing a final answer, a tokens used block with token count, and a duplicate final answer returns exactly one copy of the final answer, excludes tokens used and the token count from finalResult, preserves existing extraction behavior, and adds unit test coverage for this duplicated-output shape.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     }

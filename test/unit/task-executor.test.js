@@ -105,6 +105,32 @@ test("extractFinalResultFromLog returns the final Codex answer after tool output
   assert.equal(finalResult.includes("diff --git"), false);
 });
 
+test("extractFinalResultFromLog removes token blocks between duplicate final answers", () => {
+  const finalResult = extractFinalResultFromLog([
+    "startedAt=2026-05-14T00:00:00.000Z",
+    "$ npm test",
+    "raw test output",
+    "codex",
+    "",
+    "Implemented F026 duplicate cleanup.",
+    "",
+    "Verification: npm run test:unit passed.",
+    "",
+    "tokens used",
+    "12,345",
+    "",
+    "Implemented F026 duplicate cleanup.",
+    "",
+    "Verification: npm run test:unit passed.",
+    "finishedAt=2026-05-14T00:00:01.000Z",
+    "exitCode=0",
+  ].join("\n"));
+
+  assert.equal(finalResult, "Implemented F026 duplicate cleanup.\n\nVerification: npm run test:unit passed.");
+  assert.equal(finalResult.includes("tokens used"), false);
+  assert.equal(finalResult.includes("12,345"), false);
+});
+
 test("startTask spawns without shell, persists metadata, logs output, final result, and records success", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
   const calls = [];
