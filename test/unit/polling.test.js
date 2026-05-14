@@ -1,11 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../../src/app.js";
 import { getTelegramUpdates, pollOnce, start } from "../../src/polling.js";
+import { createTaskExecutor } from "../../src/task-executor.js";
 import { saveRuntimeState } from "../../src/runtime-state.js";
+import { createTelegramTaskCompletionNotifier } from "../../src/telegram-transport.js";
 
 test("getTelegramUpdates calls Telegram getUpdates with persisted offset", async () => {
   const calls = [];
@@ -200,6 +204,163 @@ test("pollOnce preserves task metadata saved while handling an update", async ()
   }
 });
 
+test("pollOnce sends completion push with stored final result and preserves /logs retrieval", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-poll-"));
+  const repoDir = join(rootDir, "repo");
+  const logsDir = join(rootDir, "logs");
+  const statePath = join(rootDir, "runtime_state.json");
+  const calls = [];
+  let child;
+  try {
+    mkdirSync(repoDir);
+    saveRuntimeState(statePath, {
+      currentRepo: "app",
+      cwd: repoDir,
+      tasks: {},
+      telegramUpdateOffset: 31,
+    });
+
+    const fetchImpl = (url, options) => {
+      calls.push({ url: url.toString(), options });
+      if (url.toString().includes("/getUpdates")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            ok: true,
+            result: [
+              { update_id: 31, message: { chat: { id: 123 }, text: "/ask inspect this" } },
+            ],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    };
+    const executor = createTaskExecutor({
+      statePath,
+      logsDir,
+      spawn() {
+        child = createFakeChild({ pid: 5555 });
+        return child;
+      },
+      onTaskFinished: createTelegramTaskCompletionNotifier({
+        botToken: "test-token",
+        fetchImpl,
+      }),
+    });
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      logsDir,
+      taskExecutor: executor,
+    });
+
+    await pollOnce({
+      statePath,
+      telegramBotToken: "test-token",
+      app,
+      fetchImpl,
+      pollTimeoutSeconds: 1,
+    });
+
+    const startedState = JSON.parse(readFileSync(statePath, "utf8"));
+    const taskId = Object.keys(startedState.tasks)[0];
+    assert.equal(startedState.tasks[taskId].chatId, "123");
+    assert.deepEqual(JSON.parse(calls[1].options.body), {
+      chat_id: "123",
+      text: `Task started: ${taskId}\nUse /logs ${taskId} to view output.`,
+    });
+
+    child.stdout.write("raw tool output\ncodex\nFinal answer only.\n");
+    child.emit("close", 0, null);
+    await waitFor(() => calls.length === 3);
+
+    assert.deepEqual(JSON.parse(calls[2].options.body), {
+      chat_id: "123",
+      text: `Task finished: ${taskId}\nStatus: succeeded\n\nFinal answer only.`,
+    });
+    assert.equal(executor.readTaskLog(taskId).response, "Final answer only.");
+    assert.equal(JSON.parse(calls[2].options.body).text.includes("raw tool output"), false);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("polling completion push uses no-result fallback without exposing raw logs", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-poll-"));
+  const repoDir = join(rootDir, "repo");
+  const logsDir = join(rootDir, "logs");
+  const statePath = join(rootDir, "runtime_state.json");
+  const calls = [];
+  let child;
+  try {
+    mkdirSync(repoDir);
+    saveRuntimeState(statePath, {
+      currentRepo: "app",
+      cwd: repoDir,
+      tasks: {},
+      telegramUpdateOffset: 41,
+    });
+
+    const fetchImpl = (url, options) => {
+      calls.push({ url: url.toString(), options });
+      if (url.toString().includes("/getUpdates")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            ok: true,
+            result: [
+              { update_id: 41, message: { chat: { id: 123 }, text: "/ask inspect this" } },
+            ],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    };
+    const executor = createTaskExecutor({
+      statePath,
+      logsDir,
+      spawn() {
+        child = createFakeChild({ pid: 5556 });
+        return child;
+      },
+      onTaskFinished: createTelegramTaskCompletionNotifier({
+        botToken: "test-token",
+        fetchImpl,
+      }),
+    });
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      logsDir,
+      taskExecutor: executor,
+    });
+
+    await pollOnce({
+      statePath,
+      telegramBotToken: "test-token",
+      app,
+      fetchImpl,
+      pollTimeoutSeconds: 1,
+    });
+
+    const taskId = Object.keys(JSON.parse(readFileSync(statePath, "utf8")).tasks)[0];
+    child.stdout.write("raw process output only\n");
+    child.emit("close", 1, null);
+    await waitFor(() => calls.length === 3);
+
+    const completion = JSON.parse(calls[2].options.body);
+    assert.deepEqual(completion, {
+      chat_id: "123",
+      text: `Task finished: ${taskId}\nStatus: failed\n\n(no final result for ${taskId})`,
+    });
+    assert.equal(completion.text.includes("raw process output only"), false);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("pollOnce leaves state unchanged when getUpdates fails", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-poll-"));
   const statePath = join(rootDir, "runtime_state.json");
@@ -260,3 +421,22 @@ test("start creates polling context without TELEGRAM_WEBHOOK_URL", () => {
     rmSync(rootDir, { recursive: true, force: true });
   }
 });
+
+function createFakeChild({ pid }) {
+  const child = new EventEmitter();
+  child.pid = pid;
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.kill = () => true;
+  return child;
+}
+
+async function waitFor(predicate) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  assert.equal(predicate(), true);
+}

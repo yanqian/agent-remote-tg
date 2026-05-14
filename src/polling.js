@@ -3,7 +3,8 @@ import { createApp } from "./app.js";
 import { createStartupContext } from "./config.js";
 import { normalizeRepoConfig, parseRepoWhitelistJson } from "./repositories.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
-import { parseTelegramMessage, sendTelegramMessage } from "./telegram-transport.js";
+import { createTaskExecutor } from "./task-executor.js";
+import { createTelegramTaskCompletionNotifier, parseTelegramMessage, sendTelegramMessage } from "./telegram-transport.js";
 
 const DEFAULT_POLL_TIMEOUT_SECONDS = 25;
 const DEFAULT_POLL_INTERVAL_MS = 1000;
@@ -13,12 +14,21 @@ export function start(env = process.env, options = {}) {
   const rawRepos = options.repos ?? parseRepoWhitelistJson(env.REPO_WHITELIST_JSON);
   const repos = normalizeRepoConfig(rawRepos, context.rootDir, { requireExisting: true });
   loadRuntimeState(context.statePath);
+  const taskExecutor = options.taskExecutor ?? createTaskExecutor({
+    statePath: context.statePath,
+    logsDir: context.logsDir,
+    spawn: options.spawn,
+    onTaskFinished: createTelegramTaskCompletionNotifier({
+      botToken: context.telegramBotToken,
+      fetchImpl: options.fetchImpl,
+    }),
+  });
   const app = options.app ?? createApp({
     allowedChatIds: context.allowedChatIds,
     repos,
     statePath: context.statePath,
     logsDir: context.logsDir,
-    taskExecutor: options.taskExecutor,
+    taskExecutor,
   });
 
   const controller = startPolling({

@@ -180,6 +180,7 @@ test("app starts /continue tasks in workflow-ready selected workspaces", () => {
     assert.match(calls[0].args[1], /Read AGENTS\.md, progress\.md, feature_list\.json, and git log --oneline -20 before deciding the next action\./);
     assert.match(calls[0].args[1], /Stop and report exact conflicts when repository state is unsafe\./);
     assert.equal(calls[0].timeoutMs, null);
+    assert.equal(calls[0].chatId, "123");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
@@ -217,6 +218,7 @@ test("app starts /run_orch tasks in workflow-ready selected workspaces", () => {
     assert.equal(calls[0].command, "python3");
     assert.deepEqual(calls[0].args, ["orchestrator.py", "--max-rounds", "2"]);
     assert.equal(calls[0].timeoutMs, null);
+    assert.equal(calls[0].chatId, "123");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
@@ -280,6 +282,7 @@ test("app starts /ask tasks in the selected workspace", () => {
     assert.match(calls[0].args[1], /Do not run orchestrator\.py\./);
     assert.match(calls[0].args[1], /Question:\nExplain the repo/);
     assert.equal(calls[0].timeoutMs, 600000);
+    assert.equal(calls[0].chatId, "123");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
@@ -384,6 +387,7 @@ test("app starts /work tasks in workflow-ready selected workspaces", () => {
     assert.match(calls[0].args[1], /Requirement:\nAdd a documentation requirement/);
     assert.match(calls[0].args[1], /Preserve all existing feature IDs, ordering, passes, status, attempts, last_error, and unknown fields\./);
     assert.equal(calls[0].timeoutMs, null);
+    assert.equal(calls[0].chatId, "123");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });

@@ -46,15 +46,16 @@ Implemented behavior:
 - BotFather-compatible orchestrator command for F022: Telegram command parsing, help output, tests, README, deployment documentation, and active SPEC references now use `/run_orch <rounds>`; `/run-orch` is rejected as an unknown command.
 - Polling runtime state preservation for F023: advancing `telegramUpdateOffset` now reloads current runtime state before saving the offset, preserving app handler state changes such as `/use <repo>` workspace selection and task metadata written while handling updates, while still advancing offsets for valid update IDs and ignored non-message updates.
 - Task final-result handling for F024: completed Bot tasks now persist a redacted `finalResult` extracted from Codex-style logs while preserving raw local log files, `/logs <task_id>` returns final results for finished tasks, active tasks report that the final result is not available yet, and missing final results use an explicit fallback instead of exposing raw process output.
+- Telegram task completion pushes for F025: Bot-started `/ask`, `/work`, `/continue`, and `/run_orch` tasks now record the originating `chatId`, keep immediate task-start and `/logs` behavior unchanged, and send a completion message with task ID, final status, and stored final result while tolerating Telegram send failures without changing task status.
 
 ## Last Completed Feature
 
-`F023` - Fix polling runtime state persistence so advancing `telegramUpdateOffset` after a handled update reloads and preserves app handler state changes, including `/use <repo>` currentRepo and cwd changes plus task metadata writes, while still advancing offsets for valid update IDs and ignored non-message updates, with automated polling tests for workspace preservation and task metadata preservation.
+`F025` - Automatically send Telegram completion messages for Bot-started tasks using stored final results, with originating chat metadata, send-failure tolerance, and polling-mode fake Telegram API coverage.
 
 ## Next Feature
 
-`F024` is implemented and ready for evaluator verification.
+No planned next feature is currently listed after `F025`.
 
 ## Known Issues
 
-- F024 implementation is ready for evaluator verification.
+- F025 implementation is ready for evaluator verification.

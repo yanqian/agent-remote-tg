@@ -19,7 +19,7 @@ export function buildAskPrompt(question) {
   ].join("\n");
 }
 
-export function handleAsk(args, state, taskExecutor) {
+export function handleAsk(args, state, taskExecutor, chatId = null) {
   const workspace = requireWorkspace(state);
   if (!workspace.ok) {
     return { response: workspace.response, stateChanged: false };
@@ -34,6 +34,7 @@ export function handleAsk(args, state, taskExecutor) {
     command: "codex",
     args: ["exec", buildAskPrompt(args)],
     timeoutMs: ASK_TIMEOUT_MS,
+    chatId,
   });
 
   return { response: started.response, stateChanged: false };

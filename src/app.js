@@ -37,7 +37,7 @@ export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecu
       }
 
       const state = loadRuntimeState(statePath);
-      const result = handleParsedCommand(parsed, repos, state, executor);
+      const result = handleParsedCommand(parsed, repos, state, executor, message.chatId);
       if (result.stateChanged) {
         saveRuntimeState(statePath, result.state);
       }
@@ -47,7 +47,7 @@ export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecu
   };
 }
 
-export function handleParsedCommand(parsed, repos, state, taskExecutor) {
+export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId = null) {
   switch (parsed.command) {
     case "/repos":
       return handleRepos(repos);
@@ -60,13 +60,13 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor) {
     case "/git":
       return handleGit(state);
     case "/ask":
-      return handleAsk(parsed.args, state, taskExecutor);
+      return handleAsk(parsed.args, state, taskExecutor, chatId);
     case "/work":
-      return handleWork(parsed.args, state, taskExecutor);
+      return handleWork(parsed.args, state, taskExecutor, chatId);
     case "/continue":
-      return handleContinue(parsed.args, state, taskExecutor);
+      return handleContinue(parsed.args, state, taskExecutor, chatId);
     case "/run_orch":
-      return handleRunOrch(parsed.args, state, taskExecutor);
+      return handleRunOrch(parsed.args, state, taskExecutor, chatId);
     case "/status":
       return handleStatus(state);
     case "/logs":

@@ -2,19 +2,29 @@ import { createStartupContext } from "./config.js";
 import { createApp } from "./app.js";
 import { normalizeRepoConfig, parseRepoWhitelistJson } from "./repositories.js";
 import { loadRuntimeState } from "./runtime-state.js";
-import { createTelegramHttpServer } from "./telegram-transport.js";
+import { createTaskExecutor } from "./task-executor.js";
+import { createTelegramHttpServer, createTelegramTaskCompletionNotifier } from "./telegram-transport.js";
 
 export function start(env = process.env, options = {}) {
   const context = createStartupContext(env, options);
   const rawRepos = options.repos ?? parseRepoWhitelistJson(env.REPO_WHITELIST_JSON);
   const repos = normalizeRepoConfig(rawRepos, context.rootDir, { requireExisting: true });
   loadRuntimeState(context.statePath);
+  const taskExecutor = options.taskExecutor ?? createTaskExecutor({
+    statePath: context.statePath,
+    logsDir: context.logsDir,
+    spawn: options.spawn,
+    onTaskFinished: createTelegramTaskCompletionNotifier({
+      botToken: context.telegramBotToken,
+      fetchImpl: options.fetchImpl,
+    }),
+  });
   const app = options.app ?? createApp({
     allowedChatIds: context.allowedChatIds,
     repos,
     statePath: context.statePath,
     logsDir: context.logsDir,
-    taskExecutor: options.taskExecutor,
+    taskExecutor,
   });
   const server = createTelegramHttpServer({
     app,

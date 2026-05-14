@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { formatTaskCompletionMessage } from "./task-executor.js";
 
 const WEBHOOK_PATH = "/telegram/webhook";
 const HEALTH_PATH = "/healthz";
@@ -91,6 +92,23 @@ export async function sendTelegramMessage({ botToken, chatId, text, fetchImpl = 
       text,
     }),
   });
+}
+
+export function createTelegramTaskCompletionNotifier({ botToken, fetchImpl = globalThis.fetch }) {
+  if (!botToken) {
+    throw new Error("botToken is required.");
+  }
+  return async (task) => {
+    if (!task || typeof task.chatId !== "string" || task.chatId.length === 0) {
+      return;
+    }
+    await sendTelegramMessage({
+      botToken,
+      chatId: task.chatId,
+      text: formatTaskCompletionMessage(task),
+      fetchImpl,
+    });
+  };
 }
 
 async function attemptTelegramReply(options) {

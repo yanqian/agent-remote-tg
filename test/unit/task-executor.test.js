@@ -8,6 +8,7 @@ import { join } from "node:path";
 import {
   createTaskExecutor,
   extractFinalResultFromLog,
+  formatTaskCompletionMessage,
   formatTaskCreatedResponse,
   generateTaskId,
   isPathInside,
@@ -56,6 +57,25 @@ test("formatTaskCreatedResponse includes task ID and log instruction", () => {
   );
 });
 
+test("formatTaskCompletionMessage includes task ID, status, and stored final result", () => {
+  assert.equal(
+    formatTaskCompletionMessage({
+      taskId: "task_abc_1",
+      status: "succeeded",
+      finalResult: "final answer only",
+    }),
+    "Task finished: task_abc_1\nStatus: succeeded\n\nfinal answer only",
+  );
+  assert.equal(
+    formatTaskCompletionMessage({
+      taskId: "task_empty_1",
+      status: "failed",
+      finalResult: "",
+    }),
+    "Task finished: task_empty_1\nStatus: failed\n\n(no final result for task_empty_1)",
+  );
+});
+
 test("extractFinalResultFromLog returns the final Codex answer after tool output", () => {
   const finalResult = extractFinalResultFromLog([
     "startedAt=2026-05-12T00:00:00.000Z",
@@ -88,6 +108,7 @@ test("extractFinalResultFromLog returns the final Codex answer after tool output
 test("startTask spawns without shell, persists metadata, logs output, final result, and records success", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
   const calls = [];
+  const notifications = [];
   try {
     const statePath = join(rootDir, "runtime_state.json");
     const logsDir = join(rootDir, "logs");
@@ -104,6 +125,9 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
         calls.push({ command, args, options });
         return child;
       },
+      onTaskFinished(task) {
+        notifications.push(task);
+      },
     });
 
     const started = executor.startTask({
@@ -111,6 +135,7 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
       cwd: rootDir,
       command: "codex",
       args: ["exec", "say secret-token"],
+      chatId: "123",
     });
 
     assert.match(started.task.taskId, /^task_[a-z0-9]+_[a-z0-9]+$/);
@@ -131,6 +156,9 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
     assert.equal(finished.exitCode, 0);
     assert.equal(finished.finishedAt, "2026-05-12T00:00:01.000Z");
     assert.equal(finished.finalResult, "Done with [REDACTED].");
+    assert.equal(finished.chatId, "123");
+    assert.equal(notifications.length, 1);
+    assert.deepEqual(notifications[0], finished);
 
     const state = JSON.parse(readFileSync(statePath, "utf8"));
     assert.deepEqual(state.tasks[started.task.taskId], finished);
@@ -142,6 +170,41 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
     assert.match(log, /Done with secret-token/);
     assert.match(log, /stderr line/);
     assert.match(log, /exitCode=0/);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("startTask tolerates completion notification failures without changing task status", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  try {
+    const child = createFakeChild({ pid: 4247 });
+    const executor = createTaskExecutor({
+      statePath: join(rootDir, "runtime_state.json"),
+      logsDir: join(rootDir, "logs"),
+      spawn() {
+        return child;
+      },
+      onTaskFinished() {
+        throw new Error("send failed");
+      },
+    });
+
+    const started = executor.startTask({
+      type: "ask",
+      cwd: rootDir,
+      command: "codex",
+      args: ["exec", "done"],
+      chatId: "123",
+    });
+    child.stdout.emit("data", "codex\nfinal answer\n");
+    child.emit("close", 0, null);
+
+    const finished = await started.completion;
+    assert.equal(finished.status, "succeeded");
+
+    const state = JSON.parse(readFileSync(join(rootDir, "runtime_state.json"), "utf8"));
+    assert.equal(state.tasks[started.task.taskId].status, "succeeded");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }

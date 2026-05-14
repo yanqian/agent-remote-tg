@@ -68,7 +68,7 @@ export function findActiveWorkflowTask(state, cwd) {
   return null;
 }
 
-export function handleWork(args, state, taskExecutor) {
+export function handleWork(args, state, taskExecutor, chatId = null) {
   const readiness = requireWorkflowReadyWorkspace(state);
   if (!readiness.ok) {
     return { response: readiness.response, stateChanged: false };
@@ -91,12 +91,13 @@ export function handleWork(args, state, taskExecutor) {
     command: "codex",
     args: ["exec", buildWorkPrompt(args)],
     timeoutMs: null,
+    chatId,
   });
 
   return { response: started.response, stateChanged: false };
 }
 
-export function handleContinue(args, state, taskExecutor) {
+export function handleContinue(args, state, taskExecutor, chatId = null) {
   const readiness = requireWorkflowReadyWorkspace(state);
   if (!readiness.ok) {
     return { response: readiness.response, stateChanged: false };
@@ -119,12 +120,13 @@ export function handleContinue(args, state, taskExecutor) {
     command: "codex",
     args: ["exec", buildContinuePrompt(args)],
     timeoutMs: null,
+    chatId,
   });
 
   return { response: started.response, stateChanged: false };
 }
 
-export function handleRunOrch(args, state, taskExecutor) {
+export function handleRunOrch(args, state, taskExecutor, chatId = null) {
   const rounds = parseOrchestratorRounds(args);
   if (!rounds.ok) {
     return { response: rounds.response, stateChanged: false };
@@ -152,6 +154,7 @@ export function handleRunOrch(args, state, taskExecutor) {
     command: "python3",
     args: ["orchestrator.py", "--max-rounds", String(rounds.value)],
     timeoutMs: null,
+    chatId,
   });
 
   return { response: started.response, stateChanged: false };

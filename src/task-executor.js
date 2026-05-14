@@ -29,6 +29,7 @@ export function createTaskExecutor(options) {
   const spawn = options.spawn ?? defaultSpawn;
   const now = options.now ?? (() => new Date());
   const env = options.env ?? process.env;
+  const onTaskFinished = typeof options.onTaskFinished === "function" ? options.onTaskFinished : null;
   const children = new Map();
   const normalizedLogsDir = resolve(logsDir);
   mkdirSync(normalizedLogsDir, { recursive: true });
@@ -45,7 +46,7 @@ export function createTaskExecutor(options) {
     saveRuntimeState(statePath, nextState);
   }
 
-  function startTask({ type, cwd, command, args = [], telegramSecrets = [], timeoutMs = null }) {
+  function startTask({ type, cwd, command, args = [], telegramSecrets = [], timeoutMs = null, chatId = null }) {
     validateTaskType(type);
     validateSpawnRequest({ cwd, command, args });
     validateTimeout(timeoutMs);
@@ -65,6 +66,9 @@ export function createTaskExecutor(options) {
       finishedAt: null,
       exitCode: null,
     };
+    if (typeof chatId === "string" && chatId.length > 0) {
+      task.chatId = chatId;
+    }
 
     const log = createWriteStream(logPath, { flags: "a" });
     let capturedLog = "";
@@ -140,7 +144,14 @@ export function createTaskExecutor(options) {
           : nextTask;
         children.delete(taskId);
         persistTask(taskToPersist);
-        log.end(() => {
+        log.end(async () => {
+          if (onTaskFinished && taskToPersist.chatId) {
+            try {
+              await onTaskFinished(taskToPersist);
+            } catch {
+              // Completion notification failures must not alter the stored task result.
+            }
+          }
           resolveCompletion(taskToPersist);
         });
       }
@@ -341,6 +352,13 @@ export function truncateTelegramResponse(text) {
 
 export function formatTaskCreatedResponse(taskId) {
   return `Task started: ${taskId}\nUse /logs ${taskId} to view output.`;
+}
+
+export function formatTaskCompletionMessage(task) {
+  const taskId = task?.taskId ?? "unknown";
+  const status = task?.status ?? "unknown";
+  const finalResult = task?.finalResult ? task.finalResult : `(no final result for ${taskId})`;
+  return truncateTelegramResponse(`Task finished: ${taskId}\nStatus: ${status}\n\n${finalResult}`);
 }
 
 export function extractFinalResultFromLog(rawLog) {

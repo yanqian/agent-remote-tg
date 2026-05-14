@@ -219,9 +219,9 @@
     {
       "id": "F025",
       "description": "Automatically send a Telegram completion message with task ID, final status, and stored finalResult to the originating chat when a Bot-started /ask, /work, /continue, or /run_orch task finishes, record the originating chatId in task metadata, preserve immediate task-start responses and /logs retrieval, avoid sending raw process logs, tolerate completion send failures without changing task status, and add fake Telegram API coverage for polling-mode completion pushes and no-result fallback.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     }
