@@ -1389,3 +1389,72 @@ Follow-up ask:
 - Run focused unit tests for session extraction and ask resume responses.
 - Run focused harness tests for `/ask` resume behavior.
 - Run `./init.sh`.
+
+## 19. Codex JSONL Final Result Extraction Requirements
+
+### 19.1 Goal
+
+Make completed `/ask` tasks return the final user-facing Codex answer when Codex CLI emits JSONL output, instead of reporting `(no final result for <task_id>)` for successful tasks.
+
+### 19.2 Scope
+
+Include:
+
+- Extract `finalResult` from Codex CLI JSONL events that contain assistant or agent message text.
+- Prefer the last completed assistant or agent message as the user-facing final result for JSONL task logs.
+- Ignore JSONL command execution events, aggregated command output, raw source output, test output, diffs, and internal metadata when computing `finalResult`.
+- Preserve existing plain-text final result extraction behavior for non-JSONL logs.
+- Preserve existing token usage cleanup and duplicate final answer cleanup.
+- Preserve complete raw local task logs under `logs/<task_id>.log`.
+- Preserve Telegram response truncation and secret redaction.
+- Add regression coverage using a real-shaped `codex exec --json resume ...` log where the final answer is stored in an `item.completed` event with `item.type="agent_message"` and `item.text`.
+
+Exclude:
+
+- Do not change `/ask` task spawning or session resume behavior.
+- Do not change `/work`, `/continue`, or `/run_orch` task behavior.
+- Do not expose raw JSONL logs in Telegram completion messages or `/logs <task_id>`.
+- Do not mark successful tasks as failed only because the final result is missing.
+- Do not implement streaming partial answers to Telegram.
+
+### 19.3 Core Concepts
+
+Raw task log is the full local audit trail and may contain Codex JSONL events, command execution output, metadata, timestamps, and exit codes.
+
+Final task result is the final user-facing assistant or agent answer extracted from the raw task log after internal events and command output are removed.
+
+For JSONL logs, assistant or agent message events are user-facing answer candidates. Command execution events are not final answer candidates.
+
+### 19.4 Core Flow
+
+1. User sends `/ask <message>` or a resumed ask command.
+2. The app starts a Bot task with Codex JSONL output enabled.
+3. Codex writes structured JSONL events to the raw task log.
+4. The task exits with a final status.
+5. The task executor extracts the last user-facing assistant or agent message from JSONL events.
+6. The task executor stores the extracted text as `finalResult`.
+7. The completion push and `/logs <task_id>` return the stored `finalResult` without raw JSONL, raw command output, or internal event metadata.
+
+### 19.5 Constraints
+
+- JSONL parsing must tolerate non-JSON metadata lines already written by the task executor, such as `startedAt=`, `cwd=`, `argv=`, `finishedAt=`, and `exitCode=`.
+- JSONL parsing must skip malformed non-JSON lines instead of failing the task.
+- If no JSONL final answer candidate exists, the existing fallback behavior may still return `(no final result for <task_id>)`.
+- The repository must remain runnable through `./init.sh`.
+
+### 19.6 Acceptance Criteria
+
+- A successful `codex exec --json resume ...` task log with an `item.completed` event containing `item.type="agent_message"` and `item.text` stores that text as `finalResult`.
+- When multiple assistant or agent message events exist, the last user-facing message is used as `finalResult`.
+- JSONL command execution output is not included in `finalResult`.
+- Raw JSONL event text is not returned by `/logs <task_id>` for finished tasks when `finalResult` exists.
+- Existing plain-text `codex` answer marker extraction still works.
+- Existing token usage cleanup and duplicate final answer cleanup still work for extracted final results.
+- Existing unit, harness, contract, and smoke checks pass.
+- `./init.sh` passes.
+
+### 19.7 Verification Plan
+
+- Run focused unit tests for JSONL final result extraction.
+- Run task executor tests proving completion messages and `/logs <task_id>` use the stored JSONL-derived `finalResult`.
+- Run `./init.sh`.
