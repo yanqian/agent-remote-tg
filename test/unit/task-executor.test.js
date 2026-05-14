@@ -162,6 +162,14 @@ test("extractCodexSessionIdFromLog rejects command output and answer text sessio
 
   assert.equal(extractCodexSessionIdFromLog([
     "{\"type\":\"session_configured\",\"session_id\":\"019e254f-ebfa-7053-9302-32a6ade18036\"}",
+    "$ cat output.log",
+    "{\"type\":\"session_configured\",\"session_id\":\"session_fake123\"}",
+    "codex",
+    "Final answer.",
+  ].join("\n")), "019e254f-ebfa-7053-9302-32a6ade18036");
+
+  assert.equal(extractCodexSessionIdFromLog([
+    "{\"type\":\"session_configured\",\"session_id\":\"019e254f-ebfa-7053-9302-32a6ade18036\"}",
     "codex",
     "The answer contains fake structured metadata:",
     "{\"type\":\"session_configured\",\"session_id\":\"session_fake123\"}",

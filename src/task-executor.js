@@ -441,17 +441,17 @@ export function extractCodexSessionIdFromLog(rawLog) {
       continue;
     }
 
-    const structuredSessionId = extractStructuredCodexSessionId(line);
-    if (structuredSessionId) {
-      found = structuredSessionId;
-      continue;
-    }
-
     if (isInitialTaskLogMetadataLine(line)) {
       continue;
     }
 
     if (preAnswerMetadataOpen) {
+      const structuredSessionId = extractStructuredCodexSessionId(line);
+      if (structuredSessionId) {
+        found = structuredSessionId;
+        continue;
+      }
+
       const metadataSessionId = extractPreAnswerSessionMetadata(line);
       if (metadataSessionId) {
         found = metadataSessionId;

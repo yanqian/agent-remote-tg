@@ -291,10 +291,10 @@
     {
       "id": "F033",
       "description": "Fix Codex ask session metadata extraction so /ask, /ask new, /ask resume <session_id> <message>, and /ask resume --last <message> use Codex CLI structured JSONL output or trusted pre-answer CLI metadata for codexSessionId; do not let assistant final answers, source code, tests, README text, SPEC text, command output, or log tail text override the real session ID; preserve raw task logs and finalResult behavior; keep task_id as a Bot-local task identifier; make resumed ask task-start responses include the Codex session ID and a resumed-mode indicator; and add unit and harness regression coverage for logs containing a real session id before assistant output plus a fake Codex session string inside the answer.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 2,
-      "last_error": "session extraction can still let command output override the real Codex session ID. A log with real structured metadata first, then command output containing `{\"type\":\"session_configured\",\"session_id\":\"session_fake123\"}` before assistant output returns `session_fake123`, violating the F033 requirement that command output must not override the real session ID.",
+      "passes": true,
+      "status": "done",
+      "attempts": 3,
+      "last_error": "",
       "priority": "P0"
     }
   ]
