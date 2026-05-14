@@ -255,9 +255,9 @@
     {
       "id": "F029",
       "description": "Implement /ask subcommands for ask session management: /ask new <message> forces a new Codex ask session and replaces the current binding after session discovery, /ask resume <session_id> <message> stores the binding and resumes that session, /ask resume --last <message> runs codex exec resume --last and stores the discovered session ID, /ask exit removes only the current chatId plus repo binding, /ask session reports the current binding or explicit no-session-selected response, and /ask -- <message> treats reserved subcommand words as a literal question, with parser, help, contract, unit, and harness coverage.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     },

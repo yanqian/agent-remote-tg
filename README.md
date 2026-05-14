@@ -13,7 +13,12 @@ Repository development state remains in repository files and git history. Telegr
 - `/pwd` - show the selected workspace path.
 - `/ls` - list files in the selected workspace.
 - `/git` - show the current branch, short status, and five recent commits.
-- `/ask <question>` - start a read-only Codex discussion task in the selected workspace.
+- `/ask <question>` - start or continue a read-only Codex discussion task in the selected workspace.
+- `/ask new <message>` - force a new ask session for the selected workspace.
+- `/ask resume <session_id|--last> <message>` - resume a specific ask session or Codex CLI's most recent session for the runtime user account.
+- `/ask exit` - clear the selected ask session for the current chat and repository.
+- `/ask session` - show the selected ask session for the current chat and repository.
+- `/ask -- <message>` - ask a literal message beginning with a reserved ask subcommand word.
 - `/work <requirement>` - delegate a repository workflow task to Codex.
 - `/continue <instruction>` - resume or recover repository workflow from repository state.
 - `/run_orch <rounds>` - run 1 to 5 orchestrator rounds in the selected workspace.
@@ -32,7 +37,7 @@ use - Select a repository by alias
 pwd - Show the selected workspace
 ls - List selected workspace files
 git - Show branch, status, and commits
-ask - Start a read-only Codex task
+ask - Manage read-only Codex ask sessions
 work - Delegate a repository workflow task
 continue - Resume repository workflow
 run_orch - Run orchestrator rounds

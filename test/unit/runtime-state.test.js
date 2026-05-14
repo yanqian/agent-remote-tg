@@ -8,6 +8,7 @@ import {
   isValidCodexSessionId,
   loadRuntimeState,
   normalizeRuntimeState,
+  removeAskSessionBinding,
   saveRuntimeState,
   updateAskSessionBinding,
 } from "../../src/runtime-state.js";
@@ -143,6 +144,37 @@ test("getAskSessionBinding returns only the current chat and repo binding", () =
   });
   assert.equal(getAskSessionBinding(state, { chatId: "123", repoAlias: "missing" }), null);
   assert.equal(getAskSessionBinding(state, { chatId: "bad/chat", repoAlias: "app" }), null);
+});
+
+test("removeAskSessionBinding removes only the current chat and repo binding", () => {
+  const updated = removeAskSessionBinding({
+    currentRepo: "app",
+    cwd: "/tmp/app",
+    tasks: {},
+    askSessions: {
+      "123": {
+        app: { codexSessionId: "session_app123" },
+        other: { codexSessionId: "session_other123" },
+      },
+      "456": {
+        app: { codexSessionId: "session_chat456" },
+      },
+    },
+    telegramUpdateOffset: 8,
+  }, {
+    chatId: "123",
+    repoAlias: "app",
+  });
+
+  assert.deepEqual(updated.askSessions, {
+    "123": {
+      other: { codexSessionId: "session_other123" },
+    },
+    "456": {
+      app: { codexSessionId: "session_chat456" },
+    },
+  });
+  assert.equal(updated.telegramUpdateOffset, 8);
 });
 
 test("isValidCodexSessionId rejects unsafe values", () => {

@@ -50,15 +50,16 @@ Implemented behavior:
 - Duplicate final-result cleanup for F026: `extractFinalResultFromLog` now removes Codex token-usage blocks and token-count lines before collapsing duplicated final answers, preserving the existing extraction behavior while returning exactly one final answer for duplicated-output logs.
 - Ask session runtime schema support for F027: runtime state now normalizes `askSessions` bindings by Telegram `chatId` and repository alias, `/ask` tasks record the selected repository alias, task completion extracts Codex session IDs from logs when available, and ask task metadata plus bindings persist discovered `codexSessionId` values.
 - Session-aware plain `/ask <message>` behavior for F028: `/ask` starts a new read-only `codex exec` task when no current chatId plus repo binding exists, resumes an existing binding with shell-disabled `codex exec resume <session_id> <message>`, and records chatId, repo alias, and codexSessionId metadata on resumed tasks.
+- Explicit ask session management for F029: `/ask new <message>` forces a new read-only Codex ask task, `/ask resume <session_id> <message>` resumes and binds a specific session, `/ask resume --last <message>` uses Codex CLI's runtime-user `--last` session and updates the binding after session discovery, `/ask exit` clears only the current chat and repository binding, `/ask session` reports the selected binding or an explicit no-session response, and `/ask -- <message>` treats reserved ask subcommand words as literal question text.
 
 ## Last Completed Feature
 
-`F027` - Add ask session runtime schema support by storing ask session bindings keyed by authorized Telegram chatId and selected repository alias, extracting Codex session IDs from ask task output, and persisting ask task metadata plus bindings.
+`F028` - Make plain `/ask <message>` session-aware for current chat and repository bindings.
 
 ## Next Feature
 
-`F028` implementation is ready for evaluator verification. After evaluator acceptance, `F029` is the next planned feature for explicit `/ask` session management subcommands.
+`F029` implementation is ready for evaluator verification. After evaluator acceptance, `F030` is the next planned feature for displaying Codex session IDs in task status and log views.
 
 ## Known Issues
 
-- Explicit ask session management subcommands such as `/ask new`, `/ask resume`, `/ask exit`, and `/ask session` are not implemented until F029.
+- `/status` and `/logs <task_id>` do not yet display Codex session ID metadata until F030.

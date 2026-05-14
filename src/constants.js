@@ -16,7 +16,7 @@ export const COMMANDS = Object.freeze([
 
 export const COMMANDS_REQUIRING_ARGS = Object.freeze({
   "/use": "Usage: /use <repo>",
-  "/ask": "Usage: /ask <question>",
+  "/ask": "Usage: /ask <question> | /ask new <message> | /ask resume <session_id|--last> <message> | /ask exit | /ask session | /ask -- <message>",
   "/work": "Usage: /work <requirement>",
   "/continue": "Usage: /continue <instruction>",
   "/run_orch": "Usage: /run_orch <rounds>",
@@ -35,7 +35,12 @@ export const HELP_RESPONSE = [
   "/pwd - show the selected workspace",
   "/ls - list files in the selected workspace",
   "/git - show branch, status, and recent commits",
-  "/ask <question> - start a read-only Codex discussion task",
+  "/ask <question> - start or continue a read-only Codex discussion task",
+  "/ask new <message> - force a new ask session",
+  "/ask resume <session_id|--last> <message> - resume an ask session",
+  "/ask exit - clear the selected ask session",
+  "/ask session - show the selected ask session",
+  "/ask -- <message> - ask a literal message beginning with a reserved word",
   "/work <requirement> - delegate a repository workflow task",
   "/continue <instruction> - resume or recover repository workflow",
   "/run_orch <rounds> - run 1 to 5 orchestrator rounds",

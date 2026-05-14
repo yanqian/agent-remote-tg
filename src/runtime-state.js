@@ -72,6 +72,32 @@ export function updateAskSessionBinding(state, { chatId, repoAlias, codexSession
   };
 }
 
+export function removeAskSessionBinding(state, { chatId, repoAlias }) {
+  const normalized = normalizeRuntimeState(state);
+  if (!isValidAskSessionKey(chatId) || !isValidAskSessionKey(repoAlias)) {
+    return normalized;
+  }
+
+  const chatBindings = normalized.askSessions[chatId];
+  if (!chatBindings || !Object.hasOwn(chatBindings, repoAlias)) {
+    return normalized;
+  }
+
+  const nextChatBindings = { ...chatBindings };
+  delete nextChatBindings[repoAlias];
+  const nextAskSessions = { ...normalized.askSessions };
+  if (Object.keys(nextChatBindings).length === 0) {
+    delete nextAskSessions[chatId];
+  } else {
+    nextAskSessions[chatId] = nextChatBindings;
+  }
+
+  return {
+    ...normalized,
+    askSessions: nextAskSessions,
+  };
+}
+
 export function getAskSessionBinding(state, { chatId, repoAlias }) {
   if (!isValidAskSessionKey(chatId) || !isValidAskSessionKey(repoAlias)) {
     return null;

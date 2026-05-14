@@ -85,7 +85,7 @@ use - Select a repository by alias
 pwd - Show the selected workspace
 ls - List selected workspace files
 git - Show branch, status, and commits
-ask - Start a read-only Codex task
+ask - Manage read-only Codex ask sessions
 work - Delegate a repository workflow task
 continue - Resume repository workflow
 run_orch - Run orchestrator rounds
@@ -99,7 +99,7 @@ The `/run_orch` command name is compatible with BotFather because it uses only l
 
 ## Long-Running Operation
 
-The `/ask`, `/work`, `/continue`, and `/run_orch` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded.
+The `/ask`, `/ask new`, `/ask resume`, `/work`, `/continue`, and `/run_orch` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. `/ask exit` and `/ask session` only inspect or update the current chat and repository ask-session binding.
 
 Only one active workflow task of type `work`, `continue`, or `run-orch` can run in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 
