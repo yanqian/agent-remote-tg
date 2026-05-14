@@ -48,6 +48,7 @@ Implemented behavior:
 - Task final-result handling for F024: completed Bot tasks now persist a redacted `finalResult` extracted from Codex-style logs while preserving raw local log files, `/logs <task_id>` returns final results for finished tasks, active tasks report that the final result is not available yet, and missing final results use an explicit fallback instead of exposing raw process output.
 - Telegram task completion pushes for F025: Bot-started `/ask`, `/work`, `/continue`, and `/run_orch` tasks now record the originating `chatId`, keep immediate task-start and `/logs` behavior unchanged, and send a completion message with task ID, final status, and stored final result while tolerating Telegram send failures without changing task status.
 - Duplicate final-result cleanup for F026: `extractFinalResultFromLog` now removes Codex token-usage blocks and token-count lines before collapsing duplicated final answers, preserving the existing extraction behavior while returning exactly one final answer for duplicated-output logs.
+- Ask session runtime schema support for F027: runtime state now normalizes `askSessions` bindings by Telegram `chatId` and repository alias, `/ask` tasks record the selected repository alias, task completion extracts Codex session IDs from logs when available, and ask task metadata plus bindings persist discovered `codexSessionId` values.
 
 ## Last Completed Feature
 
@@ -55,8 +56,8 @@ Implemented behavior:
 
 ## Next Feature
 
-`F027` is planned for ask session runtime schema, Codex session ID extraction, ask task session metadata, and state validation.
+`F027` implementation is ready for evaluator verification. After evaluator acceptance, `F028` is the next planned feature for session-aware plain `/ask <message>` resume behavior.
 
 ## Known Issues
 
-- Ask currently starts independent one-shot Codex tasks. F027-F031 define the planned ask session model and related command behavior.
+- Ask still starts independent one-shot Codex tasks until F028 adds resume behavior. F027 only adds the runtime schema, metadata, binding, and session ID extraction foundation.

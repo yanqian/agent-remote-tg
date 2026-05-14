@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   createTaskExecutor,
+  extractCodexSessionIdFromLog,
   extractFinalResultFromLog,
   formatTaskCompletionMessage,
   formatTaskCreatedResponse,
@@ -131,6 +132,20 @@ test("extractFinalResultFromLog removes token blocks between duplicate final ans
   assert.equal(finalResult.includes("12,345"), false);
 });
 
+test("extractCodexSessionIdFromLog returns the last valid Codex session ID", () => {
+  const sessionId = extractCodexSessionIdFromLog([
+    "startedAt=2026-05-14T00:00:00.000Z",
+    "Session ID: session_old123",
+    "{\"session_id\":\"550e8400-e29b-41d4-a716-446655440000\"}",
+    "codex",
+    "Final answer.",
+    "finishedAt=2026-05-14T00:00:01.000Z",
+  ].join("\n"));
+
+  assert.equal(sessionId, "550e8400-e29b-41d4-a716-446655440000");
+  assert.equal(extractCodexSessionIdFromLog("Session ID: ../secret"), "");
+});
+
 test("startTask spawns without shell, persists metadata, logs output, final result, and records success", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
   const calls = [];
@@ -162,6 +177,7 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
       command: "codex",
       args: ["exec", "say secret-token"],
       chatId: "123",
+      repoAlias: "app",
     });
 
     assert.match(started.task.taskId, /^task_[a-z0-9]+_[a-z0-9]+$/);
@@ -174,7 +190,7 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
     assert.equal(calls[0].options.shell, false);
 
     child.stderr.write("stderr line\n");
-    child.stdout.write("stdout line\ncodex\nDone with secret-token.\n");
+    child.stdout.write("stdout line\nSession ID: session_abc123\ncodex\nDone with secret-token.\n");
     child.emit("close", 0, null);
 
     const finished = await started.completion;
@@ -183,11 +199,18 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
     assert.equal(finished.finishedAt, "2026-05-12T00:00:01.000Z");
     assert.equal(finished.finalResult, "Done with [REDACTED].");
     assert.equal(finished.chatId, "123");
+    assert.equal(finished.repoAlias, "app");
+    assert.equal(finished.codexSessionId, "session_abc123");
     assert.equal(notifications.length, 1);
     assert.deepEqual(notifications[0], finished);
 
     const state = JSON.parse(readFileSync(statePath, "utf8"));
     assert.deepEqual(state.tasks[started.task.taskId], finished);
+    assert.deepEqual(state.askSessions, {
+      "123": {
+        app: { codexSessionId: "session_abc123" },
+      },
+    });
 
     const log = readFileSync(finished.logPath, "utf8");
     assert.match(log, /startedAt=2026-05-12T00:00:00.000Z/);

@@ -35,6 +35,7 @@ export function handleAsk(args, state, taskExecutor, chatId = null) {
     args: ["exec", buildAskPrompt(args)],
     timeoutMs: ASK_TIMEOUT_MS,
     chatId,
+    repoAlias: workspace.currentRepo,
   });
 
   return { response: started.response, stateChanged: false };

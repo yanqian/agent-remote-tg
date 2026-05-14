@@ -40,4 +40,5 @@ test("handleAsk starts a read-only codex exec task in the selected workspace", (
   assert.match(calls[0].args[1], /Do not modify files\./);
   assert.match(calls[0].args[1], /Question:\nExplain the workflow\./);
   assert.equal(calls[0].timeoutMs, ASK_TIMEOUT_MS);
+  assert.equal(calls[0].repoAlias, "app");
 });

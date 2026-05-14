@@ -237,9 +237,9 @@
     {
       "id": "F027",
       "description": "Add ask session runtime schema support by storing ask session bindings keyed by authorized Telegram chatId and selected repository alias, preserving existing runtime_state.json fields, extracting Codex session IDs from ask task output when available, persisting codexSessionId and repo alias on ask task metadata, validating the expanded state shape, and adding unit coverage for state normalization and session ID extraction.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     },

@@ -22,6 +22,7 @@ test("runtime state schema is limited to workspace, polling offset, and Bot task
     currentRepo: null,
     cwd: null,
     tasks: {},
+    askSessions: {},
     telegramUpdateOffset: null,
   });
 
@@ -33,6 +34,15 @@ test("runtime state schema is limited to workspace, polling offset, and Bot task
         taskId: "task_abc_1",
         type: "ask",
         status: "succeeded",
+        repoAlias: "agent-runtime",
+        codexSessionId: "session_abc123",
+      },
+    },
+    askSessions: {
+      "123": {
+        "agent-runtime": {
+          codexSessionId: "session_abc123",
+        },
       },
     },
     telegramUpdateOffset: 101,
@@ -40,7 +50,8 @@ test("runtime state schema is limited to workspace, polling offset, and Bot task
     progress: { current: "F999" },
   });
 
-  assert.deepEqual(Object.keys(normalized), ["currentRepo", "cwd", "tasks", "telegramUpdateOffset"]);
+  assert.deepEqual(Object.keys(normalized), ["currentRepo", "cwd", "tasks", "askSessions", "telegramUpdateOffset"]);
+  assert.equal(normalized.askSessions["123"]["agent-runtime"].codexSessionId, "session_abc123");
   assert.equal(normalized.telegramUpdateOffset, 101);
   assert.equal(Object.hasOwn(normalized, "features"), false);
   assert.equal(Object.hasOwn(normalized, "progress"), false);

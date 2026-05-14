@@ -283,6 +283,7 @@ test("app starts /ask tasks in the selected workspace", () => {
     assert.match(calls[0].args[1], /Question:\nExplain the repo/);
     assert.equal(calls[0].timeoutMs, 600000);
     assert.equal(calls[0].chatId, "123");
+    assert.equal(calls[0].repoAlias, "app");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });

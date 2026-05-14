@@ -1,7 +1,12 @@
 import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { spawn as defaultSpawn } from "node:child_process";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
+import {
+  isValidCodexSessionId,
+  loadRuntimeState,
+  saveRuntimeState,
+  updateAskSessionBinding,
+} from "./runtime-state.js";
 
 export const TASK_TYPES = Object.freeze(["ask", "work", "continue", "run-orch"]);
 export const TASK_STATUSES = Object.freeze(["running", "stopping", "stopped", "succeeded", "failed"]);
@@ -36,17 +41,34 @@ export function createTaskExecutor(options) {
 
   function persistTask(task) {
     const state = loadRuntimeState(statePath);
-    const nextState = {
+    let nextState = {
       ...state,
       tasks: {
         ...state.tasks,
         [task.taskId]: task,
       },
     };
+    if (task.type === "ask" && task.chatId && task.repoAlias && task.codexSessionId) {
+      nextState = updateAskSessionBinding(nextState, {
+        chatId: task.chatId,
+        repoAlias: task.repoAlias,
+        codexSessionId: task.codexSessionId,
+      });
+    }
     saveRuntimeState(statePath, nextState);
   }
 
-  function startTask({ type, cwd, command, args = [], telegramSecrets = [], timeoutMs = null, chatId = null }) {
+  function startTask({
+    type,
+    cwd,
+    command,
+    args = [],
+    telegramSecrets = [],
+    timeoutMs = null,
+    chatId = null,
+    repoAlias = null,
+    codexSessionId = null,
+  }) {
     validateTaskType(type);
     validateSpawnRequest({ cwd, command, args });
     validateTimeout(timeoutMs);
@@ -68,6 +90,12 @@ export function createTaskExecutor(options) {
     };
     if (typeof chatId === "string" && chatId.length > 0) {
       task.chatId = chatId;
+    }
+    if (typeof repoAlias === "string" && repoAlias.length > 0) {
+      task.repoAlias = repoAlias;
+    }
+    if (isValidCodexSessionId(codexSessionId)) {
+      task.codexSessionId = codexSessionId;
     }
 
     const log = createWriteStream(logPath, { flags: "a" });
@@ -139,8 +167,10 @@ export function createTaskExecutor(options) {
           writeTaskLogLine(line);
         }
         const finalResult = redactForTelegram(extractFinalResultFromLog(capturedLog), env, telegramSecrets);
+        const discoveredSessionId = extractCodexSessionIdFromLog(capturedLog);
+        const sessionMetadata = discoveredSessionId ? { codexSessionId: discoveredSessionId } : {};
         const taskToPersist = FINISHED_STATUSES.has(nextTask.status)
-          ? { ...nextTask, finalResult }
+          ? { ...nextTask, ...sessionMetadata, finalResult }
           : nextTask;
         children.delete(taskId);
         persistTask(taskToPersist);
@@ -377,6 +407,32 @@ export function extractFinalResultFromLog(rawLog) {
   const resultLines = markerText ? [markerText, ...lines.slice(markerIndex + 1)] : lines.slice(markerIndex + 1);
   const cleaned = trimNoiseLines(removeTokenUsageBlocks(resultLines)).join("\n").trim();
   return collapseDuplicatedFinalText(cleaned);
+}
+
+export function extractCodexSessionIdFromLog(rawLog) {
+  const normalized = stripAnsi(String(rawLog ?? "")).replace(/\r\n/g, "\n");
+  if (normalized.length === 0) {
+    return "";
+  }
+
+  const patterns = [
+    /"session(?:_id|Id)"\s*:\s*"([^"]+)"/gi,
+    /\b(?:codex\s+)?session(?:\s+id)?\s*[:=]\s*([A-Za-z0-9][A-Za-z0-9._:-]{5,199})\b/gi,
+    /\bconversation(?:\s+id)?\s*[:=]\s*([A-Za-z0-9][A-Za-z0-9._:-]{5,199})\b/gi,
+  ];
+
+  let found = "";
+  let foundIndex = -1;
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(normalized)) !== null) {
+      if (match.index >= foundIndex && isValidCodexSessionId(match[1])) {
+        found = match[1];
+        foundIndex = match.index;
+      }
+    }
+  }
+  return found;
 }
 
 function findLastAnswerMarkerIndex(lines) {
