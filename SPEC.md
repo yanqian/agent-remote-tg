@@ -423,6 +423,34 @@ Invalid rounds. Use an integer from 1 to 5.
 
 `/stop <task_id>` must send `SIGTERM` only to a Bot-recorded `running` task and must preserve that task log.
 
+### 4.12 Approval Interaction
+
+The Bot must support approving or rejecting pending agent approval requests from Telegram.
+
+The command surface must include:
+
+- `/approve <request_id>`
+- `/reject <request_id>`
+- `/always_allow <request_id>`
+
+`/approve <request_id>` must approve only the referenced pending approval request.
+
+`/reject <request_id>` must reject only the referenced pending approval request.
+
+`/always_allow <request_id>` must approve the referenced pending approval request and record an allow rule so equivalent future requests can be approved without asking again.
+
+When the Bot sends an approval request message to Telegram, it must include enough durable runtime metadata to correlate replies to the pending request.
+
+If an authorized user replies to an approval request message with `yes`, `y`, or `approve`, the Bot must perform the same action as `/approve <request_id>` for that request.
+
+If an authorized user replies to an approval request message with `no`, `n`, or `reject`, the Bot must perform the same action as `/reject <request_id>` for that request.
+
+If an authorized user replies to an approval request message with `always`, `always allow`, or `以后都允许`, the Bot must perform the same action as `/always_allow <request_id>` for that request.
+
+Reply-based approval decisions must apply only when the incoming Telegram message is a reply to a Bot approval request message. The same words sent as ordinary non-reply messages must not approve, reject, or always-allow anything.
+
+Approval request IDs must be validated as safe IDs before use, and unknown, expired, already-resolved, or unauthorized approval requests must be rejected with a clear Telegram response.
+
 ## 5. Constraints
 
 ### 5.1 Security
@@ -488,6 +516,13 @@ Invalid rounds. Use an integer from 1 to 5.
 - `/status` lists active tasks and five recent finished tasks.
 - `/logs <task_id>` returns the stored final task result.
 - `/stop <task_id>` sends `SIGTERM` only to a Bot-recorded running task.
+- `/approve <request_id>` approves only the referenced pending approval request.
+- `/reject <request_id>` rejects only the referenced pending approval request.
+- `/always_allow <request_id>` approves the referenced pending approval request and stores an allow rule for equivalent future requests.
+- Replying `yes` or `approve` to a Bot approval request message approves the correlated request.
+- Replying `no` or `reject` to a Bot approval request message rejects the correlated request.
+- Replying `always`, `always allow`, or `以后都允许` to a Bot approval request message approves the correlated request and stores the future allow rule.
+- Approval reply words sent outside a reply to a Bot approval request message do not trigger approval decisions.
 - `/help` lists exactly the documented commands.
 - Unknown slash commands return `Unknown command.\nUse /help.`.
 - `/run-feature` is not implemented.
@@ -1274,4 +1309,83 @@ Show ask session:
 - Run `npm run test:unit`.
 - Run `npm run test:harness`.
 - Run `npm run test:contract`.
+- Run `./init.sh`.
+
+## 18. Codex Structured Session Metadata Requirements
+
+### 18.1 Goal
+
+Make `/ask` session binding use Codex CLI structured metadata instead of scanning human-readable final answer text, so follow-up `/ask` commands resume the real Codex session for the selected Telegram chat and repository.
+
+### 18.2 Scope
+
+Include:
+
+- Use Codex CLI JSONL output for `/ask`, `/ask new`, `/ask resume <session_id> <message>`, and `/ask resume --last <message>` tasks.
+- Extract `codexSessionId` only from trusted Codex CLI structured event metadata or from the initial Codex CLI session metadata line before assistant answer content begins.
+- Prevent assistant final answers, source code, tests, README text, SPEC text, command output, and log tail text from overriding the real Codex session ID.
+- Preserve complete local task logs for debugging.
+- Preserve the existing `finalResult` behavior for Telegram completion pushes and `/logs <task_id>`.
+- Add a regression test where the log contains a real Codex session ID before assistant answer content and a fake `Codex session: session_run123` string inside the assistant answer, and the persisted binding keeps the real session ID.
+- Add tests proving resumed `/ask` task-start responses include the Codex session ID and make it clear the task is a resumed ask invocation.
+
+Exclude:
+
+- Do not implement Telegram approval decisions.
+- Do not change `/work`, `/continue`, or `/run_orch` task behavior.
+- Do not remove raw task logs.
+- Do not make `task_id` equal to Codex session ID.
+- Do not store Telegram message history as ask context.
+
+### 18.3 Core Concepts
+
+Task ID is the Bot-local process execution identifier. Every `/ask` invocation creates a new task ID.
+
+Codex session ID is the Codex CLI conversation identifier used by `codex exec resume`.
+
+Trusted session metadata is Codex CLI machine-readable JSONL metadata or the CLI startup metadata emitted before assistant answer content starts.
+
+Assistant answer text is not trusted session metadata.
+
+### 18.4 Core Flows
+
+New ask session:
+
+1. User sends `/ask <message>` or `/ask new <message>` with no selected binding for the current chat and repository.
+2. The app starts `codex exec` with JSONL output enabled.
+3. The task executor records the Bot task ID immediately.
+4. The task executor extracts the Codex session ID from trusted CLI metadata.
+5. The task executor stores the Codex session ID on the task and updates the ask session binding.
+6. The completion push returns the final result without exposing raw JSONL or raw process logs.
+
+Follow-up ask:
+
+1. User sends `/ask <message>` with an existing binding.
+2. The app starts `codex exec resume <session_id> <message>` with JSONL output enabled.
+3. The immediate Telegram response includes the new Bot task ID, the bound Codex session ID, and that the ask task is resumed.
+4. The task executor ignores fake session-looking text in assistant output.
+5. The ask session binding remains the real Codex session ID unless trusted CLI metadata provides a newer real Codex session ID for that run.
+
+### 18.5 Constraints
+
+- Session extraction must not scan assistant answer text as authoritative metadata.
+- Fake session-looking strings in final answers must not update `runtime_state.json`.
+- `task_id` must remain a Bot-local task identifier.
+- `/ask` must keep shell execution disabled.
+- The repository must remain runnable through `./init.sh`.
+
+### 18.6 Acceptance Criteria
+
+- A log with `session id: 019e254f-ebfa-7053-9302-32a6ade18036` before assistant output and `Codex session: session_run123` inside assistant output returns `019e254f-ebfa-7053-9302-32a6ade18036`.
+- The same log does not return `session_run123`.
+- A completed ask task with fake assistant session text persists the real Codex session ID in `runtime_state.json`.
+- A follow-up `/ask <message>` with an existing binding starts `codex exec resume <real_session_id> <message>`.
+- The immediate response for a resumed ask includes the Codex session ID and a resumed-mode indicator.
+- Existing unit, harness, contract, and smoke checks pass.
+- `./init.sh` passes.
+
+### 18.7 Verification Plan
+
+- Run focused unit tests for session extraction and ask resume responses.
+- Run focused harness tests for `/ask` resume behavior.
 - Run `./init.sh`.

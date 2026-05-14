@@ -278,6 +278,24 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P1"
+    },
+    {
+      "id": "F032",
+      "description": "Implement Telegram approval decisions for pending agent approval requests, including explicit /approve <request_id>, /reject <request_id>, and /always_allow <request_id> commands; reply-based decisions where replying yes/approve approves, no/reject rejects, and always/always allow/以后都允许 approves and stores an equivalent future allow rule; safe request ID validation; rejection of unknown, expired, already-resolved, or unauthorized requests; and automated unit, harness, and contract coverage for command parsing, help output, reply correlation, authorization, and non-reply words not triggering decisions.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
+    },
+    {
+      "id": "F033",
+      "description": "Fix Codex ask session metadata extraction so /ask, /ask new, /ask resume <session_id> <message>, and /ask resume --last <message> use Codex CLI structured JSONL output or trusted pre-answer CLI metadata for codexSessionId; do not let assistant final answers, source code, tests, README text, SPEC text, command output, or log tail text override the real session ID; preserve raw task logs and finalResult behavior; keep task_id as a Bot-local task identifier; make resumed ask task-start responses include the Codex session ID and a resumed-mode indicator; and add unit and harness regression coverage for logs containing a real session id before assistant output plus a fake Codex session string inside the answer.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }
