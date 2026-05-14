@@ -1066,3 +1066,67 @@ Task completion push is a separate asynchronous Telegram message sent after the 
 - Run `npm run test:harness`.
 - Run `npm run test:contract`.
 - Run `./init.sh`.
+
+## 16. Codex Final Result Duplicate Suppression Requirements
+
+### 16.1 Goal
+
+Ensure `extractFinalResultFromLog` returns one copy of the final Codex answer when Codex CLI output contains a `tokens used` block followed by a duplicate copy of the same final answer.
+
+### 16.2 Scope
+
+Include:
+
+- Detect Codex log output where the final answer appears before and after a `tokens used` block.
+- Remove the `tokens used` block from the extracted final result.
+- Return exactly one copy of the final answer when the text before and after the `tokens used` block is identical after trimming surrounding blank lines.
+- Preserve existing final-result extraction behavior for logs without duplicated final answers.
+- Preserve existing duplicate suppression for adjacent repeated final answer blocks.
+- Add unit test coverage for a Codex log that contains final answer text, a `tokens used` block, a token count line, and the same final answer text again.
+- Add unit test coverage proving the extracted final result does not include `tokens used` or the token count line.
+
+Exclude:
+
+- Do not change task spawning behavior.
+- Do not change Telegram command handling.
+- Do not change automatic completion push formatting.
+- Do not change raw local log persistence.
+- Do not remove `/logs`.
+
+### 16.3 Core Concepts
+
+Final answer is the assistant-facing answer text that follows the last Codex answer marker in the process log.
+
+Token usage block is a Codex CLI reporting block that starts with `tokens used` and may include a numeric token count on the next line.
+
+Duplicate final answer is the same answer text appearing on both sides of a token usage block in the extracted final-result region.
+
+### 16.4 Core Flow
+
+1. A task finishes and the task executor calls `extractFinalResultFromLog`.
+2. The extractor finds the last Codex answer marker.
+3. The extractor collects candidate final-result lines after that marker.
+4. The extractor removes trailing process metadata and token usage reporting.
+5. When the remaining candidate contains two identical answer blocks separated only by token usage reporting and blank lines, the extractor returns the first answer block.
+6. The stored `finalResult`, `/logs`, and completion push use the deduplicated final answer.
+
+### 16.5 Constraints
+
+- The returned `finalResult` must not contain `tokens used`.
+- The returned `finalResult` must not contain the numeric token count line from the token usage block.
+- The extractor must not remove legitimate answer text that is not duplicated around a token usage block.
+- The fix must be covered by unit tests in `test/unit/task-executor.test.js`.
+- The repository must remain runnable through `./init.sh`.
+
+### 16.6 Acceptance Criteria
+
+- A Codex log containing `answer`, `tokens used`, token count, and the same `answer` returns one `answer`.
+- The extracted result for that log does not include `tokens used`.
+- The extracted result for that log does not include the token count line.
+- Existing `extractFinalResultFromLog` tests continue to pass.
+- `./init.sh` passes.
+
+### 16.7 Verification Plan
+
+- Run `npm run test:unit`.
+- Run `./init.sh`.
