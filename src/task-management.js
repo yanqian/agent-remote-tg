@@ -51,7 +51,7 @@ export function handleStop(taskId, taskExecutor) {
 }
 
 function formatTaskStatus(task) {
-  return [
+  const lines = [
     task.taskId,
     `type: ${formatNullable(task.type)}`,
     `status: ${formatNullable(task.status)}`,
@@ -60,7 +60,13 @@ function formatTaskStatus(task) {
     `startedAt: ${formatNullable(task.startedAt)}`,
     `finishedAt: ${formatNullable(task.finishedAt)}`,
     `exitCode: ${formatNullable(task.exitCode)}`,
-  ].join("\n");
+  ];
+
+  if (hasCodexSessionId(task)) {
+    lines.splice(3, 0, `codexSessionId: ${task.codexSessionId}`);
+  }
+
+  return lines.join("\n");
 }
 
 function compareTasksByStartedAt(left, right) {
@@ -81,6 +87,10 @@ function compareDescending(left, right) {
 
 function formatNullable(value) {
   return value === undefined || value === null ? "null" : String(value);
+}
+
+function hasCodexSessionId(task) {
+  return typeof task?.codexSessionId === "string" && task.codexSessionId.length > 0;
 }
 
 function isValidTaskId(taskId) {

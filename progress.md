@@ -51,15 +51,16 @@ Implemented behavior:
 - Ask session runtime schema support for F027: runtime state now normalizes `askSessions` bindings by Telegram `chatId` and repository alias, `/ask` tasks record the selected repository alias, task completion extracts Codex session IDs from logs when available, and ask task metadata plus bindings persist discovered `codexSessionId` values.
 - Session-aware plain `/ask <message>` behavior for F028: `/ask` starts a new read-only `codex exec` task when no current chatId plus repo binding exists, resumes an existing binding with shell-disabled `codex exec resume <session_id> <message>`, and records chatId, repo alias, and codexSessionId metadata on resumed tasks.
 - Explicit ask session management for F029: `/ask new <message>` forces a new read-only Codex ask task, `/ask resume <session_id> <message>` resumes and binds a specific session, `/ask resume --last <message>` uses Codex CLI's runtime-user `--last` session and updates the binding after session discovery, `/ask exit` clears only the current chat and repository binding, `/ask session` reports the selected binding or an explicit no-session response, and `/ask -- <message>` treats reserved ask subcommand words as literal question text.
+- Task session ID display for F030: `/status` includes `codexSessionId` for tasks that have Codex session metadata, and `/logs <task_id>` prefixes active-task and finished-task responses with the Codex session ID when present while preserving existing no-session responses and final-result-only log behavior.
 
 ## Last Completed Feature
 
-`F028` - Make plain `/ask <message>` session-aware for current chat and repository bindings.
+`F029` - Implement explicit `/ask` session management subcommands.
 
 ## Next Feature
 
-`F029` implementation is ready for evaluator verification. After evaluator acceptance, `F030` is the next planned feature for displaying Codex session IDs in task status and log views.
+`F030` implementation is ready for evaluator verification. After evaluator acceptance, `F031` is the next planned feature.
 
 ## Known Issues
 
-- `/status` and `/logs <task_id>` do not yet display Codex session ID metadata until F030.
+- F030 has not yet been evaluator-approved in this unattended round.

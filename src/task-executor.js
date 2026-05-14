@@ -267,7 +267,7 @@ export function createTaskExecutor(options) {
     }
 
     if (ACTIVE_STATUSES.has(task.status)) {
-      return { ok: true, response: `Task is ${task.status}. Final result is not available yet.` };
+      return { ok: true, response: formatTaskLogResponse(task, `Task is ${task.status}. Final result is not available yet.`) };
     }
 
     const expectedLogPath = logPathForTask(normalizedLogsDir, taskId);
@@ -277,9 +277,10 @@ export function createTaskExecutor(options) {
     }
 
     if (FINISHED_STATUSES.has(task.status)) {
+      const finalResult = task.finalResult ? task.finalResult : `(no final result for ${taskId})`;
       return {
         ok: true,
-        response: task.finalResult ? truncateTelegramResponse(task.finalResult) : `(no final result for ${taskId})`,
+        response: formatTaskLogResponse(task, finalResult),
       };
     }
 
@@ -293,6 +294,17 @@ export function createTaskExecutor(options) {
   }
 
   return { startTask, stopTask, readTaskLog };
+}
+
+function formatTaskLogResponse(task, body) {
+  const text = hasCodexSessionId(task)
+    ? `Codex session: ${task.codexSessionId}\n\n${body}`
+    : body;
+  return truncateTelegramResponse(text);
+}
+
+function hasCodexSessionId(task) {
+  return typeof task?.codexSessionId === "string" && task.codexSessionId.length > 0;
 }
 
 export function generateTaskId(existingTasks = {}) {

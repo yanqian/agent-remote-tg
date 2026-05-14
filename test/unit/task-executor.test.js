@@ -487,6 +487,63 @@ test("readTaskLog returns no-result fallback for finished tasks without final re
   }
 });
 
+test("readTaskLog includes Codex session IDs when task metadata has them", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    mkdirSync(logsDir, { recursive: true });
+    const finishedTaskId = "task_done_1";
+    const runningTaskId = "task_run_1";
+    const finishedLogPath = join(logsDir, `${finishedTaskId}.log`);
+    writeFileSync(finishedLogPath, "raw command output only\n");
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: null,
+      cwd: null,
+      tasks: {
+        [finishedTaskId]: {
+          taskId: finishedTaskId,
+          type: "ask",
+          status: "succeeded",
+          pid: null,
+          cwd: rootDir,
+          logPath: finishedLogPath,
+          startedAt: "2026-05-12T00:00:00.000Z",
+          finishedAt: "2026-05-12T00:00:01.000Z",
+          exitCode: 0,
+          finalResult: "final answer only",
+          codexSessionId: "session_abc123",
+        },
+        [runningTaskId]: {
+          taskId: runningTaskId,
+          type: "ask",
+          status: "running",
+          pid: 123,
+          cwd: rootDir,
+          logPath: join(logsDir, `${runningTaskId}.log`),
+          startedAt: "2026-05-12T00:00:02.000Z",
+          finishedAt: null,
+          exitCode: null,
+          codexSessionId: "session_run123",
+        },
+      },
+    }, null, 2)}\n`);
+
+    const executor = createTaskExecutor({ statePath, logsDir });
+
+    assert.deepEqual(executor.readTaskLog(finishedTaskId), {
+      ok: true,
+      response: "Codex session: session_abc123\n\nfinal answer only",
+    });
+    assert.deepEqual(executor.readTaskLog(runningTaskId), {
+      ok: true,
+      response: "Codex session: session_run123\n\nTask is running. Final result is not available yet.",
+    });
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("startTask enforces timeout with SIGTERM and records failed timeout", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
   const child = createFakeChild({ pid: 4245 });

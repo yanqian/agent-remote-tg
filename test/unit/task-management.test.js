@@ -12,7 +12,7 @@ test("handleStatus lists active tasks and five most recent finished tasks", () =
       task_recent_5: task("task_recent_5", "continue", "failed", "2026-05-12T00:08:00.000Z", "2026-05-12T00:09:00.000Z"),
       task_recent_6: task("task_recent_6", "run-orch", "succeeded", "2026-05-12T00:10:00.000Z", "2026-05-12T00:11:00.000Z"),
       task_active_1: task("task_active_1", "work", "running", "2026-05-12T00:12:00.000Z", null, 123),
-      task_active_2: task("task_active_2", "continue", "stopping", "2026-05-12T00:13:00.000Z", null, 124),
+      task_active_2: task("task_active_2", "continue", "stopping", "2026-05-12T00:13:00.000Z", null, 124, "session_abc123"),
       task_recent_7: task("task_recent_7", "ask", "succeeded", "2026-05-12T00:14:00.000Z", "2026-05-12T00:15:00.000Z"),
     },
   };
@@ -21,9 +21,11 @@ test("handleStatus lists active tasks and five most recent finished tasks", () =
 
   assert.match(result.response, /^Current tasks:/);
   assert.match(result.response, /task_active_2\n/);
+  assert.match(result.response, /codexSessionId: session_abc123/);
   assert.match(result.response, /status: running/);
   assert.match(result.response, /finishedAt: null/);
   assert.match(result.response, /exitCode: 0/);
+  assert.equal(result.response.includes("codexSessionId: null"), false);
   assert.equal(result.response.includes("task_old_1"), false);
   assert.equal(result.response.includes("task_old_2"), false);
 });
@@ -78,8 +80,8 @@ test("handleStop returns executor stop response", () => {
   assert.deepEqual(result, { response: "Stopping task task_abc_1.", stateChanged: false });
 });
 
-function task(taskId, type, status, startedAt, finishedAt, pid = null) {
-  return {
+function task(taskId, type, status, startedAt, finishedAt, pid = null, codexSessionId = null) {
+  const value = {
     taskId,
     type,
     status,
@@ -90,4 +92,8 @@ function task(taskId, type, status, startedAt, finishedAt, pid = null) {
     finishedAt,
     exitCode: status === "succeeded" ? 0 : null,
   };
+  if (codexSessionId) {
+    value.codexSessionId = codexSessionId;
+  }
+  return value;
 }
