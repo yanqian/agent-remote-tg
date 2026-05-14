@@ -266,7 +266,7 @@
       "description": "Enhance /status and /logs <task_id> so tasks with codexSessionId metadata display the Codex session ID alongside existing task status and final result information, without exposing raw process logs or changing task IDs, and add task-management tests for session ID display and no-session fallback.",
       "passes": false,
       "status": "todo",
-      "attempts": 1,
+      "attempts": 2,
       "last_error": "coding agent exited with code 1",
       "priority": "P1"
     },
