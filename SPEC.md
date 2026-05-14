@@ -994,3 +994,75 @@ Telegram task result retrieval must show the final task result and must not stre
 - Run `npm run test:harness`.
 - Run `npm run test:contract`.
 - Run `./init.sh`.
+
+## 15. Automatic Telegram Task Completion Push Requirements
+
+### 15.1 Goal
+
+When a Bot-started task finishes, automatically send the task final result to the Telegram chat that started the task.
+
+### 15.2 Scope
+
+Include:
+
+- Record the originating Telegram `chatId` in task metadata when `/ask`, `/work`, `/continue`, or `/run_orch` starts a task.
+- Preserve the existing immediate task-start response with task ID.
+- After the task reaches `succeeded`, `failed`, or `stopped`, send one Telegram `sendMessage` to the originating chat.
+- The automatic completion message must include the task ID, final task status, and stored `finalResult` when present.
+- When `finalResult` is empty, the automatic completion message must include `(no final result for <task_id>)`.
+- Bound and redact the automatic completion message using the same Telegram response limits and secret redaction rules as other Bot responses.
+- Keep `/logs <task_id>` available for explicit retrieval of the stored final result.
+- Add automated tests for polling mode completion push with fake Telegram API calls.
+- Add automated tests that task completion push uses the originating chat ID and does not send raw process logs.
+
+Exclude:
+
+- Do not block the original Telegram update until the task finishes.
+- Do not auto-push raw process logs.
+- Do not add a new command.
+- Do not remove `/logs`.
+- Do not change task IDs.
+- Do not send automatic completion messages to chats other than the originating chat.
+
+### 15.3 Core Concepts
+
+Originating chat is the authorized Telegram chat that sent the command which created the task.
+
+Task start response confirms that the task was accepted.
+
+Task completion push is a separate asynchronous Telegram message sent after the task process exits.
+
+### 15.4 Core Flow
+
+1. User sends `/ask <question>`, `/work <requirement>`, `/continue <instruction>`, or `/run_orch <rounds>`.
+2. The app starts the task and records the originating `chatId` in the task metadata.
+3. The app returns the existing task-start response immediately.
+4. The task executor captures the final result when the child process exits.
+5. The transport sends a Telegram completion message to the recorded `chatId`.
+6. The completion message contains the task ID, final status, and final result fallback.
+7. User can still call `/logs <task_id>` to retrieve the stored final result.
+
+### 15.5 Constraints
+
+- Automatic completion push must not delay the response to the original command.
+- Telegram send failures during completion push must not change task final status.
+- Completion push must be attempted once per task completion in the running process.
+- Completion push must not include raw log lines such as `exec`, `rg`, `sed`, source code, diffs, or test output when `finalResult` exists.
+- Completion push must respect the existing Telegram response limit.
+
+### 15.6 Acceptance Criteria
+
+- Task metadata includes `chatId` for tasks started from Telegram commands.
+- Task completion invokes a configured completion callback after task finalization.
+- Polling transport sends an automatic Telegram message to the originating chat after a task completes.
+- Automatic completion message includes task ID, status, and final result.
+- Automatic completion message uses the no-result fallback when `finalResult` is empty.
+- Tests prove automatic completion push does not include raw process log content when `finalResult` exists.
+- `./init.sh` passes.
+
+### 15.7 Verification Plan
+
+- Run `npm run test:unit`.
+- Run `npm run test:harness`.
+- Run `npm run test:contract`.
+- Run `./init.sh`.
