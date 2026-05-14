@@ -300,9 +300,9 @@
     {
       "id": "F034",
       "description": "Fix finalResult extraction for Codex CLI JSONL task logs so successful /ask tasks using codex exec --json or codex exec --json resume store the last user-facing assistant or agent message as finalResult; ignore JSONL command_execution events, aggregated command output, raw source output, tests, diffs, and internal metadata; preserve existing plain-text answer-marker extraction, token usage cleanup, duplicate final answer cleanup, raw local logs, Telegram truncation, and secret redaction; keep no-result fallback only when no final answer candidate exists; and add unit and task executor regression coverage using real-shaped JSONL logs with item.completed agent_message text.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     }

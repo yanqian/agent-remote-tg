@@ -55,15 +55,16 @@ Implemented behavior:
 - Workflow command regression coverage for F031: unit and harness tests now prove `/work`, `/continue`, and `/run_orch` ignore selected ask session bindings, do not use Codex ask resume argv, preserve workflow command argv, preserve existing chat metadata, and do not attach ask-session metadata to workflow tasks.
 - Telegram approval decisions for F032: `/approve <request_id>`, `/reject <request_id>`, and `/always_allow <request_id>` are supported; reply-based decisions approve, reject, or always-allow pending requests through Telegram reply correlation; runtime state persists approval requests and future allow rules; unsafe, unknown, expired, resolved, and unauthorized requests are rejected.
 - Structured Codex ask session metadata handling for F033: `/ask`, `/ask new`, `/ask resume <session_id> <message>`, and `/ask resume --last <message>` now run Codex CLI with JSONL output enabled, resumed ask start responses include the Codex session ID and a resumed-mode indicator, and session extraction trusts structured Codex metadata or initial pre-answer CLI session headers only before non-metadata output, preventing command output or assistant answer text from overriding the real session ID.
+- Codex JSONL final-result extraction for F034: task logs from `codex exec --json` now prefer the last user-facing `item.completed` `agent_message` or `assistant_message` text as `finalResult`, ignoring command execution JSONL events and raw command output while preserving plain-text marker fallback, token cleanup, duplicate cleanup, raw local logs, Telegram truncation, and secret redaction.
 
 ## Last Completed Feature
 
-`F033` - Fix Codex ask session metadata extraction so ask session bindings trust structured Codex metadata instead of assistant answer text.
+`F034` - Fix finalResult extraction for Codex CLI JSONL task logs so successful JSON-mode ask tasks store the final assistant or agent message instead of command output.
 
 ## Next Feature
 
-`F032` implementation is ready for evaluator verification. After evaluator acceptance, select the next unfinished feature from `feature_list.json`.
+No unfinished features are currently listed in `feature_list.json`.
 
 ## Known Issues
 
-- F032 has not yet been evaluator-approved in this unattended round.
+- None currently known.

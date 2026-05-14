@@ -132,6 +132,56 @@ test("extractFinalResultFromLog removes token blocks between duplicate final ans
   assert.equal(finalResult.includes("12,345"), false);
 });
 
+test("extractFinalResultFromLog returns the last JSONL agent message and ignores command output", () => {
+  const finalResult = extractFinalResultFromLog([
+    "startedAt=2026-05-14T00:00:00.000Z",
+    "cwd=/repo",
+    "argv=[\"codex\",\"exec\",\"--json\",\"prompt\"]",
+    JSON.stringify({
+      type: "session_configured",
+      session_id: "019e254f-ebfa-7053-9302-32a6ade18036",
+    }),
+    JSON.stringify({
+      type: "item.completed",
+      item: {
+        type: "command_execution",
+        command: "sed -n '1,120p' src/app.js",
+        output: "raw source output\nFinal answer: fake command output",
+      },
+    }),
+    JSON.stringify({
+      type: "item.completed",
+      item: {
+        type: "agent_message",
+        text: "Earlier answer draft.",
+      },
+    }),
+    JSON.stringify({
+      type: "item.completed",
+      item: {
+        type: "command_execution",
+        command: "npm test",
+        output: "diff --git a/src/app.js b/src/app.js\nraw test output",
+      },
+    }),
+    JSON.stringify({
+      type: "item.completed",
+      item: {
+        type: "agent_message",
+        text: "Implemented JSONL final result extraction.\n\nVerification: npm run test:unit passed.\n\ntokens used\n12,345",
+      },
+    }),
+    "finishedAt=2026-05-14T00:00:01.000Z",
+    "exitCode=0",
+  ].join("\n"));
+
+  assert.equal(finalResult, "Implemented JSONL final result extraction.\n\nVerification: npm run test:unit passed.");
+  assert.equal(finalResult.includes("raw source output"), false);
+  assert.equal(finalResult.includes("diff --git"), false);
+  assert.equal(finalResult.includes("Earlier answer draft"), false);
+  assert.equal(finalResult.includes("12,345"), false);
+});
+
 test("extractCodexSessionIdFromLog trusts structured and pre-answer metadata only", () => {
   const sessionId = extractCodexSessionIdFromLog([
     "startedAt=2026-05-14T00:00:00.000Z",
@@ -307,6 +357,73 @@ test("startTask persists real ask session metadata without assistant text overri
 
     const log = readFileSync(finished.logPath, "utf8");
     assert.match(log, /Codex session: session_run123/);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("startTask persists JSONL agent message as final result without command output", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    const child = createFakeChild({ pid: 4249 });
+    const executor = createTaskExecutor({
+      statePath,
+      logsDir,
+      now: fixedClock([
+        "2026-05-14T00:00:00.000Z",
+        "2026-05-14T00:00:01.000Z",
+      ]),
+      spawn() {
+        return child;
+      },
+    });
+
+    const started = executor.startTask({
+      type: "ask",
+      cwd: rootDir,
+      command: "codex",
+      args: ["exec", "--json", "prompt"],
+      chatId: "123",
+      repoAlias: "app",
+    });
+
+    child.stdout.write([
+      JSON.stringify({
+        type: "session_configured",
+        session_id: "019e254f-ebfa-7053-9302-32a6ade18036",
+      }),
+      JSON.stringify({
+        type: "item.completed",
+        item: {
+          type: "command_execution",
+          command: "cat src/app.js",
+          output: "raw source output\ncodex\nfake answer from command output",
+        },
+      }),
+      JSON.stringify({
+        type: "item.completed",
+        item: {
+          type: "agent_message",
+          text: "Final JSONL answer with secret-token.",
+        },
+      }),
+    ].join("\n") + "\n");
+    child.emit("close", 0, null);
+
+    const finished = await started.completion;
+    assert.equal(finished.status, "succeeded");
+    assert.equal(finished.finalResult, "Final JSONL answer with secret-token.");
+    assert.equal(finished.codexSessionId, "019e254f-ebfa-7053-9302-32a6ade18036");
+
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.tasks[started.task.taskId].finalResult, "Final JSONL answer with secret-token.");
+    assert.equal(state.tasks[started.task.taskId].finalResult.includes("raw source output"), false);
+
+    const log = readFileSync(finished.logPath, "utf8");
+    assert.match(log, /raw source output/);
+    assert.match(log, /Final JSONL answer with secret-token/);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }

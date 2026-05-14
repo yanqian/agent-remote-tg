@@ -410,6 +410,11 @@ export function extractFinalResultFromLog(rawLog) {
   }
 
   const lines = normalized.split("\n");
+  const structuredResult = extractStructuredFinalResult(lines);
+  if (structuredResult) {
+    return structuredResult;
+  }
+
   const markerIndex = findLastAnswerMarkerIndex(lines);
   if (markerIndex === -1) {
     return "";
@@ -419,6 +424,78 @@ export function extractFinalResultFromLog(rawLog) {
   const resultLines = markerText ? [markerText, ...lines.slice(markerIndex + 1)] : lines.slice(markerIndex + 1);
   const cleaned = trimNoiseLines(removeTokenUsageBlocks(resultLines)).join("\n").trim();
   return collapseDuplicatedFinalText(cleaned);
+}
+
+function extractStructuredFinalResult(lines) {
+  let lastCandidate = "";
+  for (const line of lines) {
+    const parsed = parseJsonLine(line);
+    if (!parsed) {
+      continue;
+    }
+    const candidate = extractStructuredAnswerCandidate(parsed);
+    if (candidate) {
+      lastCandidate = candidate;
+    }
+  }
+  return lastCandidate;
+}
+
+function parseJsonLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function extractStructuredAnswerCandidate(parsed) {
+  const eventType = typeof parsed.type === "string" ? parsed.type : typeof parsed.event === "string" ? parsed.event : "";
+  const item = parsed.item && typeof parsed.item === "object" && !Array.isArray(parsed.item) ? parsed.item : parsed;
+  const itemType = typeof item.type === "string" ? item.type : "";
+  const role = typeof item.role === "string" ? item.role : "";
+  const isCompletedItem = /^item\.completed$/i.test(eventType);
+  const isAssistantEvent = /^(?:assistant|agent)(?:_message)?$/i.test(eventType);
+  const isUserFacingMessage = /^(?:agent_message|assistant_message)$/i.test(itemType)
+    || (/^message$/i.test(itemType) && /^(?:assistant|agent)$/i.test(role));
+  if ((!isCompletedItem && !isAssistantEvent) || !isUserFacingMessage) {
+    return "";
+  }
+
+  const text = extractStructuredMessageText(item);
+  if (!text) {
+    return "";
+  }
+  const cleaned = trimNoiseLines(removeTokenUsageBlocks(text.replace(/\r\n/g, "\n").split("\n"))).join("\n").trim();
+  return collapseDuplicatedFinalText(cleaned);
+}
+
+function extractStructuredMessageText(item) {
+  for (const key of ["text", "message", "content", "output_text"]) {
+    const value = item[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+
+  if (Array.isArray(item.content)) {
+    const pieces = [];
+    for (const part of item.content) {
+      if (typeof part === "string") {
+        pieces.push(part);
+      } else if (part && typeof part === "object" && typeof part.text === "string") {
+        pieces.push(part.text);
+      }
+    }
+    return pieces.join("");
+  }
+
+  return "";
 }
 
 export function extractCodexSessionIdFromLog(rawLog) {
