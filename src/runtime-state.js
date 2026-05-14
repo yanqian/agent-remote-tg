@@ -72,6 +72,16 @@ export function updateAskSessionBinding(state, { chatId, repoAlias, codexSession
   };
 }
 
+export function getAskSessionBinding(state, { chatId, repoAlias }) {
+  if (!isValidAskSessionKey(chatId) || !isValidAskSessionKey(repoAlias)) {
+    return null;
+  }
+
+  const normalized = normalizeRuntimeState(state);
+  const binding = normalized.askSessions[chatId]?.[repoAlias] ?? null;
+  return binding && isValidCodexSessionId(binding.codexSessionId) ? binding : null;
+}
+
 export function isValidCodexSessionId(value) {
   return typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{5,199}$/.test(value);
 }

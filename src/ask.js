@@ -1,4 +1,5 @@
 import { requireWorkspace } from "./workspace.js";
+import { getAskSessionBinding } from "./runtime-state.js";
 
 export const ASK_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -28,14 +29,23 @@ export function handleAsk(args, state, taskExecutor, chatId = null) {
     throw new Error("taskExecutor.startTask is required.");
   }
 
+  const chatKey = chatId === null || chatId === undefined ? null : String(chatId);
+  const binding = chatKey
+    ? getAskSessionBinding(state, { chatId: chatKey, repoAlias: workspace.currentRepo })
+    : null;
+  const codexSessionId = binding?.codexSessionId ?? null;
+
   const started = taskExecutor.startTask({
     type: "ask",
     cwd: workspace.cwd,
     command: "codex",
-    args: ["exec", buildAskPrompt(args)],
+    args: codexSessionId
+      ? ["exec", "resume", codexSessionId, args]
+      : ["exec", buildAskPrompt(args)],
     timeoutMs: ASK_TIMEOUT_MS,
-    chatId,
+    chatId: chatKey,
     repoAlias: workspace.currentRepo,
+    codexSessionId,
   });
 
   return { response: started.response, stateChanged: false };

@@ -49,15 +49,16 @@ Implemented behavior:
 - Telegram task completion pushes for F025: Bot-started `/ask`, `/work`, `/continue`, and `/run_orch` tasks now record the originating `chatId`, keep immediate task-start and `/logs` behavior unchanged, and send a completion message with task ID, final status, and stored final result while tolerating Telegram send failures without changing task status.
 - Duplicate final-result cleanup for F026: `extractFinalResultFromLog` now removes Codex token-usage blocks and token-count lines before collapsing duplicated final answers, preserving the existing extraction behavior while returning exactly one final answer for duplicated-output logs.
 - Ask session runtime schema support for F027: runtime state now normalizes `askSessions` bindings by Telegram `chatId` and repository alias, `/ask` tasks record the selected repository alias, task completion extracts Codex session IDs from logs when available, and ask task metadata plus bindings persist discovered `codexSessionId` values.
+- Session-aware plain `/ask <message>` behavior for F028: `/ask` starts a new read-only `codex exec` task when no current chatId plus repo binding exists, resumes an existing binding with shell-disabled `codex exec resume <session_id> <message>`, and records chatId, repo alias, and codexSessionId metadata on resumed tasks.
 
 ## Last Completed Feature
 
-`F026` - Enhance final-result extraction so duplicated Codex answers separated by token-usage output are collapsed to one final answer without `tokens used` or token-count lines.
+`F027` - Add ask session runtime schema support by storing ask session bindings keyed by authorized Telegram chatId and selected repository alias, extracting Codex session IDs from ask task output, and persisting ask task metadata plus bindings.
 
 ## Next Feature
 
-`F027` implementation is ready for evaluator verification. After evaluator acceptance, `F028` is the next planned feature for session-aware plain `/ask <message>` resume behavior.
+`F028` implementation is ready for evaluator verification. After evaluator acceptance, `F029` is the next planned feature for explicit `/ask` session management subcommands.
 
 ## Known Issues
 
-- Ask still starts independent one-shot Codex tasks until F028 adds resume behavior. F027 only adds the runtime schema, metadata, binding, and session ID extraction foundation.
+- Explicit ask session management subcommands such as `/ask new`, `/ask resume`, `/ask exit`, and `/ask session` are not implemented until F029.

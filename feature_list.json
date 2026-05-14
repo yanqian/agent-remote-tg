@@ -246,9 +246,9 @@
     {
       "id": "F028",
       "description": "Make plain /ask <message> session-aware so it starts a new Codex ask task when no current chatId plus repo binding exists, resumes the bound Codex session with codex exec resume <session_id> <message> when a binding exists, keeps shell execution disabled, records task chatId, repo alias, and codexSessionId metadata, and adds unit and harness coverage for both new-session and resume paths.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     },

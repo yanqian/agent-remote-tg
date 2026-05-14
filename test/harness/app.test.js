@@ -290,6 +290,51 @@ test("app starts /ask tasks in the selected workspace", () => {
   }
 });
 
+test("app resumes /ask tasks when a chat and repo session binding exists", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  const calls = [];
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      taskExecutor: {
+        startTask(request) {
+          calls.push(request);
+          return { response: "Task started: task_resume_1\nUse /logs task_resume_1 to view output." };
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    state.askSessions = {
+      "123": {
+        app: { codexSessionId: "session_abc123" },
+      },
+    };
+    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/ask Continue the repo analysis" }),
+      "Task started: task_resume_1\nUse /logs task_resume_1 to view output.",
+    );
+    assert.equal(calls[0].type, "ask");
+    assert.equal(calls[0].cwd, repoDir);
+    assert.equal(calls[0].command, "codex");
+    assert.deepEqual(calls[0].args, ["exec", "resume", "session_abc123", "Continue the repo analysis"]);
+    assert.equal(calls[0].timeoutMs, 600000);
+    assert.equal(calls[0].chatId, "123");
+    assert.equal(calls[0].repoAlias, "app");
+    assert.equal(calls[0].codexSessionId, "session_abc123");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
 test("app handles /status, /logs, and /stop task management commands", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   try {

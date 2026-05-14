@@ -42,3 +42,37 @@ test("handleAsk starts a read-only codex exec task in the selected workspace", (
   assert.equal(calls[0].timeoutMs, ASK_TIMEOUT_MS);
   assert.equal(calls[0].repoAlias, "app");
 });
+
+test("handleAsk resumes the bound Codex session for the current chat and repo", () => {
+  const calls = [];
+  const state = {
+    currentRepo: "app",
+    cwd: "/tmp/app",
+    tasks: {},
+    askSessions: {
+      "123": {
+        app: { codexSessionId: "session_abc123" },
+      },
+      "456": {
+        app: { codexSessionId: "session_other123" },
+      },
+    },
+  };
+  const result = handleAsk("Continue the analysis.", state, {
+    startTask(request) {
+      calls.push(request);
+      return { response: "Task started: task_resume_1\nUse /logs task_resume_1 to view output." };
+    },
+  }, 123);
+
+  assert.equal(result.response, "Task started: task_resume_1\nUse /logs task_resume_1 to view output.");
+  assert.equal(result.stateChanged, false);
+  assert.equal(calls[0].type, "ask");
+  assert.equal(calls[0].cwd, "/tmp/app");
+  assert.equal(calls[0].command, "codex");
+  assert.deepEqual(calls[0].args, ["exec", "resume", "session_abc123", "Continue the analysis."]);
+  assert.equal(calls[0].timeoutMs, ASK_TIMEOUT_MS);
+  assert.equal(calls[0].chatId, "123");
+  assert.equal(calls[0].repoAlias, "app");
+  assert.equal(calls[0].codexSessionId, "session_abc123");
+});

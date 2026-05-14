@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  getAskSessionBinding,
   isValidCodexSessionId,
   loadRuntimeState,
   normalizeRuntimeState,
@@ -119,6 +120,29 @@ test("updateAskSessionBinding stores bindings by chat ID and repository alias", 
     },
   });
   assert.equal(updated.telegramUpdateOffset, 8);
+});
+
+test("getAskSessionBinding returns only the current chat and repo binding", () => {
+  const state = {
+    currentRepo: "app",
+    cwd: "/tmp/app",
+    tasks: {},
+    askSessions: {
+      "123": {
+        app: { codexSessionId: "session_app123" },
+        other: { codexSessionId: "session_other123" },
+      },
+      "456": {
+        app: { codexSessionId: "session_chat456" },
+      },
+    },
+  };
+
+  assert.deepEqual(getAskSessionBinding(state, { chatId: "123", repoAlias: "app" }), {
+    codexSessionId: "session_app123",
+  });
+  assert.equal(getAskSessionBinding(state, { chatId: "123", repoAlias: "missing" }), null);
+  assert.equal(getAskSessionBinding(state, { chatId: "bad/chat", repoAlias: "app" }), null);
 });
 
 test("isValidCodexSessionId rejects unsafe values", () => {
