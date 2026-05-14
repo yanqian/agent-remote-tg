@@ -286,6 +286,67 @@ test("handleRunOrch starts a shell-disabled orchestrator task in the selected wo
   }
 });
 
+test("workflow commands ignore ask session bindings and keep task argv unchanged", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-workflow-session-"));
+  const calls = [];
+  try {
+    writeWorkflowFiles(rootDir);
+    const state = {
+      currentRepo: "app",
+      cwd: rootDir,
+      askSessions: {
+        "123": {
+          app: {
+            codexSessionId: "session_abc123",
+          },
+        },
+      },
+      tasks: {
+        task_ask_1: {
+          taskId: "task_ask_1",
+          type: "ask",
+          status: "running",
+          cwd: rootDir,
+          codexSessionId: "session_abc123",
+        },
+      },
+    };
+    const taskExecutor = {
+      startTask(request) {
+        calls.push(request);
+        return { response: `Task started: task_${request.type}_1\nUse /logs task_${request.type}_1 to view output.` };
+      },
+    };
+
+    assert.equal(handleWork("Add docs", state, taskExecutor, "123").stateChanged, false);
+    assert.equal(handleContinue("Resume work", state, taskExecutor, "123").stateChanged, false);
+    assert.equal(handleRunOrch("3", state, taskExecutor, "123").stateChanged, false);
+
+    assert.equal(calls[0].type, "work");
+    assert.deepEqual(calls[0].args.slice(0, 1), ["exec"]);
+    assert.match(calls[0].args[1], /Requirement:\nAdd docs/);
+    assert.doesNotMatch(calls[0].args.join(" "), /\bresume\b/);
+
+    assert.equal(calls[1].type, "continue");
+    assert.deepEqual(calls[1].args.slice(0, 1), ["exec"]);
+    assert.match(calls[1].args[1], /Instruction:\nResume work/);
+    assert.doesNotMatch(calls[1].args.join(" "), /\bresume\b/);
+
+    assert.equal(calls[2].type, "run-orch");
+    assert.deepEqual(calls[2].args, ["orchestrator.py", "--max-rounds", "3"]);
+
+    for (const call of calls) {
+      assert.equal(call.cwd, rootDir);
+      assert.equal(call.chatId, "123");
+      assert.equal(Object.hasOwn(call, "repoAlias"), false);
+      assert.equal(Object.hasOwn(call, "codexSessionId"), false);
+      assert.equal(call.timeoutMs, null);
+    }
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
 function writeWorkflowFiles(rootDir) {
   mkdirSync(rootDir, { recursive: true });
   for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {

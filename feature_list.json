@@ -273,9 +273,9 @@
     {
       "id": "F031",
       "description": "Preserve /work, /continue, and /run_orch as repository workflow task commands while ask session support is added, keeping their current command argv, concurrency rules, repository-state recovery semantics, task metadata, and tests unchanged except for explicit regression coverage proving they do not use ask session bindings or Codex ask resume behavior.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     }

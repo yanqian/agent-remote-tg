@@ -225,6 +225,68 @@ test("app starts /run_orch tasks in workflow-ready selected workspaces", () => {
   }
 });
 
+test("app workflow commands ignore selected ask session bindings", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  const calls = [];
+  try {
+    for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {
+      writeFileSync(join(repoDir, fileName), "");
+    }
+    const statePath = join(rootDir, "runtime_state.json");
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      taskExecutor: {
+        startTask(request) {
+          calls.push(request);
+          return { response: `Task started: task_${calls.length}\nUse /logs task_${calls.length} to view output.` };
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    state.askSessions = {
+      "123": {
+        app: {
+          codexSessionId: "session_abc123",
+        },
+      },
+    };
+    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/work Add a workflow requirement" }), "Task started: task_1\nUse /logs task_1 to view output.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/continue Resume from repository state" }), "Task started: task_2\nUse /logs task_2 to view output.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/run_orch 2" }), "Task started: task_3\nUse /logs task_3 to view output.");
+
+    assert.equal(calls[0].type, "work");
+    assert.deepEqual(calls[0].args.slice(0, 1), ["exec"]);
+    assert.match(calls[0].args[1], /Requirement:\nAdd a workflow requirement/);
+    assert.doesNotMatch(calls[0].args.join(" "), /\bresume\b/);
+
+    assert.equal(calls[1].type, "continue");
+    assert.deepEqual(calls[1].args.slice(0, 1), ["exec"]);
+    assert.match(calls[1].args[1], /Instruction:\nResume from repository state/);
+    assert.doesNotMatch(calls[1].args.join(" "), /\bresume\b/);
+
+    assert.equal(calls[2].type, "run-orch");
+    assert.deepEqual(calls[2].args, ["orchestrator.py", "--max-rounds", "2"]);
+
+    for (const call of calls) {
+      assert.equal(call.cwd, repoDir);
+      assert.equal(call.chatId, "123");
+      assert.equal(Object.hasOwn(call, "repoAlias"), false);
+      assert.equal(Object.hasOwn(call, "codexSessionId"), false);
+      assert.equal(call.timeoutMs, null);
+    }
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
 test("app rejects invalid /run_orch rounds", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   try {

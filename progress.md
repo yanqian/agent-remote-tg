@@ -52,15 +52,16 @@ Implemented behavior:
 - Session-aware plain `/ask <message>` behavior for F028: `/ask` starts a new read-only `codex exec` task when no current chatId plus repo binding exists, resumes an existing binding with shell-disabled `codex exec resume <session_id> <message>`, and records chatId, repo alias, and codexSessionId metadata on resumed tasks.
 - Explicit ask session management for F029: `/ask new <message>` forces a new read-only Codex ask task, `/ask resume <session_id> <message>` resumes and binds a specific session, `/ask resume --last <message>` uses Codex CLI's runtime-user `--last` session and updates the binding after session discovery, `/ask exit` clears only the current chat and repository binding, `/ask session` reports the selected binding or an explicit no-session response, and `/ask -- <message>` treats reserved ask subcommand words as literal question text.
 - Task session ID display for F030: `/status` includes `codexSessionId` for tasks that have Codex session metadata, and `/logs <task_id>` prefixes active-task and finished-task responses with the Codex session ID when present while preserving existing no-session responses and final-result-only log behavior.
+- Workflow command regression coverage for F031: unit and harness tests now prove `/work`, `/continue`, and `/run_orch` ignore selected ask session bindings, do not use Codex ask resume argv, preserve workflow command argv, preserve existing chat metadata, and do not attach ask-session metadata to workflow tasks.
 
 ## Last Completed Feature
 
-`F029` - Implement explicit `/ask` session management subcommands.
+`F030` - Show Codex session IDs in `/status` and `/logs` for tasks that have them.
 
 ## Next Feature
 
-`F030` implementation is ready for evaluator verification. After evaluator acceptance, `F031` is the next planned feature.
+`F031` implementation is ready for evaluator verification. After evaluator acceptance, select the next unfinished feature from `feature_list.json`.
 
 ## Known Issues
 
-- F030 has not yet been evaluator-approved in this unattended round.
+- F031 has not yet been evaluator-approved in this unattended round.
