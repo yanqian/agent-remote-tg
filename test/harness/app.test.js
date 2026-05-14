@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../../src/app.js";
 import { HELP_RESPONSE } from "../../src/constants.js";
+import { createTaskExecutor } from "../../src/task-executor.js";
 
 test("app rejects unauthorized messages before parsing commands", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
@@ -341,8 +344,9 @@ test("app starts /ask tasks in the selected workspace", () => {
     assert.equal(calls[0].cwd, repoDir);
     assert.equal(calls[0].command, "codex");
     assert.equal(calls[0].args[0], "exec");
-    assert.match(calls[0].args[1], /Do not run orchestrator\.py\./);
-    assert.match(calls[0].args[1], /Question:\nExplain the repo/);
+    assert.equal(calls[0].args[1], "--json");
+    assert.match(calls[0].args[2], /Do not run orchestrator\.py\./);
+    assert.match(calls[0].args[2], /Question:\nExplain the repo/);
     assert.equal(calls[0].timeoutMs, 600000);
     assert.equal(calls[0].chatId, "123");
     assert.equal(calls[0].repoAlias, "app");
@@ -381,16 +385,79 @@ test("app resumes /ask tasks when a chat and repo session binding exists", () =>
 
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/ask Continue the repo analysis" }),
-      "Task started: task_resume_1\nUse /logs task_resume_1 to view output.",
+      "Task started: task_resume_1\nUse /logs task_resume_1 to view output.\nResumed ask session: session_abc123",
     );
     assert.equal(calls[0].type, "ask");
     assert.equal(calls[0].cwd, repoDir);
     assert.equal(calls[0].command, "codex");
-    assert.deepEqual(calls[0].args, ["exec", "resume", "session_abc123", "Continue the repo analysis"]);
+    assert.deepEqual(calls[0].args, ["exec", "--json", "resume", "session_abc123", "Continue the repo analysis"]);
     assert.equal(calls[0].timeoutMs, 600000);
     assert.equal(calls[0].chatId, "123");
     assert.equal(calls[0].repoAlias, "app");
     assert.equal(calls[0].codexSessionId, "session_abc123");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app ask task binds real structured session metadata despite fake answer text", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    const child = createFakeChild({ pid: 5252 });
+    let resolveFinished;
+    const finishedNotification = new Promise((resolve) => {
+      resolveFinished = resolve;
+    });
+    const executor = createTaskExecutor({
+      statePath,
+      logsDir,
+      spawn(command, args) {
+        child.spawnCommand = command;
+        child.spawnArgs = args;
+        return child;
+      },
+      onTaskFinished(task) {
+        resolveFinished(task);
+      },
+    });
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      logsDir,
+      taskExecutor: executor,
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    const response = app.handleMessage({ chatId: "123", text: "/ask Explain sessions" });
+    assert.match(response, /^Task started: task_[a-z0-9]+_[a-z0-9]+\nUse \/logs task_[a-z0-9]+_[a-z0-9]+ to view output\.$/);
+    assert.equal(child.spawnCommand, "codex");
+    assert.deepEqual(child.spawnArgs.slice(0, 2), ["exec", "--json"]);
+    assert.match(child.spawnArgs[2], /Question:\nExplain sessions/);
+
+    const taskId = response.match(/^Task started: (task_[a-z0-9]+_[a-z0-9]+)/)[1];
+    child.stdout.write([
+      "{\"type\":\"session_configured\",\"session_id\":\"019e254f-ebfa-7053-9302-32a6ade18036\"}",
+      "codex",
+      "Answer text with a fake session.",
+      "Codex session: session_run123",
+    ].join("\n") + "\n");
+    child.emit("close", 0, null);
+
+    await finishedNotification;
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.tasks[taskId].codexSessionId, "019e254f-ebfa-7053-9302-32a6ade18036");
+    assert.equal(state.tasks[taskId].taskId, taskId);
+    assert.equal(state.tasks[taskId].finalResult, "Answer text with a fake session.\nCodex session: session_run123");
+    assert.deepEqual(state.askSessions, {
+      "123": {
+        app: { codexSessionId: "019e254f-ebfa-7053-9302-32a6ade18036" },
+      },
+    });
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
@@ -422,9 +489,9 @@ test("app handles /ask session, exit, new, resume, resume --last, and literal es
     );
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/ask resume session_abc123 Continue here" }),
-      "Task started: task_1_1\nUse /logs task_1_1 to view output.",
+      "Task started: task_1_1\nUse /logs task_1_1 to view output.\nResumed ask session: session_abc123",
     );
-    assert.deepEqual(calls[0].args, ["exec", "resume", "session_abc123", "Continue here"]);
+    assert.deepEqual(calls[0].args, ["exec", "--json", "resume", "session_abc123", "Continue here"]);
     assert.equal(calls[0].codexSessionId, "session_abc123");
 
     const state = JSON.parse(readFileSync(statePath, "utf8"));
@@ -445,20 +512,21 @@ test("app handles /ask session, exit, new, resume, resume --last, and literal es
       "Task started: task_2_1\nUse /logs task_2_1 to view output.",
     );
     assert.equal(calls[1].args[0], "exec");
-    assert.match(calls[1].args[1], /Question:\nStart fresh/);
+    assert.equal(calls[1].args[1], "--json");
+    assert.match(calls[1].args[2], /Question:\nStart fresh/);
     assert.equal(calls[1].codexSessionId, null);
 
     assert.match(
       app.handleMessage({ chatId: "123", text: "/ask resume --last Continue most recent" }),
       /^Task started: task_3_1\nUse \/logs task_3_1 to view output\.\nUsing Codex CLI --last for the runtime user account/,
     );
-    assert.deepEqual(calls[2].args, ["exec", "resume", "--last", "Continue most recent"]);
+    assert.deepEqual(calls[2].args, ["exec", "--json", "resume", "--last", "Continue most recent"]);
 
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/ask -- new architecture means what?" }),
-      "Task started: task_4_1\nUse /logs task_4_1 to view output.",
+      "Task started: task_4_1\nUse /logs task_4_1 to view output.\nResumed ask session: session_abc123",
     );
-    assert.deepEqual(calls[3].args, ["exec", "resume", "session_abc123", "new architecture means what?"]);
+    assert.deepEqual(calls[3].args, ["exec", "--json", "resume", "session_abc123", "new architecture means what?"]);
 
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/ask exit" }),
@@ -624,3 +692,12 @@ test("app rejects /work when an active workflow task already exists in the selec
     rmSync(repoDir, { recursive: true, force: true });
   }
 });
+
+function createFakeChild({ pid }) {
+  const child = new EventEmitter();
+  child.pid = pid;
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.kill = () => true;
+  return child;
+}

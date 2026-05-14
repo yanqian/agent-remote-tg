@@ -132,17 +132,20 @@ test("extractFinalResultFromLog removes token blocks between duplicate final ans
   assert.equal(finalResult.includes("12,345"), false);
 });
 
-test("extractCodexSessionIdFromLog returns the last valid Codex session ID", () => {
+test("extractCodexSessionIdFromLog trusts structured and pre-answer metadata only", () => {
   const sessionId = extractCodexSessionIdFromLog([
     "startedAt=2026-05-14T00:00:00.000Z",
-    "Session ID: session_old123",
-    "{\"session_id\":\"550e8400-e29b-41d4-a716-446655440000\"}",
+    "Session ID: 019e254f-ebfa-7053-9302-32a6ade18036",
     "codex",
-    "Final answer.",
+    "Final answer includes fake text.",
+    "Codex session: session_run123",
     "finishedAt=2026-05-14T00:00:01.000Z",
   ].join("\n"));
 
-  assert.equal(sessionId, "550e8400-e29b-41d4-a716-446655440000");
+  assert.equal(sessionId, "019e254f-ebfa-7053-9302-32a6ade18036");
+  assert.equal(extractCodexSessionIdFromLog("codex\nCodex session: session_run123"), "");
+  assert.equal(extractCodexSessionIdFromLog("{\"type\":\"session_configured\",\"session_id\":\"550e8400-e29b-41d4-a716-446655440000\"}\nassistant\nDone"), "550e8400-e29b-41d4-a716-446655440000");
+  assert.equal(extractCodexSessionIdFromLog("{\"type\":\"assistant_message\",\"message\":\"Codex session: session_run123\"}"), "");
   assert.equal(extractCodexSessionIdFromLog("Session ID: ../secret"), "");
 });
 
@@ -219,6 +222,63 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
     assert.match(log, /Done with secret-token/);
     assert.match(log, /stderr line/);
     assert.match(log, /exitCode=0/);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("startTask persists real ask session metadata without assistant text overrides", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    const child = createFakeChild({ pid: 4248 });
+    const executor = createTaskExecutor({
+      statePath,
+      logsDir,
+      now: fixedClock([
+        "2026-05-14T00:00:00.000Z",
+        "2026-05-14T00:00:01.000Z",
+      ]),
+      spawn() {
+        return child;
+      },
+    });
+
+    const started = executor.startTask({
+      type: "ask",
+      cwd: rootDir,
+      command: "codex",
+      args: ["exec", "--json", "prompt"],
+      chatId: "123",
+      repoAlias: "app",
+    });
+
+    child.stdout.write([
+      "{\"type\":\"session_configured\",\"session_id\":\"019e254f-ebfa-7053-9302-32a6ade18036\"}",
+      "codex",
+      "Final answer mentions fake metadata.",
+      "Codex session: session_run123",
+    ].join("\n") + "\n");
+    child.emit("close", 0, null);
+
+    const finished = await started.completion;
+    assert.equal(finished.codexSessionId, "019e254f-ebfa-7053-9302-32a6ade18036");
+    assert.equal(finished.taskId, started.task.taskId);
+    assert.match(finished.taskId, /^task_[a-z0-9]+_[a-z0-9]+$/);
+    assert.notEqual(finished.taskId, finished.codexSessionId);
+    assert.equal(finished.finalResult, "Final answer mentions fake metadata.\nCodex session: session_run123");
+
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.tasks[started.task.taskId].codexSessionId, "019e254f-ebfa-7053-9302-32a6ade18036");
+    assert.deepEqual(state.askSessions, {
+      "123": {
+        app: { codexSessionId: "019e254f-ebfa-7053-9302-32a6ade18036" },
+      },
+    });
+
+    const log = readFileSync(finished.logPath, "utf8");
+    assert.match(log, /Codex session: session_run123/);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }

@@ -37,8 +37,9 @@ test("handleAsk starts a read-only codex exec task in the selected workspace", (
   assert.equal(calls[0].cwd, "/tmp/app");
   assert.equal(calls[0].command, "codex");
   assert.equal(calls[0].args[0], "exec");
-  assert.match(calls[0].args[1], /Do not modify files\./);
-  assert.match(calls[0].args[1], /Question:\nExplain the workflow\./);
+  assert.equal(calls[0].args[1], "--json");
+  assert.match(calls[0].args[2], /Do not modify files\./);
+  assert.match(calls[0].args[2], /Question:\nExplain the workflow\./);
   assert.equal(calls[0].timeoutMs, ASK_TIMEOUT_MS);
   assert.equal(calls[0].repoAlias, "app");
 });
@@ -101,12 +102,12 @@ test("handleAsk resumes the bound Codex session for the current chat and repo", 
     },
   }, 123);
 
-  assert.equal(result.response, "Task started: task_resume_1\nUse /logs task_resume_1 to view output.");
+  assert.equal(result.response, "Task started: task_resume_1\nUse /logs task_resume_1 to view output.\nResumed ask session: session_abc123");
   assert.equal(result.stateChanged, false);
   assert.equal(calls[0].type, "ask");
   assert.equal(calls[0].cwd, "/tmp/app");
   assert.equal(calls[0].command, "codex");
-  assert.deepEqual(calls[0].args, ["exec", "resume", "session_abc123", "Continue the analysis."]);
+  assert.deepEqual(calls[0].args, ["exec", "--json", "resume", "session_abc123", "Continue the analysis."]);
   assert.equal(calls[0].timeoutMs, ASK_TIMEOUT_MS);
   assert.equal(calls[0].chatId, "123");
   assert.equal(calls[0].repoAlias, "app");
@@ -135,8 +136,8 @@ test("handleAsk new forces a new Codex session without existing binding metadata
   assert.equal(result.response, "Task started: task_new_1\nUse /logs task_new_1 to view output.");
   assert.equal(result.stateChanged, false);
   assert.equal(calls[0].type, "ask");
-  assert.deepEqual(calls[0].args.slice(0, 1), ["exec"]);
-  assert.match(calls[0].args[1], /Question:\nStart fresh\./);
+  assert.deepEqual(calls[0].args.slice(0, 2), ["exec", "--json"]);
+  assert.match(calls[0].args[2], /Question:\nStart fresh\./);
   assert.equal(calls[0].codexSessionId, null);
   assert.equal(calls[0].chatId, "123");
   assert.equal(calls[0].repoAlias, "app");
@@ -151,9 +152,9 @@ test("handleAsk resume specific session starts resume task with binding metadata
     },
   }, 123);
 
-  assert.equal(result.response, "Task started: task_resume_1\nUse /logs task_resume_1 to view output.");
+  assert.equal(result.response, "Task started: task_resume_1\nUse /logs task_resume_1 to view output.\nResumed ask session: session_new123");
   assert.equal(result.stateChanged, false);
-  assert.deepEqual(calls[0].args, ["exec", "resume", "session_new123", "Continue here."]);
+  assert.deepEqual(calls[0].args, ["exec", "--json", "resume", "session_new123", "Continue here."]);
   assert.equal(calls[0].chatId, "123");
   assert.equal(calls[0].repoAlias, "app");
   assert.equal(calls[0].codexSessionId, "session_new123");
@@ -171,7 +172,7 @@ test("handleAsk resume last uses Codex CLI --last without preselected session me
   assert.match(result.response, /^Task started: task_last_1/);
   assert.match(result.response, /Using Codex CLI --last for the runtime user account/);
   assert.equal(result.stateChanged, false);
-  assert.deepEqual(calls[0].args, ["exec", "resume", "--last", "Continue last."]);
+  assert.deepEqual(calls[0].args, ["exec", "--json", "resume", "--last", "Continue last."]);
   assert.equal(calls[0].codexSessionId, null);
 });
 

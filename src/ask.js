@@ -84,6 +84,13 @@ export function handleAsk(args, state, taskExecutor, chatId = null) {
     codexSessionId,
   });
 
+  if (request.action === "resume" || (request.action === "plain" && codexSessionId)) {
+    return {
+      response: `${started.response}\nResumed ask session: ${codexSessionId}`,
+      stateChanged: false,
+    };
+  }
+
   return {
     response: request.action === "resume-last"
       ? `${started.response}\nUsing Codex CLI --last for the runtime user account; binding will update when the session ID is discovered.`
@@ -146,12 +153,12 @@ export function parseAskRequest(args) {
 
 function buildAskCommandArgs(request, codexSessionId) {
   if (request.action === "resume-last") {
-    return ["exec", "resume", "--last", request.message];
+    return ["exec", "--json", "resume", "--last", request.message];
   }
   if (codexSessionId) {
-    return ["exec", "resume", codexSessionId, request.message];
+    return ["exec", "--json", "resume", codexSessionId, request.message];
   }
-  return ["exec", buildAskPrompt(request.message)];
+  return ["exec", "--json", buildAskPrompt(request.message)];
 }
 
 function splitFirstToken(text) {

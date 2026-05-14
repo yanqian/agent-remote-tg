@@ -427,24 +427,120 @@ export function extractCodexSessionIdFromLog(rawLog) {
     return "";
   }
 
-  const patterns = [
-    /"session(?:_id|Id)"\s*:\s*"([^"]+)"/gi,
-    /\b(?:codex\s+)?session(?:\s+id)?\s*[:=]\s*([A-Za-z0-9][A-Za-z0-9._:-]{5,199})\b/gi,
-    /\bconversation(?:\s+id)?\s*[:=]\s*([A-Za-z0-9][A-Za-z0-9._:-]{5,199})\b/gi,
-  ];
-
   let found = "";
-  let foundIndex = -1;
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(normalized)) !== null) {
-      if (match.index >= foundIndex && isValidCodexSessionId(match[1])) {
-        found = match[1];
-        foundIndex = match.index;
+  let assistantOutputStarted = false;
+  for (const line of normalized.split("\n")) {
+    const structuredSessionId = extractStructuredCodexSessionId(line);
+    if (structuredSessionId) {
+      found = structuredSessionId;
+      continue;
+    }
+
+    if (isAssistantOutputStartLine(line)) {
+      assistantOutputStarted = true;
+      continue;
+    }
+
+    if (!assistantOutputStarted) {
+      const metadataSessionId = extractPreAnswerSessionMetadata(line);
+      if (metadataSessionId) {
+        found = metadataSessionId;
       }
     }
   }
   return found;
+}
+
+function extractStructuredCodexSessionId(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return "";
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return "";
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return "";
+  }
+
+  const eventType = typeof parsed.type === "string" ? parsed.type : typeof parsed.event === "string" ? parsed.event : "";
+  const sessionId = firstValidSessionId([
+    parsed.session_id,
+    parsed.sessionId,
+    parsed.conversation_id,
+    parsed.conversationId,
+    parsed.session?.id,
+    parsed.conversation?.id,
+    parsed.msg?.session_id,
+    parsed.msg?.sessionId,
+    parsed.msg?.conversation_id,
+    parsed.msg?.conversationId,
+  ]);
+  if (!sessionId) {
+    return "";
+  }
+
+  if (eventType && /session|conversation|started|configured|resumed|turn_context/i.test(eventType)) {
+    return sessionId;
+  }
+
+  const keys = Object.keys(parsed);
+  const bareSessionMetadata = keys.every((key) => [
+    "session_id",
+    "sessionId",
+    "conversation_id",
+    "conversationId",
+    "session",
+    "conversation",
+  ].includes(key));
+  return bareSessionMetadata ? sessionId : "";
+}
+
+function firstValidSessionId(values) {
+  for (const value of values) {
+    if (isValidCodexSessionId(value)) {
+      return value;
+    }
+  }
+  return "";
+}
+
+function extractPreAnswerSessionMetadata(line) {
+  const trimmed = line.trim();
+  const patterns = [
+    /^(?:codex\s+)?session(?:\s+id)?\s*[:=]\s*([A-Za-z0-9][A-Za-z0-9._:-]{5,199})$/i,
+    /^conversation(?:\s+id)?\s*[:=]\s*([A-Za-z0-9][A-Za-z0-9._:-]{5,199})$/i,
+  ];
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match && isValidCodexSessionId(match[1])) {
+      return match[1];
+    }
+  }
+  return "";
+}
+
+function isAssistantOutputStartLine(line) {
+  const value = line.trim();
+  if (/^(?:codex|assistant|final answer)\s*:?(?:\s+\S.*)?$/i.test(value)) {
+    return true;
+  }
+
+  if (!value.startsWith("{") || !value.endsWith("}")) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(value);
+    const eventType = typeof parsed.type === "string" ? parsed.type : typeof parsed.event === "string" ? parsed.event : "";
+    return /\b(?:assistant|message|final|response)\b/i.test(eventType)
+      && typeof (parsed.message ?? parsed.content ?? parsed.text ?? parsed.delta) === "string";
+  } catch {
+    return false;
+  }
 }
 
 function findLastAnswerMarkerIndex(lines) {
