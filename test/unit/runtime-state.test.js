@@ -18,7 +18,15 @@ test("loadRuntimeState creates default state when missing", () => {
   const statePath = join(rootDir, "runtime_state.json");
   try {
     const state = loadRuntimeState(statePath);
-    assert.deepEqual(state, { currentRepo: null, cwd: null, tasks: {}, askSessions: {}, telegramUpdateOffset: null });
+    assert.deepEqual(state, {
+      currentRepo: null,
+      cwd: null,
+      tasks: {},
+      askSessions: {},
+      approvalRequests: {},
+      approvalAllowRules: {},
+      telegramUpdateOffset: null,
+    });
     assert.equal(existsSync(statePath), true);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
@@ -38,6 +46,21 @@ test("saveRuntimeState writes normalized JSON", () => {
           app: { codexSessionId: "session_abc123" },
         },
       },
+      approvalRequests: {
+        req_123: {
+          requestId: "req_123",
+          status: "pending",
+          chatId: "123",
+          telegramMessageId: 22,
+        },
+      },
+      approvalAllowRules: {
+        req_done: {
+          ruleId: "req_done",
+          requestId: "req_done",
+          chatId: "123",
+        },
+      },
       telegramUpdateOffset: 44,
       ignored: true,
     });
@@ -49,6 +72,21 @@ test("saveRuntimeState writes normalized JSON", () => {
       askSessions: {
         "123": {
           app: { codexSessionId: "session_abc123" },
+        },
+      },
+      approvalRequests: {
+        req_123: {
+          requestId: "req_123",
+          status: "pending",
+          chatId: "123",
+          telegramMessageId: 22,
+        },
+      },
+      approvalAllowRules: {
+        req_done: {
+          ruleId: "req_done",
+          requestId: "req_done",
+          chatId: "123",
         },
       },
       telegramUpdateOffset: 44,
@@ -64,6 +102,8 @@ test("normalizeRuntimeState rejects invalid shapes", () => {
     cwd: null,
     tasks: {},
     askSessions: {},
+    approvalRequests: {},
+    approvalAllowRules: {},
     telegramUpdateOffset: null,
   });
   assert.deepEqual(normalizeRuntimeState([]), {
@@ -71,6 +111,8 @@ test("normalizeRuntimeState rejects invalid shapes", () => {
     cwd: null,
     tasks: {},
     askSessions: {},
+    approvalRequests: {},
+    approvalAllowRules: {},
     telegramUpdateOffset: null,
   });
   assert.equal(normalizeRuntimeState({ telegramUpdateOffset: -1 }).telegramUpdateOffset, null);
@@ -93,6 +135,51 @@ test("normalizeRuntimeState preserves valid ask session bindings only", () => {
   assert.deepEqual(normalized.askSessions, {
     "123": {
       app: { codexSessionId: "session_abc123" },
+    },
+  });
+});
+
+test("normalizeRuntimeState preserves valid approval requests and allow rules only", () => {
+  const normalized = normalizeRuntimeState({
+    approvalRequests: {
+      req_123: {
+        status: "pending",
+        chatId: "123",
+        telegramMessageId: 44,
+        allowRule: { command: "codex" },
+      },
+      "../bad": {
+        status: "pending",
+      },
+      req_badstatus: {
+        status: "open",
+      },
+    },
+    approvalAllowRules: {
+      req_123: {
+        requestId: "req_123",
+        command: "codex",
+      },
+      "../bad": {
+        requestId: "../bad",
+      },
+    },
+  });
+
+  assert.deepEqual(normalized.approvalRequests, {
+    req_123: {
+      requestId: "req_123",
+      status: "pending",
+      chatId: "123",
+      telegramMessageId: 44,
+      allowRule: { command: "codex" },
+    },
+  });
+  assert.deepEqual(normalized.approvalAllowRules, {
+    req_123: {
+      ruleId: "req_123",
+      requestId: "req_123",
+      command: "codex",
     },
   });
 });

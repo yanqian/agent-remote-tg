@@ -65,16 +65,27 @@ export async function handleHttpRequest(request, response, { app, telegramBotTok
 }
 
 export function parseTelegramMessage(update) {
-  const chatId = update?.message?.chat?.id;
-  const text = update?.message?.text;
+  const source = update?.message;
+  const chatId = source?.chat?.id;
+  const text = source?.text;
   if (chatId === undefined || chatId === null || typeof text !== "string") {
     return null;
   }
 
-  return {
+  const message = {
     chatId: String(chatId),
     text,
   };
+  if (Number.isSafeInteger(source.message_id)) {
+    message.messageId = source.message_id;
+  }
+  if (Number.isSafeInteger(source.reply_to_message?.message_id)) {
+    message.replyToMessageId = source.reply_to_message.message_id;
+  }
+  if (typeof source.reply_to_message?.text === "string") {
+    message.replyToText = source.reply_to_message.text;
+  }
+  return message;
 }
 
 export async function sendTelegramMessage({ botToken, chatId, text, fetchImpl = globalThis.fetch }) {

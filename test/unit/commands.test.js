@@ -43,6 +43,10 @@ test("parseCommand rejects missing required arguments", () => {
     ok: false,
     response: "Usage: /run_orch <rounds>",
   });
+  assert.deepEqual(parseCommand("/approve   "), {
+    ok: false,
+    response: "Usage: /approve <request_id>",
+  });
 });
 
 test("parseCommand rejects non-command text", () => {
@@ -69,6 +73,9 @@ test("help response documents the exact command surface", () => {
     "/work <requirement> - delegate a repository workflow task",
     "/continue <instruction> - resume or recover repository workflow",
     "/run_orch <rounds> - run 1 to 5 orchestrator rounds",
+    "/approve <request_id> - approve a pending agent request",
+    "/reject <request_id> - reject a pending agent request",
+    "/always_allow <request_id> - approve and remember a future allow rule",
     "/status - show active and recent tasks",
     "/logs <task_id> - show the task final result",
     "/stop <task_id> - stop a running Bot-recorded task",

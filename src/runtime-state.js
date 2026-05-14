@@ -9,6 +9,8 @@ export function defaultState() {
     cwd: DEFAULT_STATE.cwd,
     tasks: {},
     askSessions: {},
+    approvalRequests: {},
+    approvalAllowRules: {},
     telegramUpdateOffset: DEFAULT_STATE.telegramUpdateOffset,
   };
 }
@@ -44,6 +46,8 @@ export function normalizeRuntimeState(state) {
       ? state.tasks
       : {},
     askSessions: normalizeAskSessions(state.askSessions),
+    approvalRequests: normalizeApprovalRequests(state.approvalRequests),
+    approvalAllowRules: normalizeApprovalAllowRules(state.approvalAllowRules),
     telegramUpdateOffset: normalizeTelegramUpdateOffset(state.telegramUpdateOffset),
   };
 }
@@ -112,6 +116,10 @@ export function isValidCodexSessionId(value) {
   return typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{5,199}$/.test(value);
 }
 
+export function isValidApprovalRequestId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{2,79}$/.test(value);
+}
+
 function normalizeAskSessions(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -152,4 +160,47 @@ function normalizeTelegramUpdateOffset(value) {
     return null;
   }
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function normalizeApprovalRequests(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const requests = {};
+  for (const [requestId, request] of Object.entries(value)) {
+    if (!isValidApprovalRequestId(requestId) || !request || typeof request !== "object" || Array.isArray(request)) {
+      continue;
+    }
+    const normalizedStatus = normalizeApprovalStatus(request.status);
+    if (!normalizedStatus) {
+      continue;
+    }
+    requests[requestId] = {
+      ...request,
+      requestId,
+      status: normalizedStatus,
+      chatId: typeof request.chatId === "string" && request.chatId.length > 0 ? request.chatId : null,
+    };
+  }
+  return requests;
+}
+
+function normalizeApprovalAllowRules(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const rules = {};
+  for (const [ruleId, rule] of Object.entries(value)) {
+    if (!isValidApprovalRequestId(ruleId) || !rule || typeof rule !== "object" || Array.isArray(rule)) {
+      continue;
+    }
+    rules[ruleId] = { ...rule, ruleId };
+  }
+  return rules;
+}
+
+function normalizeApprovalStatus(value) {
+  return ["pending", "approved", "rejected", "always_allowed", "expired"].includes(value) ? value : null;
 }

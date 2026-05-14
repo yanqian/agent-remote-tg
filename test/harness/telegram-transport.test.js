@@ -85,6 +85,23 @@ test("parseTelegramMessage requires message chat id and text", () => {
     chatId: "-123",
     text: "/help",
   });
+  assert.deepEqual(parseTelegramMessage({
+    message: {
+      message_id: 12,
+      chat: { id: 123 },
+      text: "yes",
+      reply_to_message: {
+        message_id: 11,
+        text: "Approval request req_123",
+      },
+    },
+  }), {
+    chatId: "123",
+    text: "yes",
+    messageId: 12,
+    replyToMessageId: 11,
+    replyToText: "Approval request req_123",
+  });
   assert.equal(parseTelegramMessage({ message: { chat: { id: 123 } } }), null);
   assert.equal(parseTelegramMessage({ message: { text: "/help" } }), null);
 });

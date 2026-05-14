@@ -53,16 +53,17 @@ Implemented behavior:
 - Explicit ask session management for F029: `/ask new <message>` forces a new read-only Codex ask task, `/ask resume <session_id> <message>` resumes and binds a specific session, `/ask resume --last <message>` uses Codex CLI's runtime-user `--last` session and updates the binding after session discovery, `/ask exit` clears only the current chat and repository binding, `/ask session` reports the selected binding or an explicit no-session response, and `/ask -- <message>` treats reserved ask subcommand words as literal question text.
 - Task session ID display for F030: `/status` includes `codexSessionId` for tasks that have Codex session metadata, and `/logs <task_id>` prefixes active-task and finished-task responses with the Codex session ID when present while preserving existing no-session responses and final-result-only log behavior.
 - Workflow command regression coverage for F031: unit and harness tests now prove `/work`, `/continue`, and `/run_orch` ignore selected ask session bindings, do not use Codex ask resume argv, preserve workflow command argv, preserve existing chat metadata, and do not attach ask-session metadata to workflow tasks.
+- Telegram approval decisions for F032: `/approve <request_id>`, `/reject <request_id>`, and `/always_allow <request_id>` are supported; reply-based decisions approve, reject, or always-allow pending requests through Telegram reply correlation; runtime state persists approval requests and future allow rules; unsafe, unknown, expired, resolved, and unauthorized requests are rejected.
 - Structured Codex ask session metadata handling for F033: `/ask`, `/ask new`, `/ask resume <session_id> <message>`, and `/ask resume --last <message>` now run Codex CLI with JSONL output enabled, resumed ask start responses include the Codex session ID and a resumed-mode indicator, and session extraction trusts structured Codex metadata or initial pre-answer CLI session headers only before non-metadata output, preventing command output or assistant answer text from overriding the real session ID.
 
 ## Last Completed Feature
 
-`F031` - Preserve `/work`, `/continue`, and `/run_orch` as repository workflow task commands while ask session support is added.
+`F033` - Fix Codex ask session metadata extraction so ask session bindings trust structured Codex metadata instead of assistant answer text.
 
 ## Next Feature
 
-`F033` implementation is ready for evaluator verification. After evaluator acceptance, select the next unfinished feature from `feature_list.json`.
+`F032` implementation is ready for evaluator verification. After evaluator acceptance, select the next unfinished feature from `feature_list.json`.
 
 ## Known Issues
 
-- F033 has not yet been evaluator-approved in this unattended round.
+- F032 has not yet been evaluator-approved in this unattended round.

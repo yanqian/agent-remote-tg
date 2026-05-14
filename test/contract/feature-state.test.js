@@ -17,12 +17,14 @@ test("first three features are defined for the implemented initialization scope"
   assert.match(descriptions.F003, /repository whitelist and workspace state management/);
 });
 
-test("runtime state schema is limited to workspace, polling offset, and Bot task metadata", () => {
+test("runtime state schema preserves only Bot runtime control-plane metadata", () => {
   assert.deepEqual(defaultState(), {
     currentRepo: null,
     cwd: null,
     tasks: {},
     askSessions: {},
+    approvalRequests: {},
+    approvalAllowRules: {},
     telegramUpdateOffset: null,
   });
 
@@ -45,13 +47,29 @@ test("runtime state schema is limited to workspace, polling offset, and Bot task
         },
       },
     },
+    approvalRequests: {
+      req_123: {
+        requestId: "req_123",
+        status: "pending",
+        chatId: "123",
+      },
+    },
+    approvalAllowRules: {
+      req_123: {
+        ruleId: "req_123",
+        requestId: "req_123",
+        chatId: "123",
+      },
+    },
     telegramUpdateOffset: 101,
     features: [{ id: "F999", passes: true }],
     progress: { current: "F999" },
   });
 
-  assert.deepEqual(Object.keys(normalized), ["currentRepo", "cwd", "tasks", "askSessions", "telegramUpdateOffset"]);
+  assert.deepEqual(Object.keys(normalized), ["currentRepo", "cwd", "tasks", "askSessions", "approvalRequests", "approvalAllowRules", "telegramUpdateOffset"]);
   assert.equal(normalized.askSessions["123"]["agent-runtime"].codexSessionId, "session_abc123");
+  assert.equal(normalized.approvalRequests.req_123.status, "pending");
+  assert.equal(normalized.approvalAllowRules.req_123.chatId, "123");
   assert.equal(normalized.telegramUpdateOffset, 101);
   assert.equal(Object.hasOwn(normalized, "features"), false);
   assert.equal(Object.hasOwn(normalized, "progress"), false);

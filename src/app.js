@@ -1,5 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { authorizeMessage } from "./auth.js";
+import { handleApprovalCommand, handleApprovalReply } from "./approval.js";
 import { handleAsk } from "./ask.js";
 import { HELP_RESPONSE } from "./constants.js";
 import { parseCommand } from "./commands.js";
@@ -31,12 +32,20 @@ export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecu
         return auth.response;
       }
 
+      const state = loadRuntimeState(statePath);
+      const replyDecision = handleApprovalReply(message, state);
+      if (replyDecision.handled) {
+        if (replyDecision.stateChanged) {
+          saveRuntimeState(statePath, replyDecision.state);
+        }
+        return replyDecision.response;
+      }
+
       const parsed = parseCommand(message.text);
       if (!parsed.ok) {
         return parsed.response;
       }
 
-      const state = loadRuntimeState(statePath);
       const result = handleParsedCommand(parsed, repos, state, executor, message.chatId);
       if (result.stateChanged) {
         saveRuntimeState(statePath, result.state);
@@ -67,6 +76,10 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
       return handleContinue(parsed.args, state, taskExecutor, chatId);
     case "/run_orch":
       return handleRunOrch(parsed.args, state, taskExecutor, chatId);
+    case "/approve":
+    case "/reject":
+    case "/always_allow":
+      return handleApprovalCommand(parsed.command, parsed.args, state, chatId);
     case "/status":
       return handleStatus(state);
     case "/logs":

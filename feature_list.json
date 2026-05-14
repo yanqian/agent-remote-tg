@@ -282,9 +282,9 @@
     {
       "id": "F032",
       "description": "Implement Telegram approval decisions for pending agent approval requests, including explicit /approve <request_id>, /reject <request_id>, and /always_allow <request_id> commands; reply-based decisions where replying yes/approve approves, no/reject rejects, and always/always allow/以后都允许 approves and stores an equivalent future allow rule; safe request ID validation; rejection of unknown, expired, already-resolved, or unauthorized requests; and automated unit, harness, and contract coverage for command parsing, help output, reply correlation, authorization, and non-reply words not triggering decisions.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     },

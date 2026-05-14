@@ -22,6 +22,9 @@ Repository development state remains in repository files and git history. Telegr
 - `/work <requirement>` - delegate a repository workflow task to Codex.
 - `/continue <instruction>` - resume or recover repository workflow from repository state.
 - `/run_orch <rounds>` - run 1 to 5 orchestrator rounds in the selected workspace.
+- `/approve <request_id>` - approve a pending agent approval request.
+- `/reject <request_id>` - reject a pending agent approval request.
+- `/always_allow <request_id>` - approve a pending agent approval request and remember its future allow rule.
 - `/status` - show active tasks and the five most recent finished tasks.
 - `/logs <task_id>` - show the stored final task result.
 - `/stop <task_id>` - stop a running Bot-recorded task with `SIGTERM`.
@@ -41,6 +44,9 @@ ask - Manage read-only Codex ask sessions
 work - Delegate a repository workflow task
 continue - Resume repository workflow
 run_orch - Run orchestrator rounds
+approve - Approve a pending agent request
+reject - Reject a pending agent request
+always_allow - Approve and remember an allow rule
 status - Show active and recent tasks
 logs - Show task final result
 stop - Stop a running task
@@ -87,7 +93,7 @@ Both modes must dispatch Telegram messages into the same `createApp().handleMess
 
 ## Runtime State And Logs
 
-Runtime state is stored in `runtime_state.json`. It contains the selected repository alias, selected workspace path, Bot-started task metadata, and Telegram polling update offset. It must not contain target repository feature objects.
+Runtime state is stored in `runtime_state.json`. It contains the selected repository alias, selected workspace path, Bot-started task metadata, ask-session bindings, pending approval requests, remembered approval allow rules, and Telegram polling update offset. It must not contain target repository feature objects.
 
 Task logs are stored under `logs/` as `logs/<task_id>.log`. Logs include command argv, timestamps, stdout, stderr, and exit code. Telegram responses are bounded, while full process output remains in the task log.
 

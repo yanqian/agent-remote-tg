@@ -110,6 +110,110 @@ test("app returns exact help output", () => {
   }
 });
 
+test("app handles approval commands and reply-based decisions", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: null,
+      cwd: null,
+      tasks: {},
+      askSessions: {},
+      approvalRequests: {
+        req_approve: {
+          requestId: "req_approve",
+          status: "pending",
+          chatId: "123",
+          telegramMessageId: 701,
+        },
+        req_reject: {
+          requestId: "req_reject",
+          status: "pending",
+          chatId: "123",
+          telegramMessageId: 702,
+        },
+        req_always: {
+          requestId: "req_always",
+          status: "pending",
+          chatId: "123",
+          telegramMessageId: 703,
+          allowRule: {
+            cwd: "/repo",
+            command: "codex",
+          },
+        },
+      },
+      approvalAllowRules: {},
+      telegramUpdateOffset: null,
+    }, null, 2)}\n`);
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath,
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/approve req_approve" }), "Approved request: req_approve");
+    assert.equal(app.handleMessage({ chatId: "123", text: "no", replyToMessageId: 702 }), "Rejected request: req_reject");
+    assert.equal(app.handleMessage({ chatId: "123", text: "以后都允许", replyToMessageId: 703 }), "Approved and stored future allow rule: req_always");
+    assert.equal(app.handleMessage({ chatId: "123", text: "yes" }), "Unknown command.\nUse /help.");
+
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.approvalRequests.req_approve.status, "approved");
+    assert.equal(state.approvalRequests.req_reject.status, "rejected");
+    assert.equal(state.approvalRequests.req_always.status, "always_allowed");
+    assert.equal(state.approvalAllowRules.req_always.command, "codex");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("app rejects unsafe, unknown, expired, resolved, and unauthorized approval requests", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: null,
+      cwd: null,
+      tasks: {},
+      askSessions: {},
+      approvalRequests: {
+        req_old: {
+          requestId: "req_old",
+          status: "pending",
+          chatId: "123",
+          expiresAt: "2000-01-01T00:00:00.000Z",
+        },
+        req_done: {
+          requestId: "req_done",
+          status: "approved",
+          chatId: "123",
+        },
+        req_other: {
+          requestId: "req_other",
+          status: "pending",
+          chatId: "456",
+        },
+      },
+      approvalAllowRules: {},
+      telegramUpdateOffset: null,
+    }, null, 2)}\n`);
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath,
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/approve ../secret" }), "Invalid approval request ID: ../secret");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/approve req_missing" }), "Unknown approval request: req_missing");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/approve req_old" }), "Approval request expired: req_old");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/approve req_done" }), "Approval request already resolved: req_done");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/approve req_other" }), "Unauthorized approval request: req_other");
+    assert.equal(app.handleMessage({ chatId: "999", text: "/approve req_other" }), "Unauthorized chat.");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("app checks agent workflow readiness for workflow commands", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));

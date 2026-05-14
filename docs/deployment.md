@@ -89,6 +89,9 @@ ask - Manage read-only Codex ask sessions
 work - Delegate a repository workflow task
 continue - Resume repository workflow
 run_orch - Run orchestrator rounds
+approve - Approve a pending agent request
+reject - Reject a pending agent request
+always_allow - Approve and remember an allow rule
 status - Show active and recent tasks
 logs - Show task log output
 stop - Stop a running task
@@ -99,13 +102,13 @@ The `/run_orch` command name is compatible with BotFather because it uses only l
 
 ## Long-Running Operation
 
-The `/ask`, `/ask new`, `/ask resume`, `/work`, `/continue`, and `/run_orch` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. `/ask exit` and `/ask session` only inspect or update the current chat and repository ask-session binding.
+The `/ask`, `/ask new`, `/ask resume`, `/work`, `/continue`, and `/run_orch` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. `/ask exit` and `/ask session` only inspect or update the current chat and repository ask-session binding. `/approve`, `/reject`, and `/always_allow` resolve pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
 
 Only one active workflow task of type `work`, `continue`, or `run-orch` can run in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 
 ## Logs And State Files
 
-`runtime_state.json` stores the selected repository alias, selected workspace path, Bot task metadata, and Telegram polling update offset. `logs/` stores full task output as `logs/<task_id>.log`.
+`runtime_state.json` stores the selected repository alias, selected workspace path, Bot task metadata, ask-session bindings, pending approval requests, remembered approval allow rules, and Telegram polling update offset. `logs/` stores full task output as `logs/<task_id>.log`.
 
 `runtime_state.json` and `logs/` are runtime artifacts and must not be used as target repository feature state. For VPS, VM, container, Cloud Run, and hosted Node.js webhook deployments, these paths must be on persistent storage so selected workspace state, Bot task metadata, polling offsets, and task logs survive process restarts and redeploys. Target repository source of truth remains in `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, `orchestrator.py`, and git history.
 
