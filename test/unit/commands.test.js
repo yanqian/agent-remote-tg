@@ -86,6 +86,7 @@ test("help response documents the exact command surface", () => {
     "/approve <request_id> - approve a pending agent request",
     "/reject <request_id> - reject a pending agent request",
     "/always_allow <request_id> - approve and remember a future allow rule",
+    "/always_reject <request_id> - reject and remember a future reject rule",
     "/status - show active and recent tasks",
     "/logs <task_id> - show the task final result",
     "/stop <task_id> - stop a running Bot-recorded task",

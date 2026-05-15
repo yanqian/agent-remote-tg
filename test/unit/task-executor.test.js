@@ -429,6 +429,96 @@ test("startTask persists JSONL agent message as final result without command out
   }
 });
 
+test("startTask bridges Codex approval requests and resolves selected options to child stdin", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  const approvalNotifications = [];
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    const child = createFakeChild({ pid: 4250 });
+    const executor = createTaskExecutor({
+      statePath,
+      logsDir,
+      now: fixedClock([
+        "2026-05-14T00:00:00.000Z",
+        "2026-05-14T00:00:01.000Z",
+        "2026-05-14T00:00:02.000Z",
+      ]),
+      spawn() {
+        return child;
+      },
+      onApprovalRequest(request) {
+        approvalNotifications.push(request);
+        return { telegramMessageId: 444 };
+      },
+    });
+
+    const started = executor.startTask({
+      type: "agent",
+      cwd: rootDir,
+      command: "codex",
+      args: ["exec", "--json", "prompt"],
+      chatId: "123",
+      repoAlias: "app",
+      codexSessionId: "session_abc123",
+    });
+
+    child.stdout.write(`${JSON.stringify({
+      type: "permission_request",
+      id: "codex_perm_1",
+      category: "command",
+      command: "npm test",
+      options: [
+        { id: "approve_once", label: "Approve once" },
+        { id: "reject_once", label: "Reject" },
+        { id: "always_allow", label: "Always allow" },
+      ],
+    })}\n`);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    const requestId = Object.keys(state.approvalRequests)[0];
+    assert.match(requestId, /^req_[a-z0-9]+_[a-z0-9]+$/);
+    assert.equal(state.approvalRequests[requestId].taskId, started.task.taskId);
+    assert.equal(state.approvalRequests[requestId].telegramMessageId, 444);
+    assert.equal(approvalNotifications.length, 1);
+    assert.equal(approvalNotifications[0].replyMarkup.inline_keyboard[0].length, 3);
+
+    const selectedState = {
+      ...state,
+      approvalRequests: {
+        ...state.approvalRequests,
+        [requestId]: {
+          ...state.approvalRequests[requestId],
+          status: "approved",
+          selectedOptionId: "opt_3",
+          selectedCodexOptionId: "always_allow",
+        },
+      },
+    };
+    const resolved = executor.resolveApprovalOption({
+      requestId,
+      optionId: "opt_3",
+      selectedOption: state.approvalRequests[requestId].options[2],
+      state: selectedState,
+      chatId: "123",
+    });
+    assert.equal(resolved.ok, true);
+    assert.equal(child.stdinWrites.length, 1);
+    assert.deepEqual(JSON.parse(child.stdinWrites[0]), {
+      type: "approval_decision",
+      request_id: "codex_perm_1",
+      option_id: "always_allow",
+    });
+
+    child.stdout.write("codex\nDone.\n");
+    child.emit("close", 0, null);
+    await started.completion;
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("startTask tolerates completion notification failures without changing task status", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
   try {
@@ -802,6 +892,13 @@ function createFakeChild({ pid }) {
   child.pid = pid;
   child.stdout = new PassThrough();
   child.stderr = new PassThrough();
+  child.stdinWrites = [];
+  child.stdin = {
+    write(value) {
+      child.stdinWrites.push(String(value).trim());
+      return true;
+    },
+  };
   child.killSignals = [];
   child.kill = (signal) => {
     child.killSignals.push(signal);

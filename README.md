@@ -23,6 +23,7 @@ Repository development state remains in repository files and git history. Telegr
 - `/approve <request_id>` - approve a pending agent approval request.
 - `/reject <request_id>` - reject a pending agent approval request.
 - `/always_allow <request_id>` - approve a pending agent approval request and remember its future allow rule.
+- `/always_reject <request_id>` - reject a pending agent approval request and remember its future reject rule.
 - `/status` - show active tasks and the five most recent finished tasks.
 - `/logs <task_id>` - show the stored final task result.
 - `/stop <task_id>` - stop a running Bot-recorded task with `SIGTERM`.
@@ -43,6 +44,7 @@ continue - Resume repository workflow
 approve - Approve a pending agent request
 reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
+always_reject - Reject and remember a reject rule
 status - Show active and recent tasks
 logs - Show task final result
 stop - Stop a running task
@@ -57,7 +59,7 @@ The Bot is a control plane, not the owner of feature lifecycle decisions. It val
 
 Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py`. `/continue` requires the selected workspace to contain the required agent workflow files before any process is spawned.
 
-`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/continue` starts a `codex exec` recovery task that forces the spawned agent to reconstruct context from repository files. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace; `work` and `run-orch` may appear only as legacy task records.
+`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/continue` starts a `codex exec` recovery task that forces the spawned agent to reconstruct context from repository files. When Bot-started Codex tasks emit permission prompts, the Bot stores a pending approval request and sends inline Telegram buttons that map to the Codex-provided options. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace; `work` and `run-orch` may appear only as legacy task records.
 
 ## Transport Modes
 

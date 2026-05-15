@@ -214,6 +214,87 @@ test("app rejects unsafe, unknown, expired, resolved, and unauthorized approval 
   }
 });
 
+test("app resolves inline approval callbacks through the running task executor", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const deliveries = [];
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: null,
+      cwd: null,
+      tasks: {
+        task_run_1: {
+          taskId: "task_run_1",
+          type: "agent",
+          status: "running",
+          pid: 123,
+          cwd: "/repo",
+          logPath: join(rootDir, "logs", "task_run_1.log"),
+          startedAt: "2026-05-14T00:00:00.000Z",
+          finishedAt: null,
+          exitCode: null,
+        },
+      },
+      askSessions: {},
+      approvalRequests: {
+        req_123: {
+          requestId: "req_123",
+          status: "pending",
+          taskId: "task_run_1",
+          chatId: "123",
+          codexRequestId: "codex_perm_1",
+          options: [
+            { optionId: "opt_1", codexOptionId: "approve_once", label: "Approve once", decision: "approved" },
+            { optionId: "opt_2", codexOptionId: "reject_once", label: "Reject", decision: "rejected" },
+            { optionId: "opt_3", codexOptionId: "always_allow", label: "Always allow", decision: "always_allow" },
+          ],
+        },
+        req_cmd: {
+          requestId: "req_cmd",
+          status: "pending",
+          taskId: "task_run_1",
+          chatId: "123",
+          codexRequestId: "codex_perm_2",
+          options: [
+            { optionId: "opt_1", codexOptionId: "approve_once", label: "Approve once", decision: "approved" },
+            { optionId: "opt_2", codexOptionId: "reject_once", label: "Reject", decision: "rejected" },
+          ],
+        },
+      },
+      approvalAllowRules: {},
+      telegramUpdateOffset: null,
+    }, null, 2)}\n`);
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath,
+      taskExecutor: {
+        resolveApprovalOption(request) {
+          deliveries.push(request);
+          return { ok: true, state: request.state };
+        },
+      },
+    });
+
+    assert.equal(
+      app.handleCallbackQuery({ chatId: "123", data: "approval:req_123:opt_3" }),
+      "Approved and stored future allow rule: req_123",
+    );
+    assert.equal(deliveries.length, 1);
+    assert.equal(deliveries[0].selectedOption.codexOptionId, "always_allow");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/reject req_cmd" }), "Rejected request: req_cmd");
+    assert.equal(deliveries.length, 2);
+    assert.equal(deliveries[1].selectedOption.codexOptionId, "reject_once");
+
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.approvalRequests.req_123.status, "always_allowed");
+    assert.equal(state.approvalRequests.req_123.selectedOptionId, "opt_3");
+    assert.equal(state.approvalRequests.req_cmd.status, "rejected");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("app checks agent workflow readiness for /continue", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
@@ -332,10 +413,10 @@ test("app /continue ignores selected agent session bindings", () => {
     for (const call of calls) {
       assert.equal(call.cwd, repoDir);
       assert.equal(call.chatId, "123");
-      assert.equal(Object.hasOwn(call, "repoAlias"), false);
       assert.equal(Object.hasOwn(call, "codexSessionId"), false);
       assert.equal(call.timeoutMs, null);
     }
+    assert.equal(calls[0].repoAlias, "app");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });

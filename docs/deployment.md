@@ -90,6 +90,7 @@ continue - Resume repository workflow
 approve - Approve a pending agent request
 reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
+always_reject - Reject and remember a reject rule
 status - Show active and recent tasks
 logs - Show task log output
 stop - Stop a running task
@@ -100,7 +101,7 @@ The supported command names are compatible with BotFather because they use lower
 
 ## Long-Running Operation
 
-The `/agent`, `/agent new`, `/agent resume`, and `/continue` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. `/agent exit` and `/agent session` only inspect or update the current chat and repository session binding. `/approve`, `/reject`, and `/always_allow` resolve pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
+The `/agent`, `/agent new`, `/agent resume`, and `/continue` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/agent exit` and `/agent session` only inspect or update the current chat and repository session binding. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
 
 Only one active workflow task of type `work`, `continue`, or `run-orch` can run in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 

@@ -202,5 +202,5 @@ function normalizeApprovalAllowRules(value) {
 }
 
 function normalizeApprovalStatus(value) {
-  return ["pending", "approved", "rejected", "always_allowed", "expired"].includes(value) ? value : null;
+  return ["pending", "approved", "rejected", "always_allowed", "always_rejected", "expired"].includes(value) ? value : null;
 }

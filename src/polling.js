@@ -4,7 +4,14 @@ import { createStartupContext } from "./config.js";
 import { normalizeRepoConfig, parseRepoWhitelistJson } from "./repositories.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
 import { createTaskExecutor } from "./task-executor.js";
-import { createTelegramTaskCompletionNotifier, parseTelegramMessage, sendTelegramMessage } from "./telegram-transport.js";
+import {
+  answerTelegramCallbackQuery,
+  createTelegramApprovalNotifier,
+  createTelegramTaskCompletionNotifier,
+  parseTelegramCallbackQuery,
+  parseTelegramMessage,
+  sendTelegramMessage,
+} from "./telegram-transport.js";
 
 const DEFAULT_POLL_TIMEOUT_SECONDS = 25;
 const DEFAULT_POLL_INTERVAL_MS = 1000;
@@ -19,6 +26,10 @@ export function start(env = process.env, options = {}) {
     logsDir: context.logsDir,
     spawn: options.spawn,
     onTaskFinished: createTelegramTaskCompletionNotifier({
+      botToken: context.telegramBotToken,
+      fetchImpl: options.fetchImpl,
+    }),
+    onApprovalRequest: createTelegramApprovalNotifier({
       botToken: context.telegramBotToken,
       fetchImpl: options.fetchImpl,
     }),
@@ -113,6 +124,23 @@ export async function pollOnce({
         text,
         fetchImpl,
       });
+    } else {
+      const callbackQuery = parseTelegramCallbackQuery(update);
+      if (callbackQuery && typeof app.handleCallbackQuery === "function") {
+        const text = app.handleCallbackQuery(callbackQuery);
+        await attemptTelegramCallbackAnswer({
+          botToken: telegramBotToken,
+          callbackQueryId: callbackQuery.callbackQueryId,
+          text,
+          fetchImpl,
+        });
+        await attemptTelegramReply({
+          botToken: telegramBotToken,
+          chatId: callbackQuery.chatId,
+          text,
+          fetchImpl,
+        });
+      }
     }
 
     persistTelegramUpdateOffset(statePath, updateId + 1);
@@ -159,6 +187,14 @@ async function attemptTelegramReply(options) {
     await sendTelegramMessage(options);
   } catch {
     // Delivery errors must not re-run already handled commands.
+  }
+}
+
+async function attemptTelegramCallbackAnswer(options) {
+  try {
+    await answerTelegramCallbackQuery(options);
+  } catch {
+    // Delivery errors must not re-run already handled updates.
   }
 }
 

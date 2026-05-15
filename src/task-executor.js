@@ -2,7 +2,13 @@ import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs"
 import { spawn as defaultSpawn } from "node:child_process";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
+  buildApprovalInlineKeyboard,
+  buildApprovalTelegramMessage,
+  extractCodexApprovalRequest,
+} from "./approval.js";
+import {
   isValidCodexSessionId,
+  isValidApprovalRequestId,
   loadRuntimeState,
   saveRuntimeState,
   updateAskSessionBinding,
@@ -35,6 +41,7 @@ export function createTaskExecutor(options) {
   const now = options.now ?? (() => new Date());
   const env = options.env ?? process.env;
   const onTaskFinished = typeof options.onTaskFinished === "function" ? options.onTaskFinished : null;
+  const onApprovalRequest = typeof options.onApprovalRequest === "function" ? options.onApprovalRequest : null;
   const children = new Map();
   const normalizedLogsDir = resolve(logsDir);
   mkdirSync(normalizedLogsDir, { recursive: true });
@@ -56,6 +63,17 @@ export function createTaskExecutor(options) {
       });
     }
     saveRuntimeState(statePath, nextState);
+  }
+
+  function persistApprovalRequest(request) {
+    const state = loadRuntimeState(statePath);
+    saveRuntimeState(statePath, {
+      ...state,
+      approvalRequests: {
+        ...state.approvalRequests,
+        [request.requestId]: request,
+      },
+    });
   }
 
   function startTask({
@@ -120,7 +138,7 @@ export function createTaskExecutor(options) {
       cwd,
       shell: false,
       env,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
     });
 
     task.pid = typeof child.pid === "number" ? child.pid : null;
@@ -141,9 +159,52 @@ export function createTaskExecutor(options) {
       timeout.unref();
     }
 
+    const approvalLineScanner = createLineScanner((line) => {
+      void maybeHandleApprovalLine(line);
+    });
+
+    async function maybeHandleApprovalLine(line) {
+      if (!onApprovalRequest || !["agent", "continue"].includes(type) || !task.chatId) {
+        return;
+      }
+      const discoveredSessionId = extractCodexSessionIdFromLog(capturedLog);
+      const requestId = generateApprovalRequestId(loadRuntimeState(statePath).approvalRequests);
+      const request = extractCodexApprovalRequest(line, {
+        requestId,
+        taskId,
+        chatId: task.chatId,
+        repoAlias: task.repoAlias ?? null,
+        codexSessionId: task.codexSessionId ?? discoveredSessionId,
+        now: now(),
+      });
+      if (!request) {
+        return;
+      }
+
+      persistApprovalRequest(request);
+      try {
+        const sent = await onApprovalRequest({
+          chatId: request.chatId,
+          text: buildApprovalTelegramMessage(request, env, telegramSecrets),
+          replyMarkup: buildApprovalInlineKeyboard(request),
+          request,
+        });
+        if (sent && Number.isSafeInteger(sent.telegramMessageId)) {
+          const state = loadRuntimeState(statePath);
+          const current = state.approvalRequests[request.requestId];
+          if (current?.status === "pending") {
+            persistApprovalRequest({ ...current, telegramMessageId: sent.telegramMessageId });
+          }
+        }
+      } catch {
+        // Approval notification failures must not interrupt task logging.
+      }
+    }
+
     if (child.stdout) {
       child.stdout.on("data", (chunk) => {
         writeTaskLog(chunk);
+        approvalLineScanner.write(chunk);
       });
     }
 
@@ -293,7 +354,40 @@ export function createTaskExecutor(options) {
     };
   }
 
-  return { startTask, stopTask, readTaskLog };
+  function resolveApprovalOption({ requestId, optionId, selectedOption, state, chatId }) {
+    if (!isValidApprovalRequestId(requestId) || !isValidApprovalOptionId(optionId)) {
+      return { ok: false, response: "Invalid approval callback data." };
+    }
+    const normalized = loadRuntimeState(statePath);
+    const request = (state?.approvalRequests?.[requestId] ?? normalized.approvalRequests[requestId]);
+    if (!request) {
+      return { ok: false, response: `Unknown approval request: ${requestId}` };
+    }
+    if (request.chatId !== null && String(request.chatId) !== String(chatId)) {
+      return { ok: false, response: `Unauthorized approval request: ${requestId}` };
+    }
+    const task = normalized.tasks[request.taskId];
+    if (!task || task.status !== "running") {
+      return { ok: false, response: "Approval task is not active." };
+    }
+    const child = children.get(request.taskId);
+    if (!child?.stdin || typeof child.stdin.write !== "function") {
+      return { ok: false, response: "Approval task is not active." };
+    }
+    const option = selectedOption ?? getSelectedOption(request, optionId);
+    if (!option) {
+      return { ok: false, response: `Approval request option incompatible: ${requestId}` };
+    }
+
+    child.stdin.write(`${JSON.stringify({
+      type: "approval_decision",
+      request_id: request.codexRequestId || request.requestId,
+      option_id: option.codexOptionId,
+    })}\n`);
+    return { ok: true, state };
+  }
+
+  return { startTask, stopTask, readTaskLog, resolveApprovalOption };
 }
 
 function formatTaskLogResponse(task, body) {
@@ -330,6 +424,15 @@ export function validateTaskId(taskId) {
   if (typeof taskId !== "string" || !/^task_[a-z0-9]+_[a-z0-9]+$/.test(taskId)) {
     throw new Error("Invalid task ID.");
   }
+}
+
+export function generateApprovalRequestId(existingRequests = {}) {
+  let requestId;
+  do {
+    taskSequence += 1;
+    requestId = `req_${Date.now().toString(36)}_${taskSequence.toString(36)}`;
+  } while (existingRequests && Object.hasOwn(existingRequests, requestId));
+  return requestId;
 }
 
 export function validateTaskType(type) {
@@ -599,6 +702,30 @@ function firstValidSessionId(values) {
     }
   }
   return "";
+}
+
+function createLineScanner(onLine) {
+  let pending = "";
+  return {
+    write(chunk) {
+      pending += String(chunk);
+      const lines = pending.split(/\r?\n/);
+      pending = lines.pop() ?? "";
+      for (const line of lines) {
+        onLine(line);
+      }
+    },
+  };
+}
+
+function isValidApprovalOptionId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(value);
+}
+
+function getSelectedOption(request, optionId) {
+  return Array.isArray(request?.options)
+    ? request.options.find((option) => option?.optionId === optionId) ?? null
+    : null;
 }
 
 function extractPreAnswerSessionMetadata(line) {

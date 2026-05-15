@@ -92,6 +92,7 @@ export function handleWork(args, state, taskExecutor, chatId = null) {
     args: ["exec", buildWorkPrompt(args)],
     timeoutMs: null,
     chatId,
+    repoAlias: readiness.currentRepo,
   });
 
   return { response: started.response, stateChanged: false };
@@ -121,6 +122,7 @@ export function handleContinue(args, state, taskExecutor, chatId = null) {
     args: ["exec", buildContinuePrompt(args)],
     timeoutMs: null,
     chatId,
+    repoAlias: readiness.currentRepo,
   });
 
   return { response: started.response, stateChanged: false };

@@ -57,14 +57,15 @@ Implemented behavior:
 - Structured Codex ask session metadata handling for F033: `/ask`, `/ask new`, `/ask resume <session_id> <message>`, and `/ask resume --last <message>` now run Codex CLI with JSONL output enabled, resumed ask start responses include the Codex session ID and a resumed-mode indicator, and session extraction trusts structured Codex metadata or initial pre-answer CLI session headers only before non-metadata output, preventing command output or assistant answer text from overriding the real session ID.
 - Codex JSONL final-result extraction for F034: task logs from `codex exec --json` now prefer the last user-facing `item.completed` `agent_message` or `assistant_message` text as `finalResult`, ignoring command execution JSONL events and raw command output while preserving plain-text marker fallback, token cleanup, duplicate cleanup, raw local logs, Telegram truncation, and secret redaction.
 - General Codex agent command for F035: `/agent <instruction>`, `/agent new <instruction>`, `/agent resume <session_id|--last> <instruction>`, `/agent exit`, `/agent session`, and `/agent -- <instruction>` now replace the public read-only `/ask` surface; `/ask`, `/work`, and `/run_orch` are removed from the public whitelist and return unknown command, while `/continue`, task management, workspace, and approval commands remain available. Agent tasks use shell-disabled `codex exec --json`, persist Codex session metadata through the legacy-compatible `askSessions` runtime shape, preserve JSONL final-result extraction and completion pushes, and use a general prompt that follows `AGENTS.md` for implementation requests and summarizes actions, changed files, verification, and remaining issues.
+- Basic Codex permission prompt bridging for F036: Bot-started `/agent` and `/continue` task output is scanned for structured Codex permission or approval requests, pending requests persist task/chat/repo/session/detail/options metadata, Telegram approval messages are bounded and redacted with one inline keyboard button per Codex option, callback data uses safe Bot-local request and option IDs, selected options are written back to the running task stdin, compatible `/approve`, `/reject`, `/always_allow`, `/always_reject`, and reply flows remain available, and unsafe, unknown, expired, resolved, unauthorized, or option-incompatible requests are rejected.
 
 ## Last Completed Feature
 
-`F034` - Fix finalResult extraction for Codex CLI JSONL task logs so successful JSON-mode ask tasks store the final assistant or agent message instead of command output.
+`F036` - Implement basic Codex permission prompt bridging for Bot-started `/agent` and `/continue` tasks.
 
 ## Next Feature
 
-`F035` is implemented in the working tree and ready for evaluator verification.
+No planned feature after `F036` is currently listed in `feature_list.json`.
 
 ## Known Issues
 

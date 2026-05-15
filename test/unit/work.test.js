@@ -189,6 +189,7 @@ test("handleContinue starts a codex exec recovery task in the selected workspace
     assert.match(calls[0].args[1], /Do not rely on chat history\./);
     assert.match(calls[0].args[1], /Do not reset existing feature state\./);
     assert.equal(calls[0].timeoutMs, null);
+    assert.equal(calls[0].repoAlias, "app");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }
@@ -338,10 +339,12 @@ test("workflow commands ignore ask session bindings and keep task argv unchanged
     for (const call of calls) {
       assert.equal(call.cwd, rootDir);
       assert.equal(call.chatId, "123");
-      assert.equal(Object.hasOwn(call, "repoAlias"), false);
       assert.equal(Object.hasOwn(call, "codexSessionId"), false);
       assert.equal(call.timeoutMs, null);
     }
+    assert.equal(calls[0].repoAlias, "app");
+    assert.equal(calls[1].repoAlias, "app");
+    assert.equal(Object.hasOwn(calls[2], "repoAlias"), false);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }

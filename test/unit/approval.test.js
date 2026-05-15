@@ -2,8 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyApprovalDecision,
+  applyApprovalOptionSelection,
+  buildApprovalCallbackData,
+  buildApprovalInlineKeyboard,
+  buildApprovalTelegramMessage,
+  extractCodexApprovalRequest,
   findReplyApprovalRequestId,
   handleApprovalReply,
+  parseApprovalCallbackData,
   parseReplyDecision,
 } from "../../src/approval.js";
 
@@ -50,10 +56,103 @@ test("applyApprovalDecision resolves pending requests and stores allow rules", (
     requestId: "req_123",
     chatId: "123",
     allowedAt: "2026-05-14T00:00:00.000Z",
+    decision: "always_allow",
     cwd: "/repo",
     command: "codex",
     args: ["exec", "prompt"],
   });
+});
+
+test("applyApprovalDecision requires compatible Codex options", () => {
+  const state = stateWithRequest({
+    requestId: "req_123",
+    status: "pending",
+    chatId: "123",
+    options: [
+      { optionId: "opt_1", codexOptionId: "deny", label: "Deny", decision: "rejected" },
+      { optionId: "opt_2", codexOptionId: "approve", label: "Approve", decision: "approved" },
+    ],
+  });
+
+  assert.equal(
+    applyApprovalDecision({ requestId: "req_123", decision: "always_allow", state, chatId: "123", now: NOW }).response,
+    "Approval request option incompatible: req_123",
+  );
+  const approved = applyApprovalDecision({ requestId: "req_123", decision: "approved", state, chatId: "123", now: NOW });
+  assert.equal(approved.state.approvalRequests.req_123.selectedCodexOptionId, "approve");
+});
+
+test("approval callback data and option selections preserve Codex option identity", () => {
+  const state = stateWithRequest({
+    requestId: "req_123",
+    status: "pending",
+    chatId: "123",
+    options: [
+      { optionId: "opt_1", codexOptionId: "allow_once", label: "Allow once", decision: "approved" },
+      { optionId: "opt_2", codexOptionId: "always_reject", label: "Always reject", decision: "always_reject" },
+      { optionId: "opt_3", codexOptionId: "customChoice", label: "Custom choice", decision: null },
+    ],
+  });
+
+  assert.equal(buildApprovalCallbackData("req_123", "opt_3"), "approval:req_123:opt_3");
+  assert.deepEqual(parseApprovalCallbackData("approval:req_123:opt_3"), { requestId: "req_123", optionId: "opt_3" });
+  assert.equal(parseApprovalCallbackData("approval:../bad:opt_3"), null);
+
+  const selected = applyApprovalOptionSelection({
+    requestId: "req_123",
+    optionId: "opt_3",
+    state,
+    chatId: "123",
+    now: NOW,
+  });
+  assert.equal(selected.response, "Selected approval option opt_3 for request: req_123");
+  assert.equal(selected.selectedOption.codexOptionId, "customChoice");
+  assert.equal(selected.state.approvalRequests.req_123.status, "approved");
+  assert.equal(selected.state.approvalRequests.req_123.selectedOptionId, "opt_3");
+
+  const rejected = applyApprovalOptionSelection({
+    requestId: "req_123",
+    optionId: "opt_2",
+    state,
+    chatId: "123",
+    now: NOW,
+  });
+  assert.equal(rejected.response, "Rejected and stored future reject rule: req_123");
+  assert.equal(rejected.state.approvalRequests.req_123.status, "always_rejected");
+  assert.equal(rejected.state.approvalAllowRules.req_123.decision, "always_reject");
+});
+
+test("extractCodexApprovalRequest maps Codex options to bounded Telegram buttons", () => {
+  const request = extractCodexApprovalRequest(JSON.stringify({
+    type: "permission_request",
+    id: "codex_req_123",
+    category: "command",
+    command: "npm test SECRET_VALUE",
+    options: [
+      { id: "approve_once", label: "Approve once" },
+      { id: "reject_once", label: "Reject" },
+      { id: "always_allow", label: "Always allow" },
+    ],
+  }), {
+    requestId: "req_123",
+    taskId: "task_abc_1",
+    chatId: "123",
+    repoAlias: "app",
+    codexSessionId: "session_abc123",
+    now: NOW,
+  });
+
+  assert.equal(request.requestId, "req_123");
+  assert.equal(request.codexRequestId, "codex_req_123");
+  assert.equal(request.options.length, 3);
+  assert.deepEqual(request.options.map((option) => option.optionId), ["opt_1", "opt_2", "opt_3"]);
+  assert.deepEqual(request.options.map((option) => option.decision), ["approved", "rejected", "always_allow"]);
+  assert.deepEqual(buildApprovalInlineKeyboard(request).inline_keyboard[0].map((button) => button.callback_data), [
+    "approval:req_123:opt_1",
+    "approval:req_123:opt_2",
+    "approval:req_123:opt_3",
+  ]);
+  assert.match(buildApprovalTelegramMessage(request, { TELEGRAM_BOT_TOKEN: "SECRET_VALUE" }), /Command: npm test \[REDACTED\]/);
 });
 
 test("applyApprovalDecision rejects unsafe, unknown, expired, resolved, and unauthorized requests", () => {

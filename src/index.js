@@ -3,7 +3,7 @@ import { createApp } from "./app.js";
 import { normalizeRepoConfig, parseRepoWhitelistJson } from "./repositories.js";
 import { loadRuntimeState } from "./runtime-state.js";
 import { createTaskExecutor } from "./task-executor.js";
-import { createTelegramHttpServer, createTelegramTaskCompletionNotifier } from "./telegram-transport.js";
+import { createTelegramApprovalNotifier, createTelegramHttpServer, createTelegramTaskCompletionNotifier } from "./telegram-transport.js";
 
 export function start(env = process.env, options = {}) {
   const context = createStartupContext(env, options);
@@ -15,6 +15,10 @@ export function start(env = process.env, options = {}) {
     logsDir: context.logsDir,
     spawn: options.spawn,
     onTaskFinished: createTelegramTaskCompletionNotifier({
+      botToken: context.telegramBotToken,
+      fetchImpl: options.fetchImpl,
+    }),
+    onApprovalRequest: createTelegramApprovalNotifier({
       botToken: context.telegramBotToken,
       fetchImpl: options.fetchImpl,
     }),
