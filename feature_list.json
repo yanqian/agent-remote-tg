@@ -305,6 +305,15 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F035",
+      "description": "Replace the public read-only /ask command with a general-purpose /agent command that supports /agent <instruction>, /agent new <instruction>, /agent resume <session_id|--last> <instruction>, /agent exit, /agent session, and /agent -- <instruction>; reuse the existing Codex session binding model by authorized Telegram chatId and selected repository alias; remove /ask, /work, and /run_orch from the public command whitelist, help output, README command surface, deployment command documentation, BotFather command menu documentation, and contract tests so they return Unknown command; keep /continue, /status, /logs, /stop, workspace commands, and approval commands available; update prompts so /agent is not categorically read-only, requires following AGENTS.md for implementation requests, preserves repository files and git history as source of truth, and summarizes actions, changed files, verification, and remaining issues; preserve shell-disabled spawning, JSONL session metadata extraction, JSONL finalResult extraction, completion pushes, secret redaction, Telegram truncation, runtime state normalization for legacy ask state, and automated unit, harness, contract, documentation, and smoke coverage.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }

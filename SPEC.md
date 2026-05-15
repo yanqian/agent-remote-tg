@@ -1458,3 +1458,143 @@ For JSONL logs, assistant or agent message events are user-facing answer candida
 - Run focused unit tests for JSONL final result extraction.
 - Run task executor tests proving completion messages and `/logs <task_id>` use the stored JSONL-derived `finalResult`.
 - Run `./init.sh`.
+
+## 20. General Agent Command Surface Requirements
+
+### 20.1 Goal
+
+Replace the user-facing read-only `/ask` entry point with a general-purpose Codex agent command that can discuss, plan, and execute repository work while preserving repository workflow rules and removing low-level workflow commands from the public Telegram command surface.
+
+The Bot should expose a smaller user-facing command surface where users interact with Codex through one general session command instead of choosing between `/ask`, `/work`, and `/run_orch`.
+
+### 20.2 Scope
+
+Include:
+
+- Add `/agent <instruction>` as the general Codex session command for the selected repository.
+- Add `/agent new <instruction>`, `/agent resume <session_id|--last> <instruction>`, `/agent exit`, `/agent session`, and `/agent -- <instruction>` equivalents for session management.
+- Make `/agent` reuse the existing Codex session binding model by authorized Telegram `chatId` and selected repository alias.
+- Make plain `/agent <instruction>` resume the current binding when one exists and start a new Codex session when no binding exists.
+- Remove `/ask` from the public command surface, help output, command whitelist, README command surface, deployment command documentation, and BotFather command menu documentation.
+- Remove `/work <requirement>` and `/run_orch <rounds>` from the public command surface, help output, command whitelist, README command surface, deployment command documentation, and BotFather command menu documentation.
+- Reject `/ask`, `/work`, and `/run_orch` as unknown commands after the public surface is changed.
+- Keep `/continue <instruction>` available as an explicit repository-state recovery command.
+- Keep `/status`, `/logs <task_id>`, `/stop <task_id>`, and approval commands available.
+- Update task metadata and user-visible labels so general-agent tasks are distinguishable from legacy read-only ask tasks.
+- Preserve existing Codex JSONL session metadata extraction and final result extraction.
+- Preserve task logging, completion pushes, Telegram truncation, secret redaction, repository whitelist checks, and shell-disabled process spawning.
+- Update automated unit, harness, contract, and documentation-related tests for the new public command surface.
+
+Exclude:
+
+- Do not expose `/work` or `/run_orch` as aliases.
+- Do not expose arbitrary shell execution.
+- Do not allow free-form workspace paths.
+- Do not remove `orchestrator.py`; it remains the repository workflow implementation mechanism available to Codex agents when AGENTS.md requires it.
+- Do not make the Bot itself decide feature lifecycle state outside the existing orchestrator and agent workflow.
+- Do not store Telegram message history as repository source of truth.
+
+### 20.3 Core Concepts
+
+`/agent` is the user-facing Codex interaction entry point. It may be used for discussion-only requests or implementation requests.
+
+Discussion-only requests must not modify files.
+
+Implementation requests must follow the selected repository's `AGENTS.md` and use repository files and git history as the durable source of truth.
+
+The selected repository's workflow files, not Telegram chat history, remain the source of truth for durable planning, implementation, evaluation, and progress state.
+
+`/work` and `/run_orch` are low-level workflow controls and must not be part of the user-facing Telegram command surface.
+
+### 20.4 Prompt Requirements
+
+The `/agent` prompt must not contain the old read-only restrictions that categorically forbid file edits, `SPEC.md` updates, `feature_list.json` updates, `orchestrator.py`, or commits.
+
+The `/agent` prompt must require:
+
+```text
+Act as a Codex agent for the selected repository.
+
+Rules:
+- Treat repository files and git history as the durable source of truth.
+- Follow AGENTS.md when modifying files or running repository workflow tasks.
+- For discussion-only requests, do not modify files.
+- For implementation requests, use the repository workflow documented in AGENTS.md.
+- Preserve existing repository state unless the workflow explicitly requires updates.
+- Keep the system runnable.
+- Summarize actions, changed files, verification, and remaining issues.
+```
+
+### 20.5 Core Flows
+
+New general agent session:
+
+1. User sends `/agent <instruction>` or `/agent new <instruction>` with no selected binding for the current chat and repository.
+2. The app starts `codex exec --json <agent_prompt>`.
+3. The task executor records the Bot task ID immediately.
+4. The task executor extracts the Codex session ID from trusted CLI metadata.
+5. The task executor stores the Codex session ID on the task and updates the session binding.
+6. The completion push returns the final result without exposing raw JSONL or raw process logs.
+
+Follow-up general agent instruction:
+
+1. User sends `/agent <instruction>` with an existing binding.
+2. The app starts `codex exec --json resume <session_id> <instruction>`.
+3. The immediate Telegram response includes the new Bot task ID, the bound Codex session ID, and that the agent task is resumed.
+4. The completion push returns the final result.
+
+Explicit session management:
+
+1. `/agent resume <session_id> <instruction>` stores the binding and resumes the specified Codex session.
+2. `/agent resume --last <instruction>` uses Codex CLI `--last` for the runtime user account and stores the discovered session ID when available.
+3. `/agent exit` clears only the current chat and repository binding.
+4. `/agent session` reports the current binding or an explicit no-session-selected response.
+5. `/agent -- <instruction>` treats reserved subcommand words as literal instruction text.
+
+Removed public commands:
+
+1. User sends `/ask <message>`.
+2. The Bot returns the unknown command response.
+3. User sends `/work <requirement>`.
+4. The Bot returns the unknown command response.
+5. User sends `/run_orch <rounds>`.
+6. The Bot returns the unknown command response.
+
+### 20.6 Constraints
+
+- `/agent` must require a selected workspace.
+- `/agent` must keep shell execution disabled.
+- `/agent` must keep the 10 minute timeout unless a later requirement changes task timeout policy.
+- `/agent` must preserve the existing task final result behavior.
+- `/agent` must preserve existing approval command behavior.
+- Public help and contract tests must list the new command surface exactly.
+- Existing runtime state must normalize safely when legacy `askSessions` or legacy ask task records are present.
+- The repository must remain runnable through `./init.sh`.
+
+### 20.7 Acceptance Criteria
+
+- `/agent <instruction>` starts a Codex JSONL task in the selected workspace.
+- `/agent <instruction>` with an existing binding resumes `codex exec --json resume <session_id> <instruction>`.
+- `/agent new <instruction>` forces a new Codex session.
+- `/agent resume <session_id> <instruction>` resumes and binds the specified session.
+- `/agent resume --last <instruction>` uses Codex CLI `resume --last`.
+- `/agent exit` clears only the current chat and repository binding.
+- `/agent session` reports the current binding or explicit no-session-selected response.
+- `/agent -- new ...` treats `new` as literal instruction text.
+- `/agent` prompts no longer categorically forbid file edits, `SPEC.md`, `feature_list.json`, `orchestrator.py`, or commits.
+- `/agent` prompts require following `AGENTS.md` for implementation requests.
+- `/ask` returns `Unknown command.\nUse /help.`.
+- `/work` returns `Unknown command.\nUse /help.`.
+- `/run_orch` returns `Unknown command.\nUse /help.`.
+- `/help` lists `/agent` and does not list `/ask`, `/work`, or `/run_orch`.
+- README and deployment documentation no longer present `/ask`, `/work`, or `/run_orch` as user-facing commands.
+- Existing task status, logs, stop, approval, workspace, webhook, and polling behavior remains functional.
+- Existing unit, harness, contract, and smoke checks pass.
+- `./init.sh` passes.
+
+### 20.8 Verification Plan
+
+- Run focused unit tests for `/agent` parsing, prompt rules, task argv, session binding, and legacy command rejection.
+- Run harness tests for Telegram command handling and help output.
+- Run contract tests for exact command whitelist and help output.
+- Run `./init.sh`.
