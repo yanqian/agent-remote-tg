@@ -22,6 +22,46 @@ test("start loads repository whitelist from REPO_WHITELIST_JSON", () => {
     );
     assert.equal(result.repoCount, 1);
     assert.equal(result.port, 3010);
+    assert.equal(result.agentTaskTimeoutMs, null);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("start parses configured agent task timeout", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-start-"));
+  const repoDir = join(rootDir, "repo");
+  try {
+    mkdirSync(repoDir);
+    const result = start(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        ALLOWED_CHAT_IDS: "123",
+        NODE_ENV: "test",
+        REPO_WHITELIST_JSON: JSON.stringify({ app: "repo" }),
+        AGENT_TASK_TIMEOUT_MS: "3600000",
+      },
+      { rootDir },
+    );
+    assert.equal(result.agentTaskTimeoutMs, 3600000);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("start rejects invalid agent task timeout configuration", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-start-"));
+  try {
+    assert.throws(
+      () => start({
+        TELEGRAM_BOT_TOKEN: "token",
+        ALLOWED_CHAT_IDS: "123",
+        NODE_ENV: "test",
+        REPO_WHITELIST_JSON: JSON.stringify({}),
+        AGENT_TASK_TIMEOUT_MS: "0",
+      }, { rootDir }),
+      /AGENT_TASK_TIMEOUT_MS must be a positive integer/,
+    );
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }

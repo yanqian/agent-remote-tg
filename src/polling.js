@@ -40,6 +40,7 @@ export function start(env = process.env, options = {}) {
     statePath: context.statePath,
     logsDir: context.logsDir,
     taskExecutor,
+    agentTaskTimeoutMs: context.agentTaskTimeoutMs,
   });
 
   const controller = startPolling({
@@ -57,6 +58,7 @@ export function start(env = process.env, options = {}) {
     logsDir: context.logsDir,
     statePath: context.statePath,
     repoCount: Object.keys(repos).length,
+    agentTaskTimeoutMs: context.agentTaskTimeoutMs,
     controller,
   };
 }

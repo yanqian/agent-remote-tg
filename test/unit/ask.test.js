@@ -116,6 +116,33 @@ test("handleAgent resumes the bound Codex session for the current chat and repo"
   assert.equal(calls[0].codexSessionId, "session_abc123");
 });
 
+test("handleAgent applies configured timeout to all task-starting request forms", () => {
+  const calls = [];
+  const taskExecutor = {
+    startTask(request) {
+      calls.push(request);
+      return { response: `Task started: task_${calls.length}\nUse /logs task_${calls.length} to view output.` };
+    },
+  };
+  const state = {
+    currentRepo: "app",
+    cwd: "/tmp/app",
+    tasks: {},
+    askSessions: {
+      "123": {
+        app: { codexSessionId: "session_abc123" },
+      },
+    },
+  };
+
+  handleAgent("Plain follow-up.", state, taskExecutor, 123, { agentTaskTimeoutMs: 3600000 });
+  handleAgent("new Start fresh.", state, taskExecutor, 123, { agentTaskTimeoutMs: 3600000 });
+  handleAgent("resume session_new123 Continue.", state, taskExecutor, 123, { agentTaskTimeoutMs: 3600000 });
+  handleAgent("resume --last Continue last.", state, taskExecutor, 123, { agentTaskTimeoutMs: 3600000 });
+
+  assert.deepEqual(calls.map((call) => call.timeoutMs), [3600000, 3600000, 3600000, 3600000]);
+});
+
 test("handleAgent new forces a new Codex session without existing binding metadata", () => {
   const calls = [];
   const state = {

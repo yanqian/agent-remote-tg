@@ -479,7 +479,7 @@ test("app starts /agent tasks in the selected workspace", () => {
     assert.equal(calls[0].args[1], "--json");
     assert.match(calls[0].args[2], /follow AGENTS\.md/);
     assert.match(calls[0].args[2], /Instruction:\nExplain the repo/);
-    assert.equal(calls[0].timeoutMs, 600000);
+    assert.equal(calls[0].timeoutMs, null);
     assert.equal(calls[0].chatId, "123");
     assert.equal(calls[0].repoAlias, "app");
   } finally {
@@ -523,10 +523,40 @@ test("app resumes /agent tasks when a chat and repo session binding exists", () 
     assert.equal(calls[0].cwd, repoDir);
     assert.equal(calls[0].command, "codex");
     assert.deepEqual(calls[0].args, ["exec", "--json", "resume", "session_abc123", "Continue the repo analysis"]);
-    assert.equal(calls[0].timeoutMs, 600000);
+    assert.equal(calls[0].timeoutMs, null);
     assert.equal(calls[0].chatId, "123");
     assert.equal(calls[0].repoAlias, "app");
     assert.equal(calls[0].codexSessionId, "session_abc123");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app applies configured timeout to /agent tasks", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  const calls = [];
+  try {
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: join(rootDir, "runtime_state.json"),
+      agentTaskTimeoutMs: 3600000,
+      taskExecutor: {
+        startTask(request) {
+          calls.push(request);
+          return { response: "Task started: task_timeout_1\nUse /logs task_timeout_1 to view output." };
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "/agent Explain timeout config" }),
+      "Task started: task_timeout_1\nUse /logs task_timeout_1 to view output.",
+    );
+    assert.equal(calls[0].timeoutMs, 3600000);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });

@@ -15,7 +15,7 @@ import { createTaskExecutor } from "./task-executor.js";
 import { handleContinue } from "./work.js";
 import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
 
-export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecutor }) {
+export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecutor, agentTaskTimeoutMs = null }) {
   if (!Array.isArray(allowedChatIds)) {
     throw new Error("allowedChatIds must be an array.");
   }
@@ -57,7 +57,7 @@ export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecu
         return parsed.response;
       }
 
-      const result = handleParsedCommand(parsed, repos, state, executor, message.chatId);
+      const result = handleParsedCommand(parsed, repos, state, executor, message.chatId, { agentTaskTimeoutMs });
       if (result.stateChanged) {
         const delivered = deliverApprovalSelection({
           executor,
@@ -139,7 +139,7 @@ function findSelectedApprovalRequest(state, selectedOption) {
   return null;
 }
 
-export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId = null) {
+export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId = null, options = {}) {
   switch (parsed.command) {
     case "/repos":
       return handleRepos(repos);
@@ -152,7 +152,9 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
     case "/git":
       return handleGit(state);
     case "/agent":
-      return handleAgent(parsed.args, state, taskExecutor, chatId);
+      return handleAgent(parsed.args, state, taskExecutor, chatId, {
+        agentTaskTimeoutMs: options.agentTaskTimeoutMs ?? null,
+      });
     case "/continue":
       return handleContinue(parsed.args, state, taskExecutor, chatId);
     case "/approve":

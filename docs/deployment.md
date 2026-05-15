@@ -15,8 +15,11 @@ Set these variables before starting the service:
 - `REPO_WHITELIST_JSON` - JSON object mapping repository aliases to local repository paths.
 - `TELEGRAM_WEBHOOK_URL` - public HTTPS webhook URL registered with Telegram.
 - `PORT` - HTTP port used by the service. When unset, the service uses `3000`.
+- `AGENT_TASK_TIMEOUT_MS` - optional positive integer millisecond timeout for `/agent` task processes. When unset or empty, `/agent` tasks have no forced timeout.
 
 `ALLOWED_CHAT_IDS` must be non-empty outside `NODE_ENV=test`. Keep the Bot token out of source control, runtime logs, and target repository state files.
+
+`AGENT_TASK_TIMEOUT_MS` applies to `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, and `/agent resume --last <instruction>`. Startup rejects non-integer, zero, and negative values. `/continue` remains untimed; use `/stop <task_id>` when a running Bot-recorded task should be terminated.
 
 Example repository whitelist:
 
@@ -101,7 +104,7 @@ The supported command names are compatible with BotFather because they use lower
 
 ## Long-Running Operation
 
-The `/agent`, `/agent new`, `/agent resume`, and `/continue` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/agent exit` and `/agent session` only inspect or update the current chat and repository session binding. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
+The `/agent`, `/agent new`, `/agent resume`, and `/continue` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. `/agent` tasks have no forced timeout by default unless `AGENT_TASK_TIMEOUT_MS` is configured; `/continue` tasks always remain untimed. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/agent exit` and `/agent session` only inspect or update the current chat and repository session binding. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
 
 Only one active workflow task of type `work`, `continue`, or `run-orch` can run in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 

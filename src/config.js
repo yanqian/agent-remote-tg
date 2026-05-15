@@ -12,6 +12,18 @@ export function parseAllowedChatIds(value) {
     .filter(Boolean);
 }
 
+export function parseAgentTaskTimeoutMs(value) {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return null;
+  }
+
+  const timeoutMs = Number(String(value).trim());
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new Error("AGENT_TASK_TIMEOUT_MS must be a positive integer number of milliseconds.");
+  }
+  return timeoutMs;
+}
+
 export function assertStartupEnv(env = process.env) {
   if (!env.TELEGRAM_BOT_TOKEN) {
     throw new Error("TELEGRAM_BOT_TOKEN is required.");
@@ -25,6 +37,7 @@ export function assertStartupEnv(env = process.env) {
   return {
     telegramBotToken: env.TELEGRAM_BOT_TOKEN,
     allowedChatIds,
+    agentTaskTimeoutMs: parseAgentTaskTimeoutMs(env.AGENT_TASK_TIMEOUT_MS),
   };
 }
 

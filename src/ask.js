@@ -5,8 +5,9 @@ import {
   removeAskSessionBinding,
 } from "./runtime-state.js";
 
-export const AGENT_TIMEOUT_MS = 10 * 60 * 1000;
-export const ASK_TIMEOUT_MS = AGENT_TIMEOUT_MS;
+export const DEFAULT_AGENT_TASK_TIMEOUT_MS = null;
+export const AGENT_TIMEOUT_MS = DEFAULT_AGENT_TASK_TIMEOUT_MS;
+export const ASK_TIMEOUT_MS = DEFAULT_AGENT_TASK_TIMEOUT_MS;
 const AGENT_USAGE = "Usage: /agent <instruction> | /agent new <instruction> | /agent resume <session_id|--last> <instruction> | /agent exit | /agent session | /agent -- <instruction>";
 const AGENT_RESERVED_SUBCOMMANDS = new Set(["new", "resume", "exit", "session"]);
 
@@ -31,7 +32,7 @@ export function buildAskPrompt(question) {
   return buildAgentPrompt(question);
 }
 
-export function handleAgent(args, state, taskExecutor, chatId = null) {
+export function handleAgent(args, state, taskExecutor, chatId = null, options = {}) {
   const workspace = requireWorkspace(state);
   if (!workspace.ok) {
     return { response: workspace.response, stateChanged: false };
@@ -83,7 +84,7 @@ export function handleAgent(args, state, taskExecutor, chatId = null) {
     cwd: workspace.cwd,
     command: "codex",
     args: commandArgs,
-    timeoutMs: AGENT_TIMEOUT_MS,
+    timeoutMs: options.agentTaskTimeoutMs ?? DEFAULT_AGENT_TASK_TIMEOUT_MS,
     chatId: chatKey,
     repoAlias: workspace.currentRepo,
     codexSessionId,

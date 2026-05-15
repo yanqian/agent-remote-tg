@@ -58,14 +58,15 @@ Implemented behavior:
 - Codex JSONL final-result extraction for F034: task logs from `codex exec --json` now prefer the last user-facing `item.completed` `agent_message` or `assistant_message` text as `finalResult`, ignoring command execution JSONL events and raw command output while preserving plain-text marker fallback, token cleanup, duplicate cleanup, raw local logs, Telegram truncation, and secret redaction.
 - General Codex agent command for F035: `/agent <instruction>`, `/agent new <instruction>`, `/agent resume <session_id|--last> <instruction>`, `/agent exit`, `/agent session`, and `/agent -- <instruction>` now replace the public read-only `/ask` surface; `/ask`, `/work`, and `/run_orch` are removed from the public whitelist and return unknown command, while `/continue`, task management, workspace, and approval commands remain available. Agent tasks use shell-disabled `codex exec --json`, persist Codex session metadata through the legacy-compatible `askSessions` runtime shape, preserve JSONL final-result extraction and completion pushes, and use a general prompt that follows `AGENTS.md` for implementation requests and summarizes actions, changed files, verification, and remaining issues.
 - Basic Codex permission prompt bridging for F036: Bot-started `/agent` and `/continue` task output is scanned for structured Codex permission or approval requests, pending requests persist task/chat/repo/session/detail/options metadata, Telegram approval messages are bounded and redacted with one inline keyboard button per Codex option, callback data uses safe Bot-local request and option IDs, selected options are written back to the running task stdin, compatible `/approve`, `/reject`, `/always_allow`, `/always_reject`, and reply flows remain available, and unsafe, unknown, expired, resolved, unauthorized, or option-incompatible requests are rejected.
+- Agent task timeout policy for F037: `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, and `/agent resume --last <instruction>` now default to `timeoutMs: null`, optional `AGENT_TASK_TIMEOUT_MS` startup configuration applies a positive integer millisecond timeout, invalid configured values fail startup, `/continue` remains untimed, and documentation plus unit, harness, startup, and smoke coverage verify the behavior.
 
 ## Last Completed Feature
 
-`F036` - Implement basic Codex permission prompt bridging for Bot-started `/agent` and `/continue` tasks.
+`F037` - Change `/agent` task timeout policy and add optional `AGENT_TASK_TIMEOUT_MS` configuration.
 
 ## Next Feature
 
-No planned feature after `F036` is currently listed in `feature_list.json`.
+No planned feature after `F037` is currently listed in `feature_list.json`.
 
 ## Known Issues
 

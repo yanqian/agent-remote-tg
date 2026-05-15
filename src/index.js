@@ -29,6 +29,7 @@ export function start(env = process.env, options = {}) {
     statePath: context.statePath,
     logsDir: context.logsDir,
     taskExecutor,
+    agentTaskTimeoutMs: context.agentTaskTimeoutMs,
   });
   const server = createTelegramHttpServer({
     app,
@@ -48,6 +49,7 @@ export function start(env = process.env, options = {}) {
     statePath: context.statePath,
     repoCount: Object.keys(repos).length,
     port,
+    agentTaskTimeoutMs: context.agentTaskTimeoutMs,
     server,
   };
 }

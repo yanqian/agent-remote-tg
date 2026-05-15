@@ -59,7 +59,7 @@ The Bot is a control plane, not the owner of feature lifecycle decisions. It val
 
 Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py`. `/continue` requires the selected workspace to contain the required agent workflow files before any process is spawned.
 
-`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/continue` starts a `codex exec` recovery task that forces the spawned agent to reconstruct context from repository files. When Bot-started Codex tasks emit permission prompts, the Bot stores a pending approval request and sends inline Telegram buttons that map to the Codex-provided options. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace; `work` and `run-orch` may appear only as legacy task records.
+`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/agent` tasks have no forced timeout by default; use `/stop <task_id>` when a running task should be terminated. `/continue` starts a `codex exec` recovery task that forces the spawned agent to reconstruct context from repository files and also has no forced timeout. When Bot-started Codex tasks emit permission prompts, the Bot stores a pending approval request and sends inline Telegram buttons that map to the Codex-provided options. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace; `work` and `run-orch` may appear only as legacy task records.
 
 ## Transport Modes
 
@@ -108,8 +108,11 @@ Set the required environment variables:
 - `TELEGRAM_BOT_TOKEN` - Telegram Bot token used by the local Bot process.
 - `ALLOWED_CHAT_IDS` - comma-separated Telegram chat IDs allowed to use the Bot.
 - `REPO_WHITELIST_JSON` - JSON object mapping repository aliases to local repository paths.
+- `AGENT_TASK_TIMEOUT_MS` - optional positive integer millisecond timeout for `/agent` task processes. When unset or empty, `/agent` tasks have no forced timeout.
 
 Configure the repository whitelist through the required `REPO_WHITELIST_JSON` value. Repository aliases must be exact keys using only letters, numbers, dots, underscores, and hyphens, and each configured path must resolve to an existing local directory. Startup fails when the JSON is missing or invalid, an alias is unsafe, or a path is missing.
+
+`AGENT_TASK_TIMEOUT_MS` applies to `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, and `/agent resume --last <instruction>`. Startup rejects non-integer, zero, and negative values. `/continue` remains untimed; `/stop <task_id>` is the user-controlled termination mechanism.
 
 Example:
 

@@ -18,6 +18,22 @@ try {
   if (result.status !== "ready") {
     throw new Error("smoke startup did not return ready status");
   }
+  if (result.agentTaskTimeoutMs !== null) {
+    throw new Error("smoke startup did not preserve default agent timeout policy");
+  }
+
+  const configured = start(
+    {
+      NODE_ENV: "test",
+      TELEGRAM_BOT_TOKEN: "test-token",
+      ALLOWED_CHAT_IDS: "",
+      AGENT_TASK_TIMEOUT_MS: "3600000",
+    },
+    { rootDir, repos: {} },
+  );
+  if (configured.agentTaskTimeoutMs !== 3600000) {
+    throw new Error("smoke startup did not apply configured agent timeout");
+  }
 
   console.log("smoke passed");
 } finally {
