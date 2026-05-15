@@ -675,12 +675,23 @@ function extractStructuredCodexSessionId(line) {
     parsed.msg?.conversation_id,
     parsed.msg?.conversationId,
   ]);
-  if (!sessionId) {
-    return "";
+  if (sessionId && eventType && /session|conversation|started|configured|resumed|turn_context/i.test(eventType)) {
+    return sessionId;
   }
 
-  if (eventType && /session|conversation|started|configured|resumed|turn_context/i.test(eventType)) {
-    return sessionId;
+  const threadId = firstValidSessionId([
+    parsed.thread_id,
+    parsed.threadId,
+    parsed.thread?.id,
+    parsed.msg?.thread_id,
+    parsed.msg?.threadId,
+  ]);
+  if (threadId && /^thread[._-]started$/i.test(eventType)) {
+    return threadId;
+  }
+
+  if (!sessionId) {
+    return "";
   }
 
   const keys = Object.keys(parsed);

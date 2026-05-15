@@ -626,6 +626,108 @@ test("app agent task binds real structured session metadata despite fake answer 
   }
 });
 
+test("app /agent new binds thread.started metadata and plain /agent resumes the new thread", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    const children = [
+      createFakeChild({ pid: 5253 }),
+      createFakeChild({ pid: 5254 }),
+    ];
+    const spawned = [];
+    let finishCount = 0;
+    let resolveFirstFinished;
+    let resolveSecondFinished;
+    const firstFinished = new Promise((resolve) => {
+      resolveFirstFinished = resolve;
+    });
+    const secondFinished = new Promise((resolve) => {
+      resolveSecondFinished = resolve;
+    });
+    const executor = createTaskExecutor({
+      statePath,
+      logsDir,
+      spawn(command, args) {
+        spawned.push({ command, args });
+        return children[spawned.length - 1];
+      },
+      onTaskFinished(task) {
+        finishCount += 1;
+        if (finishCount === 1) {
+          resolveFirstFinished(task);
+        } else if (finishCount === 2) {
+          resolveSecondFinished(task);
+        }
+      },
+    });
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      logsDir,
+      taskExecutor: executor,
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    state.askSessions = {
+      "123": {
+        app: { codexSessionId: "session_old123" },
+      },
+    };
+    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const newResponse = app.handleMessage({ chatId: "123", text: "/agent new Start fresh" });
+    assert.match(newResponse, /^Task started: task_[a-z0-9]+_[a-z0-9]+\nUse \/logs task_[a-z0-9]+_[a-z0-9]+ to view output\.$/);
+    assert.equal(spawned[0].command, "codex");
+    assert.deepEqual(spawned[0].args.slice(0, 2), ["exec", "--json"]);
+    assert.match(spawned[0].args[2], /Instruction:\nStart fresh/);
+    assert.doesNotMatch(spawned[0].args.join(" "), /\bsession_old123\b/);
+
+    children[0].stdout.write([
+      JSON.stringify({
+        type: "thread.started",
+        threadId: "019e254f-ebfa-7053-9302-32a6ade18036",
+      }),
+      JSON.stringify({
+        type: "item.completed",
+        item: {
+          type: "agent_message",
+          text: "Fresh thread created.",
+        },
+      }),
+    ].join("\n") + "\n");
+    children[0].emit("close", 0, null);
+    await firstFinished;
+
+    const reboundState = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.deepEqual(reboundState.askSessions, {
+      "123": {
+        app: { codexSessionId: "019e254f-ebfa-7053-9302-32a6ade18036" },
+      },
+    });
+
+    assert.match(
+      app.handleMessage({ chatId: "123", text: "/agent Continue on the fresh thread" }),
+      /^Task started: task_[a-z0-9]+_[a-z0-9]+\nUse \/logs task_[a-z0-9]+_[a-z0-9]+ to view output\.\nResumed agent session: 019e254f-ebfa-7053-9302-32a6ade18036$/,
+    );
+    assert.deepEqual(spawned[1].args, [
+      "exec",
+      "--json",
+      "resume",
+      "019e254f-ebfa-7053-9302-32a6ade18036",
+      "Continue on the fresh thread",
+    ]);
+    children[1].emit("close", 0, null);
+    await secondFinished;
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
 test("app handles /agent session, exit, new, resume, resume --last, and literal escape", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));

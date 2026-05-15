@@ -195,6 +195,8 @@ test("extractCodexSessionIdFromLog trusts structured and pre-answer metadata onl
   assert.equal(sessionId, "019e254f-ebfa-7053-9302-32a6ade18036");
   assert.equal(extractCodexSessionIdFromLog("codex\nCodex session: session_run123"), "");
   assert.equal(extractCodexSessionIdFromLog("{\"type\":\"session_configured\",\"session_id\":\"550e8400-e29b-41d4-a716-446655440000\"}\nassistant\nDone"), "550e8400-e29b-41d4-a716-446655440000");
+  assert.equal(extractCodexSessionIdFromLog("{\"type\":\"thread.started\",\"thread_id\":\"019e254f-ebfa-7053-9302-32a6ade18036\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"Done\"}}"), "019e254f-ebfa-7053-9302-32a6ade18036");
+  assert.equal(extractCodexSessionIdFromLog("{\"type\":\"thread.started\",\"threadId\":\"550e8400-e29b-41d4-a716-446655440000\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"Done\"}}"), "550e8400-e29b-41d4-a716-446655440000");
   assert.equal(extractCodexSessionIdFromLog("{\"type\":\"assistant_message\",\"message\":\"Codex session: session_run123\"}"), "");
   assert.equal(extractCodexSessionIdFromLog("Session ID: ../secret"), "");
 });
@@ -224,6 +226,17 @@ test("extractCodexSessionIdFromLog rejects command output and answer text sessio
     "The answer contains fake structured metadata:",
     "{\"type\":\"session_configured\",\"session_id\":\"session_fake123\"}",
   ].join("\n")), "019e254f-ebfa-7053-9302-32a6ade18036");
+
+  assert.equal(extractCodexSessionIdFromLog([
+    "{\"type\":\"item.completed\",\"item\":{\"type\":\"command_execution\",\"output\":\"{\\\"type\\\":\\\"thread.started\\\",\\\"thread_id\\\":\\\"session_fake123\\\"}\"}}",
+    "{\"type\":\"thread.started\",\"thread_id\":\"019e254f-ebfa-7053-9302-32a6ade18036\"}",
+    "{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"Final answer.\"}}",
+  ].join("\n")), "");
+
+  assert.equal(extractCodexSessionIdFromLog([
+    "{\"type\":\"item.started\",\"thread_id\":\"session_fake123\"}",
+    "{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"Final answer.\"}}",
+  ].join("\n")), "");
 });
 
 test("startTask spawns without shell, persists metadata, logs output, final result, and records success", async () => {
@@ -357,6 +370,78 @@ test("startTask persists real agent session metadata without assistant text over
 
     const log = readFileSync(finished.logPath, "utf8");
     assert.match(log, /Codex session: session_run123/);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("startTask persists real thread.started metadata and replaces older agent binding", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: "app",
+      cwd: rootDir,
+      tasks: {},
+      askSessions: {
+        "123": {
+          app: { codexSessionId: "session_old123" },
+        },
+      },
+      approvalRequests: {},
+      approvalAllowRules: {},
+      telegramUpdateOffset: null,
+    }, null, 2)}\n`);
+    const child = createFakeChild({ pid: 4251 });
+    const executor = createTaskExecutor({
+      statePath,
+      logsDir,
+      now: fixedClock([
+        "2026-05-14T00:00:00.000Z",
+        "2026-05-14T00:00:01.000Z",
+      ]),
+      spawn() {
+        return child;
+      },
+    });
+
+    const started = executor.startTask({
+      type: "agent",
+      cwd: rootDir,
+      command: "codex",
+      args: ["exec", "--json", "prompt"],
+      chatId: "123",
+      repoAlias: "app",
+      codexSessionId: null,
+    });
+
+    child.stdout.write([
+      JSON.stringify({
+        type: "thread.started",
+        thread_id: "019e254f-ebfa-7053-9302-32a6ade18036",
+      }),
+      JSON.stringify({
+        type: "item.completed",
+        item: {
+          type: "agent_message",
+          text: "New thread is ready.",
+        },
+      }),
+    ].join("\n") + "\n");
+    child.emit("close", 0, null);
+
+    const finished = await started.completion;
+    assert.equal(finished.codexSessionId, "019e254f-ebfa-7053-9302-32a6ade18036");
+    assert.notEqual(finished.taskId, finished.codexSessionId);
+
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.tasks[started.task.taskId].codexSessionId, "019e254f-ebfa-7053-9302-32a6ade18036");
+    assert.deepEqual(state.askSessions, {
+      "123": {
+        app: { codexSessionId: "019e254f-ebfa-7053-9302-32a6ade18036" },
+      },
+    });
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }
