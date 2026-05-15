@@ -1637,3 +1637,90 @@ Removed public commands:
 - Run harness tests for Telegram command handling and help output.
 - Run contract tests for exact command whitelist and help output.
 - Run `./init.sh`.
+
+## 21. Agent Task Timeout Policy Requirements
+
+### 21.1 Goal
+
+Prevent long-running `/agent` implementation workflows from being killed after the old read-only ask timeout.
+
+The `/agent` command is now a general-purpose Codex repository command that may plan, edit files, run tests, invoke repository workflow scripts, wait for approval, and summarize results. A fixed 10 minute timeout is too short for this use case.
+
+### 21.2 Scope
+
+Include:
+
+- Change `/agent` tasks so they do not use the legacy 10 minute ask timeout by default.
+- Add environment configuration for agent task timeout.
+- Keep `/continue` tasks without a forced timeout.
+- Preserve `/stop <task_id>` as the explicit user-controlled termination mechanism for long-running tasks.
+- Preserve task metadata, final result extraction, completion pushes, approval bridging, secret redaction, Telegram truncation, and shell-disabled process spawning.
+- Update README and deployment documentation to describe the new timeout behavior.
+- Add automated coverage proving default `/agent` tasks have no forced timeout and configured `/agent` timeout values are honored.
+
+Exclude:
+
+- Do not reintroduce `/ask`.
+- Do not change `/continue` timeout behavior.
+- Do not remove `/stop`.
+- Do not add streaming partial output.
+- Do not change orchestrator or evaluator timeout behavior inside target repositories.
+
+### 21.3 Configuration
+
+The timeout environment variable must be:
+
+```text
+AGENT_TASK_TIMEOUT_MS
+```
+
+When `AGENT_TASK_TIMEOUT_MS` is unset or empty, `/agent` tasks must use `timeoutMs: null`.
+
+When `AGENT_TASK_TIMEOUT_MS` is set, it must parse as a positive integer number of milliseconds.
+
+Startup must fail with exit code `1` when `AGENT_TASK_TIMEOUT_MS` is set to a non-integer, zero, or negative value.
+
+### 21.4 Core Flow
+
+Default `/agent` task:
+
+1. User sends `/agent <instruction>`.
+2. The app starts a Codex task in the selected workspace.
+3. The task metadata records normal task details.
+4. The task has no forced timeout.
+5. The task runs until Codex exits or the user sends `/stop <task_id>`.
+
+Configured timeout:
+
+1. Runtime starts with `AGENT_TASK_TIMEOUT_MS=3600000`.
+2. User sends `/agent <instruction>`.
+3. The app starts a Codex task with `timeoutMs=3600000`.
+4. If the task exceeds that timeout, the existing task timeout handling terminates the child and records timeout metadata.
+
+### 21.5 Constraints
+
+- `/agent` default timeout must not be inherited from the old read-only ask timeout.
+- Invalid `AGENT_TASK_TIMEOUT_MS` values must be rejected during startup instead of being silently ignored.
+- `/agent` session commands, including `new`, `resume`, and `resume --last`, must all use the same timeout policy.
+- The repository must remain runnable through `./init.sh`.
+
+### 21.6 Acceptance Criteria
+
+- `/agent <instruction>` starts with `timeoutMs: null` when `AGENT_TASK_TIMEOUT_MS` is unset.
+- `/agent new <instruction>` starts with `timeoutMs: null` when `AGENT_TASK_TIMEOUT_MS` is unset.
+- `/agent resume <session_id> <instruction>` starts with `timeoutMs: null` when `AGENT_TASK_TIMEOUT_MS` is unset.
+- `/agent resume --last <instruction>` starts with `timeoutMs: null` when `AGENT_TASK_TIMEOUT_MS` is unset.
+- When `AGENT_TASK_TIMEOUT_MS=3600000`, `/agent` task start requests use `timeoutMs=3600000`.
+- Startup rejects invalid `AGENT_TASK_TIMEOUT_MS` values with a clear error.
+- `/continue` remains `timeoutMs: null`.
+- `/stop <task_id>` remains available for user-initiated termination.
+- README and deployment documentation describe the default no-timeout `/agent` behavior and timeout environment variable.
+- Existing unit, harness, contract, and smoke checks pass.
+- `./init.sh` passes.
+
+### 21.7 Verification Plan
+
+- Run focused unit tests for timeout configuration parsing.
+- Run focused `/agent` unit and harness tests for default and configured timeout values.
+- Run startup configuration tests for invalid timeout values.
+- Run `./init.sh`.

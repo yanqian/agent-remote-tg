@@ -323,6 +323,15 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F037",
+      "description": "Change /agent task timeout policy so general Codex agent tasks no longer inherit the legacy 10 minute read-only ask timeout by default; add AGENT_TASK_TIMEOUT_MS startup configuration that parses as a positive integer milliseconds value, rejects invalid configured values during startup, and applies the configured timeout to /agent, /agent new, /agent resume <session_id> <instruction>, and /agent resume --last tasks; keep /continue timeoutMs null and preserve /stop as the user-controlled termination mechanism; preserve task metadata, finalResult extraction, completion pushes, permission approval bridging, shell-disabled spawning, Telegram truncation, and secret redaction; update README and deployment documentation; and add unit, harness, startup, and smoke coverage proving default agent timeoutMs null and configured timeout values are honored.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }
