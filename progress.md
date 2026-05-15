@@ -70,4 +70,4 @@ No planned feature after `F037` is currently listed in `feature_list.json`.
 
 ## Known Issues
 
-- None currently known.
+- None currently known after F037 verification.
