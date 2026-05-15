@@ -56,6 +56,7 @@ Implemented behavior:
 - Telegram approval decisions for F032: `/approve <request_id>`, `/reject <request_id>`, and `/always_allow <request_id>` are supported; reply-based decisions approve, reject, or always-allow pending requests through Telegram reply correlation; runtime state persists approval requests and future allow rules; unsafe, unknown, expired, resolved, and unauthorized requests are rejected.
 - Structured Codex ask session metadata handling for F033: `/ask`, `/ask new`, `/ask resume <session_id> <message>`, and `/ask resume --last <message>` now run Codex CLI with JSONL output enabled, resumed ask start responses include the Codex session ID and a resumed-mode indicator, and session extraction trusts structured Codex metadata or initial pre-answer CLI session headers only before non-metadata output, preventing command output or assistant answer text from overriding the real session ID.
 - Codex JSONL final-result extraction for F034: task logs from `codex exec --json` now prefer the last user-facing `item.completed` `agent_message` or `assistant_message` text as `finalResult`, ignoring command execution JSONL events and raw command output while preserving plain-text marker fallback, token cleanup, duplicate cleanup, raw local logs, Telegram truncation, and secret redaction.
+- General Codex agent command for F035: `/agent <instruction>`, `/agent new <instruction>`, `/agent resume <session_id|--last> <instruction>`, `/agent exit`, `/agent session`, and `/agent -- <instruction>` now replace the public read-only `/ask` surface; `/ask`, `/work`, and `/run_orch` are removed from the public whitelist and return unknown command, while `/continue`, task management, workspace, and approval commands remain available. Agent tasks use shell-disabled `codex exec --json`, persist Codex session metadata through the legacy-compatible `askSessions` runtime shape, preserve JSONL final-result extraction and completion pushes, and use a general prompt that follows `AGENTS.md` for implementation requests and summarizes actions, changed files, verification, and remaining issues.
 
 ## Last Completed Feature
 
@@ -63,7 +64,7 @@ Implemented behavior:
 
 ## Next Feature
 
-No unfinished features are currently listed in `feature_list.json`.
+`F035` is implemented in the working tree and ready for evaluator verification.
 
 ## Known Issues
 

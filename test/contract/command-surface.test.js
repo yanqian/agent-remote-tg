@@ -7,6 +7,9 @@ test("command whitelist does not include prohibited feature commands", () => {
   assert.equal(commandList().includes("/run-feature"), false);
   assert.equal(commandList().includes("/eval-feature"), false);
   assert.equal(commandList().includes("/run-orch"), false);
+  assert.equal(commandList().includes("/ask"), false);
+  assert.equal(commandList().includes("/work"), false);
+  assert.equal(commandList().includes("/run_orch"), false);
 });
 
 test("command whitelist matches the documented current surface", () => {
@@ -16,10 +19,8 @@ test("command whitelist matches the documented current surface", () => {
     "/pwd",
     "/ls",
     "/git",
-    "/ask",
-    "/work",
+    "/agent",
     "/continue",
-    "/run_orch",
     "/approve",
     "/reject",
     "/always_allow",
@@ -38,15 +39,13 @@ test("help output exactly matches the documented command surface", () => {
     "/pwd - show the selected workspace",
     "/ls - list files in the selected workspace",
     "/git - show branch, status, and recent commits",
-    "/ask <question> - start or continue a read-only Codex discussion task",
-    "/ask new <message> - force a new ask session",
-    "/ask resume <session_id|--last> <message> - resume an ask session",
-    "/ask exit - clear the selected ask session",
-    "/ask session - show the selected ask session",
-    "/ask -- <message> - ask a literal message beginning with a reserved word",
-    "/work <requirement> - delegate a repository workflow task",
+    "/agent <instruction> - start or continue a Codex agent task",
+    "/agent new <instruction> - force a new agent session",
+    "/agent resume <session_id|--last> <instruction> - resume an agent session",
+    "/agent exit - clear the selected agent session",
+    "/agent session - show the selected agent session",
+    "/agent -- <instruction> - send a literal instruction beginning with a reserved word",
     "/continue <instruction> - resume or recover repository workflow",
-    "/run_orch <rounds> - run 1 to 5 orchestrator rounds",
     "/approve <request_id> - approve a pending agent request",
     "/reject <request_id> - reject a pending agent request",
     "/always_allow <request_id> - approve and remember a future allow rule",

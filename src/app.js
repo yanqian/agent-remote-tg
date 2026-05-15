@@ -1,13 +1,13 @@
 import { dirname, resolve } from "node:path";
+import { handleAgent } from "./ask.js";
 import { authorizeMessage } from "./auth.js";
 import { handleApprovalCommand, handleApprovalReply } from "./approval.js";
-import { handleAsk } from "./ask.js";
 import { HELP_RESPONSE } from "./constants.js";
 import { parseCommand } from "./commands.js";
 import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
 import { handleLogs, handleStatus, handleStop } from "./task-management.js";
 import { createTaskExecutor } from "./task-executor.js";
-import { handleContinue, handleRunOrch, handleWork } from "./work.js";
+import { handleContinue } from "./work.js";
 import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
 
 export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecutor }) {
@@ -68,14 +68,10 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
       return handleLs(state);
     case "/git":
       return handleGit(state);
-    case "/ask":
-      return handleAsk(parsed.args, state, taskExecutor, chatId);
-    case "/work":
-      return handleWork(parsed.args, state, taskExecutor, chatId);
+    case "/agent":
+      return handleAgent(parsed.args, state, taskExecutor, chatId);
     case "/continue":
       return handleContinue(parsed.args, state, taskExecutor, chatId);
-    case "/run_orch":
-      return handleRunOrch(parsed.args, state, taskExecutor, chatId);
     case "/approve":
     case "/reject":
     case "/always_allow":

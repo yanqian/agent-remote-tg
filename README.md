@@ -2,7 +2,7 @@
 
 ## What This Project Does
 
-This project is a local Telegram Bot control plane for long-running agent workflows in whitelisted repositories. It validates authorized Telegram chats, selects a configured local workspace, starts bounded local Codex or orchestrator tasks, persists runtime task metadata, and writes full task output to logs.
+This project is a local Telegram Bot control plane for long-running agent workflows in whitelisted repositories. It validates authorized Telegram chats, selects a configured local workspace, starts bounded local Codex agent tasks, persists runtime task metadata, and writes full task output to logs.
 
 Repository development state remains in repository files and git history. Telegram messages, selected workspace state, Bot task records, and task logs are runtime artifacts only.
 
@@ -13,15 +13,13 @@ Repository development state remains in repository files and git history. Telegr
 - `/pwd` - show the selected workspace path.
 - `/ls` - list files in the selected workspace.
 - `/git` - show the current branch, short status, and five recent commits.
-- `/ask <question>` - start or continue a read-only Codex discussion task in the selected workspace.
-- `/ask new <message>` - force a new ask session for the selected workspace.
-- `/ask resume <session_id|--last> <message>` - resume a specific ask session or Codex CLI's most recent session for the runtime user account.
-- `/ask exit` - clear the selected ask session for the current chat and repository.
-- `/ask session` - show the selected ask session for the current chat and repository.
-- `/ask -- <message>` - ask a literal message beginning with a reserved ask subcommand word.
-- `/work <requirement>` - delegate a repository workflow task to Codex.
+- `/agent <instruction>` - start or continue a Codex agent task in the selected workspace.
+- `/agent new <instruction>` - force a new agent session for the selected workspace.
+- `/agent resume <session_id|--last> <instruction>` - resume a specific agent session or Codex CLI's most recent session for the runtime user account.
+- `/agent exit` - clear the selected agent session for the current chat and repository.
+- `/agent session` - show the selected agent session for the current chat and repository.
+- `/agent -- <instruction>` - send a literal instruction beginning with a reserved agent subcommand word.
 - `/continue <instruction>` - resume or recover repository workflow from repository state.
-- `/run_orch <rounds>` - run 1 to 5 orchestrator rounds in the selected workspace.
 - `/approve <request_id>` - approve a pending agent approval request.
 - `/reject <request_id>` - reject a pending agent approval request.
 - `/always_allow <request_id>` - approve a pending agent approval request and remember its future allow rule.
@@ -40,10 +38,8 @@ use - Select a repository by alias
 pwd - Show the selected workspace
 ls - List selected workspace files
 git - Show branch, status, and commits
-ask - Manage read-only Codex ask sessions
-work - Delegate a repository workflow task
+agent - Manage Codex agent sessions
 continue - Resume repository workflow
-run_orch - Run orchestrator rounds
 approve - Approve a pending agent request
 reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
@@ -53,15 +49,15 @@ stop - Stop a running task
 help - Show the command list
 ```
 
-BotFather command names must use lowercase letters, digits, and underscores. The supported Bot command `/run_orch <rounds>` is compatible with the BotFather command menu.
+BotFather command names must use lowercase letters, digits, and underscores. The supported Bot command names are compatible with the BotFather command menu.
 
 ## Repository Workflow Model
 
 The Bot is a control plane, not the owner of feature lifecycle decisions. It validates commands, validates the selected workspace, starts local processes with shell execution disabled, records task metadata, and returns bounded Telegram responses.
 
-Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py`. The workflow commands `/work`, `/continue`, and `/run_orch` require the selected workspace to contain the required agent workflow files before any process is spawned.
+Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py`. `/continue` requires the selected workspace to contain the required agent workflow files before any process is spawned.
 
-`/work` and `/continue` start `codex exec` tasks with prompts that force the spawned agent to reconstruct context from repository files. `/run_orch` starts `python3 orchestrator.py --max-rounds <rounds>`. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace.
+`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/continue` starts a `codex exec` recovery task that forces the spawned agent to reconstruct context from repository files. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace; `work` and `run-orch` may appear only as legacy task records.
 
 ## Transport Modes
 
@@ -93,7 +89,7 @@ Both modes must dispatch Telegram messages into the same `createApp().handleMess
 
 ## Runtime State And Logs
 
-Runtime state is stored in `runtime_state.json`. It contains the selected repository alias, selected workspace path, Bot-started task metadata, ask-session bindings, pending approval requests, remembered approval allow rules, and Telegram polling update offset. It must not contain target repository feature objects.
+Runtime state is stored in `runtime_state.json`. It contains the selected repository alias, selected workspace path, Bot-started task metadata, legacy-compatible ask-session bindings used by `/agent`, pending approval requests, remembered approval allow rules, and Telegram polling update offset. It must not contain target repository feature objects.
 
 Task logs are stored under `logs/` as `logs/<task_id>.log`. Logs include command argv, timestamps, stdout, stderr, and exit code. Telegram responses are bounded, while full process output remains in the task log.
 
@@ -156,5 +152,5 @@ The script checks required project files, validates `feature_list.json`, verifie
 - Only configured local repositories can be selected.
 - Arbitrary shell command execution is not supported.
 - Free-form absolute path workspace selection is not supported.
-- Workflow commands require agent workflow files in the selected repository root.
+- `/continue` requires agent workflow files in the selected repository root.
 - Multiple active workflow tasks in the same workspace are rejected.

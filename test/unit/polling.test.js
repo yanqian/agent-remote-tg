@@ -185,7 +185,7 @@ test("pollOnce preserves task metadata saved while handling an update", async ()
             json: () => Promise.resolve({
               ok: true,
               result: [
-                { update_id: 21, message: { chat: { id: 123 }, text: "/ask inspect this" } },
+                { update_id: 21, message: { chat: { id: 123 }, text: "/agent inspect this" } },
               ],
             }),
           });
@@ -197,7 +197,7 @@ test("pollOnce preserves task metadata saved while handling an update", async ()
 
     const state = JSON.parse(readFileSync(statePath, "utf8"));
     assert.equal(state.telegramUpdateOffset, 22);
-    assert.equal(state.tasks.task_fake_1.type, "ask");
+    assert.equal(state.tasks.task_fake_1.type, "agent");
     assert.equal(state.tasks.task_fake_1.cwd, repoDir);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
@@ -228,7 +228,7 @@ test("pollOnce sends completion push with stored final result and preserves /log
           json: () => Promise.resolve({
             ok: true,
             result: [
-              { update_id: 31, message: { chat: { id: 123 }, text: "/ask inspect this" } },
+              { update_id: 31, message: { chat: { id: 123 }, text: "/agent inspect this" } },
             ],
           }),
         });
@@ -310,7 +310,7 @@ test("polling completion push uses no-result fallback without exposing raw logs"
           json: () => Promise.resolve({
             ok: true,
             result: [
-              { update_id: 41, message: { chat: { id: 123 }, text: "/ask inspect this" } },
+              { update_id: 41, message: { chat: { id: 123 }, text: "/agent inspect this" } },
             ],
           }),
         });

@@ -32,6 +32,18 @@ test("parseCommand rejects unknown slash commands", () => {
     ok: false,
     response: UNKNOWN_COMMAND_RESPONSE,
   });
+  assert.deepEqual(parseCommand("/ask Explain"), {
+    ok: false,
+    response: UNKNOWN_COMMAND_RESPONSE,
+  });
+  assert.deepEqual(parseCommand("/work Add docs"), {
+    ok: false,
+    response: UNKNOWN_COMMAND_RESPONSE,
+  });
+  assert.deepEqual(parseCommand("/run_orch 1"), {
+    ok: false,
+    response: UNKNOWN_COMMAND_RESPONSE,
+  });
 });
 
 test("parseCommand rejects missing required arguments", () => {
@@ -39,9 +51,9 @@ test("parseCommand rejects missing required arguments", () => {
     ok: false,
     response: "Usage: /use <repo>",
   });
-  assert.deepEqual(parseCommand("/run_orch   "), {
+  assert.deepEqual(parseCommand("/agent   "), {
     ok: false,
-    response: "Usage: /run_orch <rounds>",
+    response: "Usage: /agent <instruction> | /agent new <instruction> | /agent resume <session_id|--last> <instruction> | /agent exit | /agent session | /agent -- <instruction>",
   });
   assert.deepEqual(parseCommand("/approve   "), {
     ok: false,
@@ -64,15 +76,13 @@ test("help response documents the exact command surface", () => {
     "/pwd - show the selected workspace",
     "/ls - list files in the selected workspace",
     "/git - show branch, status, and recent commits",
-    "/ask <question> - start or continue a read-only Codex discussion task",
-    "/ask new <message> - force a new ask session",
-    "/ask resume <session_id|--last> <message> - resume an ask session",
-    "/ask exit - clear the selected ask session",
-    "/ask session - show the selected ask session",
-    "/ask -- <message> - ask a literal message beginning with a reserved word",
-    "/work <requirement> - delegate a repository workflow task",
+    "/agent <instruction> - start or continue a Codex agent task",
+    "/agent new <instruction> - force a new agent session",
+    "/agent resume <session_id|--last> <instruction> - resume an agent session",
+    "/agent exit - clear the selected agent session",
+    "/agent session - show the selected agent session",
+    "/agent -- <instruction> - send a literal instruction beginning with a reserved word",
     "/continue <instruction> - resume or recover repository workflow",
-    "/run_orch <rounds> - run 1 to 5 orchestrator rounds",
     "/approve <request_id> - approve a pending agent request",
     "/reject <request_id> - reject a pending agent request",
     "/always_allow <request_id> - approve and remember a future allow rule",

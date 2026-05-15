@@ -252,7 +252,7 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
     });
 
     const started = executor.startTask({
-      type: "ask",
+      type: "agent",
       cwd: rootDir,
       command: "codex",
       args: ["exec", "say secret-token"],
@@ -305,7 +305,7 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
   }
 });
 
-test("startTask persists real ask session metadata without assistant text overrides", async () => {
+test("startTask persists real agent session metadata without assistant text overrides", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
   try {
     const statePath = join(rootDir, "runtime_state.json");
@@ -324,7 +324,7 @@ test("startTask persists real ask session metadata without assistant text overri
     });
 
     const started = executor.startTask({
-      type: "ask",
+      type: "agent",
       cwd: rootDir,
       command: "codex",
       args: ["exec", "--json", "prompt"],
@@ -381,7 +381,7 @@ test("startTask persists JSONL agent message as final result without command out
     });
 
     const started = executor.startTask({
-      type: "ask",
+      type: "agent",
       cwd: rootDir,
       command: "codex",
       args: ["exec", "--json", "prompt"],
@@ -445,7 +445,7 @@ test("startTask tolerates completion notification failures without changing task
     });
 
     const started = executor.startTask({
-      type: "ask",
+      type: "agent",
       cwd: rootDir,
       command: "codex",
       args: ["exec", "done"],
@@ -543,7 +543,7 @@ test("stopTask rejects unknown and non-running tasks without SIGTERM", async () 
     });
 
     const started = executor.startTask({
-      type: "ask",
+      type: "agent",
       cwd: rootDir,
       command: "codex",
       args: ["exec", "done"],
@@ -576,7 +576,7 @@ test("readTaskLog returns final results for finished tasks and rejects confined 
       tasks: {
         [taskId]: {
           taskId,
-          type: "ask",
+          type: "agent",
           status: "succeeded",
           pid: 123,
           cwd: rootDir,
@@ -588,7 +588,7 @@ test("readTaskLog returns final results for finished tasks and rejects confined 
         },
         task_bad_1: {
           taskId: "task_bad_1",
-          type: "ask",
+          type: "agent",
           status: "failed",
           pid: null,
           cwd: rootDir,
@@ -708,7 +708,7 @@ test("readTaskLog includes Codex session IDs when task metadata has them", () =>
       tasks: {
         [finishedTaskId]: {
           taskId: finishedTaskId,
-          type: "ask",
+          type: "agent",
           status: "succeeded",
           pid: null,
           cwd: rootDir,
@@ -721,7 +721,7 @@ test("readTaskLog includes Codex session IDs when task metadata has them", () =>
         },
         [runningTaskId]: {
           taskId: runningTaskId,
-          type: "ask",
+          type: "agent",
           status: "running",
           pid: 123,
           cwd: rootDir,
@@ -766,10 +766,10 @@ test("startTask enforces timeout with SIGTERM and records failed timeout", async
     });
 
     const started = executor.startTask({
-      type: "ask",
+      type: "agent",
       cwd: rootDir,
       command: "codex",
-      args: ["exec", "read only"],
+      args: ["exec", "agent task"],
       timeoutMs: 1,
     });
 

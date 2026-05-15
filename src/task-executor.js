@@ -8,7 +8,7 @@ import {
   updateAskSessionBinding,
 } from "./runtime-state.js";
 
-export const TASK_TYPES = Object.freeze(["ask", "work", "continue", "run-orch"]);
+export const TASK_TYPES = Object.freeze(["agent", "ask", "work", "continue", "run-orch"]);
 export const TASK_STATUSES = Object.freeze(["running", "stopping", "stopped", "succeeded", "failed"]);
 export const TELEGRAM_RESPONSE_LIMIT = 3500;
 
@@ -48,7 +48,7 @@ export function createTaskExecutor(options) {
         [task.taskId]: task,
       },
     };
-    if (task.type === "ask" && task.chatId && task.repoAlias && task.codexSessionId) {
+    if ((task.type === "agent" || task.type === "ask") && task.chatId && task.repoAlias && task.codexSessionId) {
       nextState = updateAskSessionBinding(nextState, {
         chatId: task.chatId,
         repoAlias: task.repoAlias,

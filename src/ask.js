@@ -5,35 +5,40 @@ import {
   removeAskSessionBinding,
 } from "./runtime-state.js";
 
-export const ASK_TIMEOUT_MS = 10 * 60 * 1000;
-const ASK_USAGE = "Usage: /ask <question> | /ask new <message> | /ask resume <session_id|--last> <message> | /ask exit | /ask session | /ask -- <message>";
-const ASK_RESERVED_SUBCOMMANDS = new Set(["new", "resume", "exit", "session"]);
+export const AGENT_TIMEOUT_MS = 10 * 60 * 1000;
+export const ASK_TIMEOUT_MS = AGENT_TIMEOUT_MS;
+const AGENT_USAGE = "Usage: /agent <instruction> | /agent new <instruction> | /agent resume <session_id|--last> <instruction> | /agent exit | /agent session | /agent -- <instruction>";
+const AGENT_RESERVED_SUBCOMMANDS = new Set(["new", "resume", "exit", "session"]);
 
-export function buildAskPrompt(question) {
+export function buildAgentPrompt(instruction) {
   return [
-    "Act as a read-only Codex discussion agent for the selected repository.",
+    "Act as a general-purpose Codex agent for the selected repository.",
     "",
     "Rules:",
-    "- Discuss and analyze only.",
-    "- Do not modify files.",
-    "- Do not update SPEC.md.",
-    "- Do not update feature_list.json.",
-    "- Do not run orchestrator.py.",
-    "- Do not commit.",
+    "- Use repository files and git history as the source of truth.",
+    "- Do not rely on Telegram chat history.",
+    "- For implementation requests, read and follow AGENTS.md before changing files.",
+    "- Preserve unrelated user changes and existing git history.",
+    "- Keep shell execution disabled; the Bot has already spawned this task safely.",
+    "- Summarize actions taken, changed files, verification commands, and remaining issues.",
     "",
-    "Question:",
-    question,
+    "Instruction:",
+    instruction,
   ].join("\n");
 }
 
-export function handleAsk(args, state, taskExecutor, chatId = null) {
+export function buildAskPrompt(question) {
+  return buildAgentPrompt(question);
+}
+
+export function handleAgent(args, state, taskExecutor, chatId = null) {
   const workspace = requireWorkspace(state);
   if (!workspace.ok) {
     return { response: workspace.response, stateChanged: false };
   }
 
   const chatKey = chatId === null || chatId === undefined ? null : String(chatId);
-  const request = parseAskRequest(args);
+  const request = parseAgentRequest(args);
   if (!request.ok) {
     return { response: request.response, stateChanged: false };
   }
@@ -41,7 +46,7 @@ export function handleAsk(args, state, taskExecutor, chatId = null) {
   if (request.action === "exit") {
     const nextState = removeAskSessionBinding(state, { chatId: chatKey, repoAlias: workspace.currentRepo });
     return {
-      response: "Ask session cleared for the current chat and repository.",
+      response: "Agent session cleared for the current chat and repository.",
       state: nextState,
       stateChanged: true,
     };
@@ -53,8 +58,8 @@ export function handleAsk(args, state, taskExecutor, chatId = null) {
       : null;
     return {
       response: binding
-        ? `Current ask session:\nrepo: ${workspace.currentRepo}\nsession: ${binding.codexSessionId}`
-        : "No ask session selected for the current chat and repository.",
+        ? `Current agent session:\nrepo: ${workspace.currentRepo}\nsession: ${binding.codexSessionId}`
+        : "No agent session selected for the current chat and repository.",
       stateChanged: false,
     };
   }
@@ -71,14 +76,14 @@ export function handleAsk(args, state, taskExecutor, chatId = null) {
     : request.action === "plain"
       ? currentBinding?.codexSessionId ?? null
       : null;
-  const commandArgs = buildAskCommandArgs(request, codexSessionId);
+  const commandArgs = buildAgentCommandArgs(request, codexSessionId);
 
   const started = taskExecutor.startTask({
-    type: "ask",
+    type: "agent",
     cwd: workspace.cwd,
     command: "codex",
     args: commandArgs,
-    timeoutMs: ASK_TIMEOUT_MS,
+    timeoutMs: AGENT_TIMEOUT_MS,
     chatId: chatKey,
     repoAlias: workspace.currentRepo,
     codexSessionId,
@@ -86,7 +91,7 @@ export function handleAsk(args, state, taskExecutor, chatId = null) {
 
   if (request.action === "resume" || (request.action === "plain" && codexSessionId)) {
     return {
-      response: `${started.response}\nResumed ask session: ${codexSessionId}`,
+      response: `${started.response}\nResumed agent session: ${codexSessionId}`,
       stateChanged: false,
     };
   }
@@ -99,32 +104,36 @@ export function handleAsk(args, state, taskExecutor, chatId = null) {
   };
 }
 
-export function parseAskRequest(args) {
+export function handleAsk(args, state, taskExecutor, chatId = null) {
+  return handleAgent(args, state, taskExecutor, chatId);
+}
+
+export function parseAgentRequest(args) {
   const text = String(args ?? "").trim();
   if (text.length === 0) {
-    return { ok: false, response: ASK_USAGE };
+    return { ok: false, response: AGENT_USAGE };
   }
 
   if (text === "--") {
-    return { ok: false, response: ASK_USAGE };
+    return { ok: false, response: AGENT_USAGE };
   }
 
   if (text.startsWith("-- ")) {
     const message = text.slice(3).trim();
     return message.length > 0
       ? { ok: true, action: "plain", message }
-      : { ok: false, response: ASK_USAGE };
+      : { ok: false, response: AGENT_USAGE };
   }
 
   const [firstToken, rest] = splitFirstToken(text);
-  if (!ASK_RESERVED_SUBCOMMANDS.has(firstToken)) {
+  if (!AGENT_RESERVED_SUBCOMMANDS.has(firstToken)) {
     return { ok: true, action: "plain", message: text };
   }
 
   if (firstToken === "new") {
     return rest.length > 0
       ? { ok: true, action: "new", message: rest }
-      : { ok: false, response: "Usage: /ask new <message>" };
+      : { ok: false, response: "Usage: /agent new <instruction>" };
   }
 
   if (firstToken === "resume") {
@@ -132,10 +141,10 @@ export function parseAskRequest(args) {
     if (sessionId === "--last") {
       return message.length > 0
         ? { ok: true, action: "resume-last", message }
-        : { ok: false, response: "Usage: /ask resume --last <message>" };
+        : { ok: false, response: "Usage: /agent resume --last <instruction>" };
     }
     if (!isValidCodexSessionId(sessionId) || message.length === 0) {
-      return { ok: false, response: "Usage: /ask resume <session_id> <message>" };
+      return { ok: false, response: "Usage: /agent resume <session_id> <instruction>" };
     }
     return { ok: true, action: "resume", sessionId, message };
   }
@@ -143,22 +152,26 @@ export function parseAskRequest(args) {
   if (firstToken === "exit") {
     return rest.length === 0
       ? { ok: true, action: "exit" }
-      : { ok: false, response: "Usage: /ask exit" };
+      : { ok: false, response: "Usage: /agent exit" };
   }
 
   return rest.length === 0
     ? { ok: true, action: "session" }
-    : { ok: false, response: "Usage: /ask session" };
+    : { ok: false, response: "Usage: /agent session" };
 }
 
-function buildAskCommandArgs(request, codexSessionId) {
+export function parseAskRequest(args) {
+  return parseAgentRequest(args);
+}
+
+function buildAgentCommandArgs(request, codexSessionId) {
   if (request.action === "resume-last") {
     return ["exec", "--json", "resume", "--last", request.message];
   }
   if (codexSessionId) {
     return ["exec", "--json", "resume", codexSessionId, request.message];
   }
-  return ["exec", "--json", buildAskPrompt(request.message)];
+  return ["exec", "--json", buildAgentPrompt(request.message)];
 }
 
 function splitFirstToken(text) {

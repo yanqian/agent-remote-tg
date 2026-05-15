@@ -85,10 +85,8 @@ use - Select a repository by alias
 pwd - Show the selected workspace
 ls - List selected workspace files
 git - Show branch, status, and commits
-ask - Manage read-only Codex ask sessions
-work - Delegate a repository workflow task
+agent - Manage Codex agent sessions
 continue - Resume repository workflow
-run_orch - Run orchestrator rounds
 approve - Approve a pending agent request
 reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
@@ -98,17 +96,17 @@ stop - Stop a running task
 help - Show the command list
 ```
 
-The `/run_orch` command name is compatible with BotFather because it uses only lowercase letters and an underscore.
+The supported command names are compatible with BotFather because they use lowercase letters and underscores only.
 
 ## Long-Running Operation
 
-The `/ask`, `/ask new`, `/ask resume`, `/work`, `/continue`, and `/run_orch` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. `/ask exit` and `/ask session` only inspect or update the current chat and repository ask-session binding. `/approve`, `/reject`, and `/always_allow` resolve pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
+The `/agent`, `/agent new`, `/agent resume`, and `/continue` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. `/agent exit` and `/agent session` only inspect or update the current chat and repository session binding. `/approve`, `/reject`, and `/always_allow` resolve pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
 
 Only one active workflow task of type `work`, `continue`, or `run-orch` can run in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 
 ## Logs And State Files
 
-`runtime_state.json` stores the selected repository alias, selected workspace path, Bot task metadata, ask-session bindings, pending approval requests, remembered approval allow rules, and Telegram polling update offset. `logs/` stores full task output as `logs/<task_id>.log`.
+`runtime_state.json` stores the selected repository alias, selected workspace path, Bot task metadata, legacy-compatible ask-session bindings used by `/agent`, pending approval requests, remembered approval allow rules, and Telegram polling update offset. `logs/` stores full task output as `logs/<task_id>.log`.
 
 `runtime_state.json` and `logs/` are runtime artifacts and must not be used as target repository feature state. For VPS, VM, container, Cloud Run, and hosted Node.js webhook deployments, these paths must be on persistent storage so selected workspace state, Bot task metadata, polling offsets, and task logs survive process restarts and redeploys. Target repository source of truth remains in `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, `orchestrator.py`, and git history.
 
@@ -130,10 +128,10 @@ After startup, verify operation from an authorized Telegram chat:
 - `/repos` lists the expected repository aliases and paths.
 - `/use <repo>` selects the intended whitelisted repository.
 - `/pwd`, `/ls`, and `/git` inspect only the selected workspace.
-- `/run_orch 1` starts one orchestrator round only after the selected workspace is agent-workflow ready.
+- `/agent session` reports the selected agent session, or `/agent <instruction>` starts a task after a workspace is selected.
 - `/status` reports active tasks and recent finished tasks.
 
-Before running workflow commands, confirm the selected workspace contains the required agent workflow files and has a clean or intentionally understood working tree.
+Before running `/continue`, confirm the selected workspace contains the required agent workflow files and has a clean or intentionally understood working tree.
 
 ## Failure Handling
 

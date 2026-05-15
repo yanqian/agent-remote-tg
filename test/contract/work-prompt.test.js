@@ -1,6 +1,26 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { buildAgentPrompt } from "../../src/ask.js";
 import { buildContinuePrompt, buildWorkPrompt } from "../../src/work.js";
+
+test("/agent prompt contains the required general agent contract", () => {
+  const prompt = buildAgentPrompt("Update documentation and verify it.");
+
+  for (const requiredText of [
+    "Use repository files and git history as the source of truth.",
+    "Do not rely on Telegram chat history.",
+    "For implementation requests, read and follow AGENTS.md before changing files.",
+    "Preserve unrelated user changes and existing git history.",
+    "Summarize actions taken, changed files, verification commands, and remaining issues.",
+  ]) {
+    assert.ok(prompt.includes(requiredText), `missing prompt text: ${requiredText}`);
+  }
+
+  assert.doesNotMatch(prompt, /Do not modify files\./);
+  assert.doesNotMatch(prompt, /Do not update SPEC\.md\./);
+  assert.doesNotMatch(prompt, /Do not update feature_list\.json\./);
+  assert.match(prompt, /Instruction:\nUpdate documentation and verify it\./);
+});
 
 test("/work prompt contains the required long-running workflow contract", () => {
   const prompt = buildWorkPrompt("Add a safe rollout requirement.");
