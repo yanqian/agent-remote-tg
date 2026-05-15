@@ -314,6 +314,15 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F036",
+      "description": "Implement basic Codex permission prompt bridging for Bot-started /agent and /continue tasks by detecting Codex permission or approval requests, persisting a pending approval request with task, chat, repo, session, request detail, and Codex-provided option metadata, sending a bounded redacted Telegram approval message with one inline keyboard button per Codex option, mapping exactly three Codex options to exactly three Bot buttons when Codex provides three options, handling button callbacks by resolving only the matching pending request and delivering the selected option back to the running Codex task, preserving existing /approve, /reject, /always_allow, and reply yes/no flows as fallback only for compatible options, supporting a mapped always-reject Codex option and optional /always_reject <request_id> fallback when compatible, rejecting unsafe callback data plus unknown, expired, resolved, unauthorized, or option-incompatible requests, and adding unit, harness, contract, and fake Telegram API coverage without making real Codex or Telegram network calls.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }

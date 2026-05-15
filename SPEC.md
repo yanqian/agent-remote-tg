@@ -451,6 +451,41 @@ Reply-based approval decisions must apply only when the incoming Telegram messag
 
 Approval request IDs must be validated as safe IDs before use, and unknown, expired, already-resolved, or unauthorized approval requests must be rejected with a clear Telegram response.
 
+### 4.13 Codex Permission Prompt Button Bridge
+
+The Bot must provide basic Telegram support for Codex permission prompts raised by Bot-started Codex tasks.
+
+When a running `/agent` or `/continue` Codex task emits a permission or approval request, the Bot must create a pending approval request in runtime state and send an approval message to the originating Telegram chat.
+
+The approval message must summarize the Codex request, including:
+
+- Bot task ID.
+- Codex session ID when available.
+- Selected repository alias and workspace path when available.
+- Requested action or permission category.
+- Command, path, or resource details when Codex provides them.
+- The exact decision options exposed by Codex.
+
+The Telegram approval message must include inline keyboard buttons that map to the Codex-provided decision options.
+
+If Codex exposes three decision options, the Bot must render three corresponding Telegram buttons. The Bot must not invent extra decision buttons for that prompt.
+
+Each button callback must include only a safe Bot-local approval request ID and a safe option ID. It must not expose raw shell fragments, absolute paths, secrets, or unbounded Codex output in callback data.
+
+Selecting a Telegram approval button must resolve the matching pending approval request and deliver the selected option back to the running Codex task.
+
+If Codex exposes an option equivalent to approve, reject, always allow, or always reject, the Bot may map that option to the existing approval decision model. If Codex exposes differently named options, the Bot must preserve the Codex option identity instead of forcing it into an inaccurate decision.
+
+The explicit `/approve <request_id>`, `/reject <request_id>`, and `/always_allow <request_id>` commands, plus reply-based `yes` and `no` decisions, remain fallback interfaces for compatible approval requests. They do not replace inline button handling.
+
+If a Codex prompt exposes an always-reject option, the Bot must support choosing it through the mapped Telegram button. A command fallback may be added as `/always_reject <request_id>` when the request exposes a compatible always-reject option.
+
+Approval decisions must be accepted only from authorized chats and only for approval requests associated with that chat or explicitly chat-neutral requests.
+
+The Bot must reject button callbacks and command fallbacks for unknown, expired, already-resolved, unauthorized, or option-incompatible approval requests.
+
+The Bot must preserve raw Codex task logs locally while keeping Telegram approval messages bounded and redacted.
+
 ## 5. Constraints
 
 ### 5.1 Security
@@ -523,6 +558,10 @@ Approval request IDs must be validated as safe IDs before use, and unknown, expi
 - Replying `no` or `reject` to a Bot approval request message rejects the correlated request.
 - Replying `always`, `always allow`, or `以后都允许` to a Bot approval request message approves the correlated request and stores the future allow rule.
 - Approval reply words sent outside a reply to a Bot approval request message do not trigger approval decisions.
+- When Codex raises a permission prompt with multiple decision options, the Bot sends one Telegram inline button for each Codex-provided option.
+- Selecting an approval button resolves the matching pending request and sends the selected option back to the running Codex task.
+- If Codex provides exactly three decision options, the Telegram approval message contains exactly three mapped decision buttons.
+- Button callback data contains only safe Bot-local IDs and never contains raw commands, paths, secrets, or unbounded Codex output.
 - `/help` lists exactly the documented commands.
 - Unknown slash commands return `Unknown command.\nUse /help.`.
 - `/run-feature` is not implemented.
