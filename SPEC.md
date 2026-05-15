@@ -1724,3 +1724,68 @@ Configured timeout:
 - Run focused `/agent` unit and harness tests for default and configured timeout values.
 - Run startup configuration tests for invalid timeout values.
 - Run `./init.sh`.
+
+## 22. Codex JSONL Thread Session Extraction Requirements
+
+### 22.1 Goal
+
+Fix `/agent new` session binding when Codex CLI JSONL emits `thread.started` events with `thread_id`.
+
+The Bot must bind the current Telegram chat plus repository alias to the real Codex thread created by `/agent new`. A later plain `/agent <instruction>` must resume that new thread, not an older ask or agent binding.
+
+### 22.2 Scope
+
+Include:
+
+- Support Codex JSONL events shaped as `{"type":"thread.started","thread_id":"<id>"}` as trusted session metadata.
+- Support equivalent camelCase `threadId` in trusted thread metadata events.
+- Preserve existing trusted `session_id`, `sessionId`, `conversation_id`, `conversationId`, nested `session.id`, nested `conversation.id`, and nested `msg` metadata support.
+- Keep rejecting assistant final answers, source code, tests, README text, SPEC text, command output, and log tail text as sources for session IDs.
+- Add regression coverage using real-shaped `thread.started` JSONL output captured from local task logs.
+- Add coverage proving `/agent new` replaces an existing chat plus repository binding with the newly discovered thread id.
+- Preserve task id and Codex session id as separate identifiers.
+
+Exclude:
+
+- Do not extract session IDs from assistant prose.
+- Do not extract session IDs from shell command output after non-metadata task output starts.
+- Do not change `/agent resume <session_id> <instruction>` behavior.
+- Do not change `/agent resume --last <instruction>` behavior except where the same trusted JSONL extraction updates the binding.
+- Do not change final result extraction.
+
+### 22.3 Core Flow
+
+1. Runtime state contains an existing chat plus repository binding for an older Codex session.
+2. User sends `/agent new <instruction>`.
+3. The Bot starts `codex exec --json <prompt>` without a resume argument.
+4. Codex emits JSONL line `{"type":"thread.started","thread_id":"019e2adf-1bbc-7272-9d6d-23d89ac05033"}` before assistant output.
+5. The task executor records `codexSessionId` with that thread id on the finished task.
+6. The task executor updates the chat plus repository session binding to that thread id.
+7. User sends plain `/agent <follow-up>`.
+8. The Bot starts `codex exec --json resume 019e2adf-1bbc-7272-9d6d-23d89ac05033 <follow-up>`.
+
+### 22.4 Constraints
+
+- The parser must only trust thread ids from structured JSONL metadata before assistant output starts.
+- The parser must fail closed for unknown event shapes.
+- The parser must continue to validate session ids with the existing safe session id rules.
+- The repository must remain runnable through `./init.sh`.
+
+### 22.5 Acceptance Criteria
+
+- `extractCodexSessionIdFromLog` returns the id from `{"type":"thread.started","thread_id":"..."}` before assistant output.
+- `extractCodexSessionIdFromLog` returns the id from `{"type":"thread.started","threadId":"..."}` before assistant output.
+- `extractCodexSessionIdFromLog` does not return a `thread_id` embedded in assistant answer text.
+- `extractCodexSessionIdFromLog` does not return a `thread_id` from command output after non-metadata output starts.
+- A completed `/agent new` task stores the discovered `thread_id` as `codexSessionId`.
+- A completed `/agent new` task replaces an older chat plus repository session binding with the discovered `thread_id`.
+- A later plain `/agent <instruction>` resumes the newly bound thread id.
+- Existing unit, harness, contract, and smoke checks pass.
+- `./init.sh` passes.
+
+### 22.6 Verification Plan
+
+- Run focused unit tests for `extractCodexSessionIdFromLog` with real-shaped `thread.started` JSONL.
+- Run task executor tests proving a discovered thread id is persisted to task metadata and session binding.
+- Run harness tests proving `/agent new` replaces an old binding and the next plain `/agent` resumes the new thread.
+- Run `./init.sh`.

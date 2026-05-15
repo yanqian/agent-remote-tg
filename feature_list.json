@@ -332,6 +332,15 @@
       "attempts": 2,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F038",
+      "description": "Fix Codex JSONL session extraction for /agent new by trusting real-shaped thread.started events with thread_id and threadId before assistant output, preserving existing trusted session and conversation metadata support, rejecting assistant prose and command output lookalikes, persisting the discovered thread id as task codexSessionId, replacing any older chat plus repository binding after /agent new completes, making the next plain /agent resume the newly bound thread, preserving /agent resume and /agent resume --last behavior, preserving task id versus Codex session id separation, and adding unit, task executor, harness, and init verification coverage using real-shaped local Codex JSONL output.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }

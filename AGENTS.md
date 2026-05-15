@@ -245,6 +245,17 @@ The Coding Agent updates `progress.md` after implementation work.
 
 ---
 
+# External Tool Schema Rules
+
+When implementing behavior that parses output from external tools such as Codex CLI JSONL:
+
+* Do not invent or assume field names from naming convention alone
+* Prefer real captured local output or official documentation as fixtures
+* Add regression tests using real-shaped output for every trusted schema field
+* If the schema is unknown, fail closed instead of extracting identifiers from assistant prose, command output, source files, documentation, or log tails
+
+---
+
 # Work Rules
 
 * Only one feature per Coding Agent run
