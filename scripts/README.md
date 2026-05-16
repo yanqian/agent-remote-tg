@@ -29,6 +29,24 @@ npm run smoke
 npm run test:smoke
 ```
 
+## clear-runtime-history.js
+
+Clears local Bot runtime history after first refusing to run when any task in `runtime_state.json` is `running` or `stopping`.
+
+The script preserves `currentRepo`, `cwd`, and `telegramUpdateOffset`, then clears task metadata, agent session bindings, agent chat mode flags, approval requests, approval allow rules, and `logs/*.log`.
+
+Run it through Make with:
+
+```bash
+make clean-history
+```
+
+Preview the cleanup without writing files:
+
+```bash
+node scripts/clear-runtime-history.js --dry-run
+```
+
 ## set-telegram-webhook.js
 
 Registers the deployed Telegram webhook URL with Telegram. It requires `TELEGRAM_BOT_TOKEN` and an HTTPS `TELEGRAM_WEBHOOK_URL`.

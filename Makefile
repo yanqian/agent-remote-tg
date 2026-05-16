@@ -1,4 +1,4 @@
-.PHONY: help start-local start-polling start-webhook init verify build test test-unit test-harness test-contract test-smoke smoke state pycheck orch orch-dry-run orch-eval-all clean
+.PHONY: help start-local start-polling start-webhook init verify build test test-unit test-harness test-contract test-smoke smoke state pycheck orch orch-dry-run orch-eval-all clean clean-history
 
 ROUNDS ?= 1
 FEATURE ?= all
@@ -23,6 +23,7 @@ help:
 	@echo "  make orch ROUNDS=1    Run orchestrator rounds"
 	@echo "  make orch-dry-run     Preview orchestrator actions"
 	@echo "  make orch-eval-all    Run evaluator-only mode for all features"
+	@echo "  make clean-history    Clear Bot runtime task/session history and logs"
 
 start-local:
 	@if [ ! -f "$(ENV_FILE)" ]; then \
@@ -81,3 +82,6 @@ orch-eval-all:
 
 clean:
 	rm -rf __pycache__ scripts/__pycache__
+
+clean-history:
+	node scripts/clear-runtime-history.js
