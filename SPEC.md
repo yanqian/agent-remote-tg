@@ -1789,3 +1789,135 @@ Exclude:
 - Run task executor tests proving a discovered thread id is persisted to task metadata and session binding.
 - Run harness tests proving `/agent new` replaces an old binding and the next plain `/agent` resumes the new thread.
 - Run `./init.sh`.
+
+## 23. Agent Chat Mode Requirements
+
+### 23.1 Goal
+
+Make continued agent conversation natural in Telegram after the user selects a repository and starts or resumes an agent session.
+
+After a chat plus repository has entered agent chat mode, authorized non-command messages must continue the current agent session without requiring the user to prefix every follow-up with `/agent`.
+
+### 23.2 Scope
+
+Include:
+
+- Add explicit agent chat mode state scoped by authorized Telegram chat id and selected repository alias.
+- Enter agent chat mode after `/agent <instruction>`, `/agent new <instruction>`, `/agent resume <session_id> <instruction>`, or `/agent resume --last <instruction>` starts a task.
+- Treat authorized non-command text as a plain `/agent <text>` follow-up only when the current chat plus selected repository is in agent chat mode and has a current agent session binding.
+- Keep slash commands parsed as commands before agent chat mode handling.
+- Keep `/agent new <instruction>` as the way to create a fresh session.
+- Keep `/agent resume <session_id> <instruction>` and `/agent resume --last <instruction>` as ways to switch or recover a session.
+- Keep `/agent session` as the way to inspect the current repository session and chat mode status.
+- Keep `/agent exit` as the way to leave agent chat mode for the current chat plus repository.
+- Remove `/continue` from the public command whitelist, help output, README command surface, deployment documentation, BotFather command menu documentation, contract tests, and harness expectations.
+- Make `/continue <instruction>` return `Unknown command.\nUse /help.`.
+- Preserve task status, logs, stop, approval commands, permission approval bridging, final result extraction, Telegram truncation, secret redaction, and shell-disabled process spawning.
+
+Exclude:
+
+- Do not make unauthorized non-command text start tasks.
+- Do not let ordinary non-command text start a session when no repository is selected.
+- Do not let ordinary non-command text start a session when agent chat mode is off.
+- Do not let ordinary non-command text start a session when no current session binding exists.
+- Do not intercept slash commands as agent follow-ups.
+- Do not add message queueing for follow-ups while a task is running in the same repository.
+- Do not delete historical task records when leaving agent chat mode.
+
+### 23.3 Core Flow
+
+Start and continue:
+
+1. User sends `/use agent-remote-tg`.
+2. User sends `/agent new Explain the approval bridge`.
+3. The Bot starts a new agent task and enters agent chat mode for that chat plus repository.
+4. The task discovers and binds a Codex session id.
+5. User sends ordinary text `What does the fourth option mean?`.
+6. The Bot treats that text as a follow-up to the current agent session.
+7. The Bot starts `codex exec --json resume <session_id> "What does the fourth option mean?"`.
+
+Exit:
+
+1. User sends `/agent exit`.
+2. The Bot leaves agent chat mode for the current chat plus repository.
+3. Later ordinary text does not start an agent task.
+4. The user can re-enter mode with `/agent <instruction>`, `/agent new <instruction>`, or `/agent resume ...`.
+
+Running task boundary:
+
+1. Agent chat mode is on.
+2. An agent task is already running or stopping in the selected repository.
+3. User sends ordinary follow-up text.
+4. The Bot rejects the follow-up with a bounded response telling the user to wait, inspect `/status`, or stop the running task with `/stop <task_id>`.
+
+### 23.4 Runtime State
+
+Runtime state must persist agent chat mode by chat id and repository alias.
+
+The state must remain backward-compatible with existing `runtime_state.json` files.
+
+State normalization must reject unsafe chat ids, unsafe repository aliases, and invalid mode values.
+
+Leaving agent chat mode must remove only the current chat plus selected repository mode flag.
+
+### 23.5 Command Surface
+
+Public commands after this feature:
+
+```text
+/help
+/repos
+/use <repo>
+/pwd
+/ls
+/git
+/agent <instruction>
+/agent new <instruction>
+/agent resume <session_id|--last> <instruction>
+/agent exit
+/agent session
+/status
+/logs <task_id>
+/stop <task_id>
+/approve <request_id>
+/reject <request_id>
+/always_allow <request_id>
+/always_reject <request_id>
+```
+
+Removed public commands:
+
+```text
+/ask
+/work
+/run_orch
+/continue
+```
+
+### 23.6 Acceptance Criteria
+
+- `/agent <instruction>` starts an agent task and turns on agent chat mode for the current chat plus repository.
+- `/agent new <instruction>` starts a new agent task and turns on agent chat mode for the current chat plus repository.
+- `/agent resume <session_id> <instruction>` starts a resumed agent task and turns on agent chat mode for the current chat plus repository.
+- `/agent resume --last <instruction>` starts a resume-last agent task and turns on agent chat mode for the current chat plus repository after session discovery.
+- When agent chat mode is on and a session binding exists, authorized ordinary text starts a resumed agent task for that session.
+- Ordinary text without a selected repository does not start a task and tells the user to select a repository.
+- Ordinary text with agent chat mode off does not start a task and tells the user to use `/agent <instruction>` to begin.
+- Ordinary text with chat mode on but no session binding does not start a task and tells the user to use `/agent new <instruction>` or `/agent resume <session_id> <instruction>`.
+- Slash commands are never treated as ordinary agent follow-ups.
+- Ordinary text is rejected when another active agent task is running or stopping in the same repository.
+- `/agent session` reports repository alias, session id when present, and whether agent chat mode is on.
+- `/agent exit` turns off agent chat mode only for the current chat plus repository.
+- `/continue <instruction>` returns `Unknown command.\nUse /help.`.
+- `/help` does not list `/continue`.
+- README and deployment documentation do not present `/continue` as a user-facing command.
+- Existing unit, harness, contract, and smoke checks pass.
+- `./init.sh` passes.
+
+### 23.7 Verification Plan
+
+- Run unit tests for runtime state normalization of agent chat mode.
+- Run unit tests for ordinary text dispatch rules.
+- Run harness tests for `/agent` entering mode, ordinary text follow-up, `/agent exit`, `/use` repository scoping, active task rejection, and `/continue` rejection.
+- Run contract tests for exact command whitelist and help output.
+- Run `./init.sh`.
