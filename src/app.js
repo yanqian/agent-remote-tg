@@ -9,10 +9,15 @@ import {
 } from "./approval.js";
 import { HELP_RESPONSE } from "./constants.js";
 import { parseCommand } from "./commands.js";
-import { loadRuntimeState, saveRuntimeState } from "./runtime-state.js";
+import {
+  enableAgentChatMode,
+  getAskSessionBinding,
+  isAgentChatModeEnabled,
+  loadRuntimeState,
+  saveRuntimeState,
+} from "./runtime-state.js";
 import { handleLogs, handleStatus, handleStop } from "./task-management.js";
 import { createTaskExecutor } from "./task-executor.js";
-import { handleContinue } from "./work.js";
 import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
 
 export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecutor, agentTaskTimeoutMs = null }) {
@@ -52,12 +57,22 @@ export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecu
         return replyDecision.response;
       }
 
+      const text = String(message.text ?? "").trim();
+      if (!text.startsWith("/")) {
+        const result = handleAgentChatText(text, repos, state, executor, message.chatId, {
+          agentTaskTimeoutMs,
+        });
+        persistAgentChatModeIfNeeded(result, statePath);
+        return result.response;
+      }
+
       const parsed = parseCommand(message.text);
       if (!parsed.ok) {
         return parsed.response;
       }
 
       const result = handleParsedCommand(parsed, repos, state, executor, message.chatId, { agentTaskTimeoutMs });
+      persistAgentChatModeIfNeeded(result, statePath);
       if (result.stateChanged) {
         const delivered = deliverApprovalSelection({
           executor,
@@ -155,8 +170,6 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
       return handleAgent(parsed.args, state, taskExecutor, chatId, {
         agentTaskTimeoutMs: options.agentTaskTimeoutMs ?? null,
       });
-    case "/continue":
-      return handleContinue(parsed.args, state, taskExecutor, chatId);
     case "/approve":
     case "/reject":
     case "/always_allow":
@@ -176,4 +189,64 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
         stateChanged: false,
       };
   }
+}
+
+function handleAgentChatText(text, repos, state, taskExecutor, chatId, options = {}) {
+  if (text.length === 0) {
+    return { response: "Unknown command.\nUse /help.", stateChanged: false };
+  }
+
+  if (!state?.currentRepo || !state?.cwd) {
+    return { response: "No workspace selected.\nUse /repos then /use <repo>.", stateChanged: false };
+  }
+
+  const chatKey = chatId === null || chatId === undefined ? null : String(chatId);
+  if (!isAgentChatModeEnabled(state, { chatId: chatKey, repoAlias: state.currentRepo })) {
+    return {
+      response: "Agent chat mode is off for the current chat and repository.\nUse /agent <instruction> to begin.",
+      stateChanged: false,
+    };
+  }
+
+  const activeTask = findActiveAgentTaskForRepo(state, state.currentRepo, state.cwd);
+  if (activeTask) {
+    return {
+      response: `An agent task is already running for this repository: ${activeTask.taskId}.\nUse /status or /stop ${activeTask.taskId} before sending another follow-up.`,
+      stateChanged: false,
+    };
+  }
+
+  const binding = getAskSessionBinding(state, { chatId: chatKey, repoAlias: state.currentRepo });
+  if (!binding) {
+    return {
+      response: "No agent session is bound for agent chat mode.\nUse /agent new <instruction> or /agent resume <session_id> <instruction>.",
+      stateChanged: false,
+    };
+  }
+
+  return handleAgent(text, state, taskExecutor, chatId, {
+    agentTaskTimeoutMs: options.agentTaskTimeoutMs ?? null,
+  });
+}
+
+function findActiveAgentTaskForRepo(state, repoAlias, cwd) {
+  for (const task of Object.values(state?.tasks ?? {})) {
+    if (task?.type !== "agent" || !["running", "stopping"].includes(task.status)) {
+      continue;
+    }
+    if (task.repoAlias === repoAlias || task.cwd === cwd) {
+      return task;
+    }
+  }
+  return null;
+}
+
+function persistAgentChatModeIfNeeded(result, statePath) {
+  const mode = result?.enableAgentChatMode;
+  if (!mode) {
+    return;
+  }
+
+  const current = loadRuntimeState(statePath);
+  saveRuntimeState(statePath, enableAgentChatMode(current, mode));
 }

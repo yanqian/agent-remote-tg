@@ -35,6 +35,10 @@ test("handleAgent starts a codex exec task in the selected workspace", () => {
 
   assert.equal(result.response, "Task started: task_abc_1\nUse /logs task_abc_1 to view output.");
   assert.equal(result.stateChanged, false);
+  assert.deepEqual(result.enableAgentChatMode, {
+    chatId: null,
+    repoAlias: "app",
+  });
   assert.equal(calls[0].type, "agent");
   assert.equal(calls[0].cwd, "/tmp/app");
   assert.equal(calls[0].command, "codex");
@@ -232,7 +236,7 @@ test("handleAgent resume last uses Codex CLI --last without preselected session 
   assert.equal(calls[0].codexSessionId, null);
 });
 
-test("handleAgent exit removes only the current chat and repo binding", () => {
+test("handleAgent exit disables only current chat and repo mode without clearing binding", () => {
   const state = {
     currentRepo: "app",
     cwd: "/tmp/app",
@@ -246,6 +250,15 @@ test("handleAgent exit removes only the current chat and repo binding", () => {
         app: { codexSessionId: "session_else123" },
       },
     },
+    agentChatModes: {
+      "123": {
+        app: "enabled",
+        other: "enabled",
+      },
+      "456": {
+        app: "enabled",
+      },
+    },
   };
   const result = handleAgent("exit", state, {
     startTask() {
@@ -253,19 +266,28 @@ test("handleAgent exit removes only the current chat and repo binding", () => {
     },
   }, 123);
 
-  assert.equal(result.response, "Agent session cleared for the current chat and repository.");
+  assert.equal(result.response, "Agent chat mode disabled for the current chat and repository.");
   assert.equal(result.stateChanged, true);
   assert.deepEqual(result.state.askSessions, {
     "123": {
+      app: { codexSessionId: "session_abc123" },
       other: { codexSessionId: "session_other123" },
     },
     "456": {
       app: { codexSessionId: "session_else123" },
     },
   });
+  assert.deepEqual(result.state.agentChatModes, {
+    "123": {
+      other: "enabled",
+    },
+    "456": {
+      app: "enabled",
+    },
+  });
 });
 
-test("handleAgent session reports current binding or no selected session", () => {
+test("handleAgent session reports repo, binding, and chat mode", () => {
   const state = {
     currentRepo: "app",
     cwd: "/tmp/app",
@@ -275,14 +297,19 @@ test("handleAgent session reports current binding or no selected session", () =>
         app: { codexSessionId: "session_abc123" },
       },
     },
+    agentChatModes: {
+      "123": {
+        app: "enabled",
+      },
+    },
   };
 
   assert.deepEqual(handleAgent("session", state, null, 123), {
-    response: "Current agent session:\nrepo: app\nsession: session_abc123",
+    response: "Current agent session:\nrepo: app\nsession: session_abc123\nchat mode: on",
     stateChanged: false,
   });
   assert.deepEqual(handleAgent("session", state, null, 456), {
-    response: "No agent session selected for the current chat and repository.",
+    response: "Current agent session:\nrepo: app\nsession: none\nchat mode: off",
     stateChanged: false,
   });
 });

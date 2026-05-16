@@ -5,6 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   getAskSessionBinding,
+  disableAgentChatMode,
+  enableAgentChatMode,
+  isAgentChatModeEnabled,
   isValidCodexSessionId,
   loadRuntimeState,
   normalizeRuntimeState,
@@ -23,6 +26,7 @@ test("loadRuntimeState creates default state when missing", () => {
       cwd: null,
       tasks: {},
       askSessions: {},
+      agentChatModes: {},
       approvalRequests: {},
       approvalAllowRules: {},
       telegramUpdateOffset: null,
@@ -44,6 +48,11 @@ test("saveRuntimeState writes normalized JSON", () => {
       askSessions: {
         "123": {
           app: { codexSessionId: "session_abc123" },
+        },
+      },
+      agentChatModes: {
+        "123": {
+          app: "enabled",
         },
       },
       approvalRequests: {
@@ -74,6 +83,11 @@ test("saveRuntimeState writes normalized JSON", () => {
           app: { codexSessionId: "session_abc123" },
         },
       },
+      agentChatModes: {
+        "123": {
+          app: "enabled",
+        },
+      },
       approvalRequests: {
         req_123: {
           requestId: "req_123",
@@ -102,6 +116,7 @@ test("normalizeRuntimeState rejects invalid shapes", () => {
     cwd: null,
     tasks: {},
     askSessions: {},
+    agentChatModes: {},
     approvalRequests: {},
     approvalAllowRules: {},
     telegramUpdateOffset: null,
@@ -111,6 +126,7 @@ test("normalizeRuntimeState rejects invalid shapes", () => {
     cwd: null,
     tasks: {},
     askSessions: {},
+    agentChatModes: {},
     approvalRequests: {},
     approvalAllowRules: {},
     telegramUpdateOffset: null,
@@ -135,6 +151,26 @@ test("normalizeRuntimeState preserves valid ask session bindings only", () => {
   assert.deepEqual(normalized.askSessions, {
     "123": {
       app: { codexSessionId: "session_abc123" },
+    },
+  });
+});
+
+test("normalizeRuntimeState preserves valid agent chat modes only", () => {
+  const normalized = normalizeRuntimeState({
+    agentChatModes: {
+      "123": {
+        app: "enabled",
+        bad: "disabled",
+      },
+      "bad/chat": {
+        app: "enabled",
+      },
+    },
+  });
+
+  assert.deepEqual(normalized.agentChatModes, {
+    "123": {
+      app: "enabled",
     },
   });
 });
@@ -262,6 +298,53 @@ test("removeAskSessionBinding removes only the current chat and repo binding", (
     },
   });
   assert.equal(updated.telegramUpdateOffset, 8);
+});
+
+test("agent chat mode helpers scope mode by chat ID and repository alias", () => {
+  const enabled = enableAgentChatMode({
+    currentRepo: "app",
+    cwd: "/tmp/app",
+    tasks: {},
+    askSessions: {},
+    agentChatModes: {
+      "123": {
+        other: "enabled",
+      },
+      "456": {
+        app: "enabled",
+      },
+    },
+    telegramUpdateOffset: 8,
+  }, {
+    chatId: "123",
+    repoAlias: "app",
+  });
+
+  assert.deepEqual(enabled.agentChatModes, {
+    "123": {
+      other: "enabled",
+      app: "enabled",
+    },
+    "456": {
+      app: "enabled",
+    },
+  });
+  assert.equal(isAgentChatModeEnabled(enabled, { chatId: "123", repoAlias: "app" }), true);
+  assert.equal(isAgentChatModeEnabled(enabled, { chatId: "123", repoAlias: "missing" }), false);
+
+  const disabled = disableAgentChatMode(enabled, {
+    chatId: "123",
+    repoAlias: "app",
+  });
+  assert.deepEqual(disabled.agentChatModes, {
+    "123": {
+      other: "enabled",
+    },
+    "456": {
+      app: "enabled",
+    },
+  });
+  assert.equal(disabled.telegramUpdateOffset, 8);
 });
 
 test("isValidCodexSessionId rejects unsafe values", () => {

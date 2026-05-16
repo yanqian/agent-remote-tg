@@ -44,6 +44,10 @@ test("parseCommand rejects unknown slash commands", () => {
     ok: false,
     response: UNKNOWN_COMMAND_RESPONSE,
   });
+  assert.deepEqual(parseCommand("/continue Resume"), {
+    ok: false,
+    response: UNKNOWN_COMMAND_RESPONSE,
+  });
 });
 
 test("parseCommand rejects missing required arguments", () => {
@@ -79,10 +83,9 @@ test("help response documents the exact command surface", () => {
     "/agent <instruction> - start or continue a Codex agent task",
     "/agent new <instruction> - force a new agent session",
     "/agent resume <session_id|--last> <instruction> - resume an agent session",
-    "/agent exit - clear the selected agent session",
+    "/agent exit - leave agent chat mode",
     "/agent session - show the selected agent session",
     "/agent -- <instruction> - send a literal instruction beginning with a reserved word",
-    "/continue <instruction> - resume or recover repository workflow",
     "/approve <request_id> - approve a pending agent request",
     "/reject <request_id> - reject a pending agent request",
     "/always_allow <request_id> - approve and remember a future allow rule",

@@ -23,6 +23,7 @@ test("runtime state schema preserves only Bot runtime control-plane metadata", (
     cwd: null,
     tasks: {},
     askSessions: {},
+    agentChatModes: {},
     approvalRequests: {},
     approvalAllowRules: {},
     telegramUpdateOffset: null,
@@ -47,6 +48,11 @@ test("runtime state schema preserves only Bot runtime control-plane metadata", (
         },
       },
     },
+    agentChatModes: {
+      "123": {
+        "agent-runtime": "enabled",
+      },
+    },
     approvalRequests: {
       req_123: {
         requestId: "req_123",
@@ -66,8 +72,9 @@ test("runtime state schema preserves only Bot runtime control-plane metadata", (
     progress: { current: "F999" },
   });
 
-  assert.deepEqual(Object.keys(normalized), ["currentRepo", "cwd", "tasks", "askSessions", "approvalRequests", "approvalAllowRules", "telegramUpdateOffset"]);
+  assert.deepEqual(Object.keys(normalized), ["currentRepo", "cwd", "tasks", "askSessions", "agentChatModes", "approvalRequests", "approvalAllowRules", "telegramUpdateOffset"]);
   assert.equal(normalized.askSessions["123"]["agent-runtime"].codexSessionId, "session_abc123");
+  assert.equal(normalized.agentChatModes["123"]["agent-runtime"], "enabled");
   assert.equal(normalized.approvalRequests.req_123.status, "pending");
   assert.equal(normalized.approvalAllowRules.req_123.chatId, "123");
   assert.equal(normalized.telegramUpdateOffset, 101);

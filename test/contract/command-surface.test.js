@@ -10,6 +10,7 @@ test("command whitelist does not include prohibited feature commands", () => {
   assert.equal(commandList().includes("/ask"), false);
   assert.equal(commandList().includes("/work"), false);
   assert.equal(commandList().includes("/run_orch"), false);
+  assert.equal(commandList().includes("/continue"), false);
 });
 
 test("command whitelist matches the documented current surface", () => {
@@ -20,7 +21,6 @@ test("command whitelist matches the documented current surface", () => {
     "/ls",
     "/git",
     "/agent",
-    "/continue",
     "/approve",
     "/reject",
     "/always_allow",
@@ -43,10 +43,9 @@ test("help output exactly matches the documented command surface", () => {
     "/agent <instruction> - start or continue a Codex agent task",
     "/agent new <instruction> - force a new agent session",
     "/agent resume <session_id|--last> <instruction> - resume an agent session",
-    "/agent exit - clear the selected agent session",
+    "/agent exit - leave agent chat mode",
     "/agent session - show the selected agent session",
     "/agent -- <instruction> - send a literal instruction beginning with a reserved word",
-    "/continue <instruction> - resume or recover repository workflow",
     "/approve <request_id> - approve a pending agent request",
     "/reject <request_id> - reject a pending agent request",
     "/always_allow <request_id> - approve and remember a future allow rule",

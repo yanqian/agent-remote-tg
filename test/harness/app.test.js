@@ -155,7 +155,7 @@ test("app handles approval commands and reply-based decisions", () => {
     assert.equal(app.handleMessage({ chatId: "123", text: "/approve req_approve" }), "Approved request: req_approve");
     assert.equal(app.handleMessage({ chatId: "123", text: "no", replyToMessageId: 702 }), "Rejected request: req_reject");
     assert.equal(app.handleMessage({ chatId: "123", text: "以后都允许", replyToMessageId: 703 }), "Approved and stored future allow rule: req_always");
-    assert.equal(app.handleMessage({ chatId: "123", text: "yes" }), "Unknown command.\nUse /help.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "yes" }), "No workspace selected.\nUse /repos then /use <repo>.");
 
     const state = JSON.parse(readFileSync(statePath, "utf8"));
     assert.equal(state.approvalRequests.req_approve.status, "approved");
@@ -295,134 +295,6 @@ test("app resolves inline approval callbacks through the running task executor",
   }
 });
 
-test("app checks agent workflow readiness for /continue", () => {
-  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
-  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
-  try {
-    const app = createApp({
-      allowedChatIds: ["123"],
-      repos: { app: repoDir },
-      statePath: join(rootDir, "runtime_state.json"),
-      taskExecutor: {
-        startTask() {
-          return { response: "Task started: task_continue_1\nUse /logs task_continue_1 to view output." };
-        },
-      },
-    });
-
-    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
-    assert.equal(
-      app.handleMessage({ chatId: "123", text: "/continue Resume work" }),
-      "Workspace is not agent-workflow ready.\nMissing required files:\n- AGENTS.md\n- SPEC.md\n- feature_list.json\n- progress.md\n- init.sh\n- orchestrator.py",
-    );
-
-    for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {
-      writeFileSync(join(repoDir, fileName), "");
-    }
-
-    assert.equal(
-      app.handleMessage({ chatId: "123", text: "/continue Resume after files exist" }),
-      "Task started: task_continue_1\nUse /logs task_continue_1 to view output.",
-    );
-  } finally {
-    rmSync(rootDir, { recursive: true, force: true });
-    rmSync(repoDir, { recursive: true, force: true });
-  }
-});
-
-test("app starts /continue tasks in workflow-ready selected workspaces", () => {
-  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
-  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
-  const calls = [];
-  try {
-    for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {
-      writeFileSync(join(repoDir, fileName), "");
-    }
-    const app = createApp({
-      allowedChatIds: ["123"],
-      repos: { app: repoDir },
-      statePath: join(rootDir, "runtime_state.json"),
-      taskExecutor: {
-        startTask(request) {
-          calls.push(request);
-          return { response: "Task started: task_continue_1\nUse /logs task_continue_1 to view output." };
-        },
-      },
-    });
-
-    assert.equal(app.handleMessage({ chatId: "123", text: "/continue Resume work" }), "No workspace selected.\nUse /repos then /use <repo>.");
-    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
-    assert.equal(
-      app.handleMessage({ chatId: "123", text: "/continue Resume from repository state" }),
-      "Task started: task_continue_1\nUse /logs task_continue_1 to view output.",
-    );
-    assert.equal(calls[0].type, "continue");
-    assert.equal(calls[0].cwd, repoDir);
-    assert.equal(calls[0].command, "codex");
-    assert.deepEqual(calls[0].args.slice(0, 1), ["exec"]);
-    assert.match(calls[0].args[1], /Instruction:\nResume from repository state/);
-    assert.match(calls[0].args[1], /Read AGENTS\.md, progress\.md, feature_list\.json, and git log --oneline -20 before deciding the next action\./);
-    assert.match(calls[0].args[1], /Stop and report exact conflicts when repository state is unsafe\./);
-    assert.equal(calls[0].timeoutMs, null);
-    assert.equal(calls[0].chatId, "123");
-  } finally {
-    rmSync(rootDir, { recursive: true, force: true });
-    rmSync(repoDir, { recursive: true, force: true });
-  }
-});
-
-test("app /continue ignores selected agent session bindings", () => {
-  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
-  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
-  const calls = [];
-  try {
-    for (const fileName of ["AGENTS.md", "SPEC.md", "feature_list.json", "progress.md", "init.sh", "orchestrator.py"]) {
-      writeFileSync(join(repoDir, fileName), "");
-    }
-    const statePath = join(rootDir, "runtime_state.json");
-    const app = createApp({
-      allowedChatIds: ["123"],
-      repos: { app: repoDir },
-      statePath,
-      taskExecutor: {
-        startTask(request) {
-          calls.push(request);
-          return { response: `Task started: task_${calls.length}\nUse /logs task_${calls.length} to view output.` };
-        },
-      },
-    });
-
-    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
-    const state = JSON.parse(readFileSync(statePath, "utf8"));
-    state.askSessions = {
-      "123": {
-        app: {
-          codexSessionId: "session_abc123",
-        },
-      },
-    };
-    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
-
-    assert.equal(app.handleMessage({ chatId: "123", text: "/continue Resume from repository state" }), "Task started: task_1\nUse /logs task_1 to view output.");
-
-    assert.equal(calls[0].type, "continue");
-    assert.deepEqual(calls[0].args.slice(0, 1), ["exec"]);
-    assert.match(calls[0].args[1], /Instruction:\nResume from repository state/);
-    assert.doesNotMatch(calls[0].args.join(" "), /\bresume\b/);
-
-    for (const call of calls) {
-      assert.equal(call.cwd, repoDir);
-      assert.equal(call.chatId, "123");
-      assert.equal(Object.hasOwn(call, "codexSessionId"), false);
-      assert.equal(call.timeoutMs, null);
-    }
-    assert.equal(calls[0].repoAlias, "app");
-  } finally {
-    rmSync(rootDir, { recursive: true, force: true });
-    rmSync(repoDir, { recursive: true, force: true });
-  }
-});
-
 test("app rejects removed public workflow commands", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   try {
@@ -440,6 +312,7 @@ test("app rejects removed public workflow commands", () => {
     assert.equal(app.handleMessage({ chatId: "123", text: "/ask Explain" }), "Unknown command.\nUse /help.");
     assert.equal(app.handleMessage({ chatId: "123", text: "/work Add docs" }), "Unknown command.\nUse /help.");
     assert.equal(app.handleMessage({ chatId: "123", text: "/run_orch 1" }), "Unknown command.\nUse /help.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/continue Resume" }), "Unknown command.\nUse /help.");
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/run-orch 1" }),
       "Unknown command.\nUse /help.",
@@ -482,6 +355,12 @@ test("app starts /agent tasks in the selected workspace", () => {
     assert.equal(calls[0].timeoutMs, null);
     assert.equal(calls[0].chatId, "123");
     assert.equal(calls[0].repoAlias, "app");
+    const state = JSON.parse(readFileSync(join(rootDir, "runtime_state.json"), "utf8"));
+    assert.deepEqual(state.agentChatModes, {
+      "123": {
+        app: "enabled",
+      },
+    });
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
@@ -527,6 +406,115 @@ test("app resumes /agent tasks when a chat and repo session binding exists", () 
     assert.equal(calls[0].chatId, "123");
     assert.equal(calls[0].repoAlias, "app");
     assert.equal(calls[0].codexSessionId, "session_abc123");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app handles ordinary text in agent chat mode as a session follow-up", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  const calls = [];
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      taskExecutor: {
+        startTask(request) {
+          calls.push(request);
+          return { response: "Task started: task_chat_1\nUse /logs task_chat_1 to view output." };
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "hello" }), "No workspace selected.\nUse /repos then /use <repo>.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "hello" }),
+      "Agent chat mode is off for the current chat and repository.\nUse /agent <instruction> to begin.",
+    );
+
+    let state = JSON.parse(readFileSync(statePath, "utf8"));
+    state.agentChatModes = {
+      "123": {
+        app: "enabled",
+      },
+    };
+    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "hello" }),
+      "No agent session is bound for agent chat mode.\nUse /agent new <instruction> or /agent resume <session_id> <instruction>.",
+    );
+
+    state = JSON.parse(readFileSync(statePath, "utf8"));
+    state.askSessions = {
+      "123": {
+        app: { codexSessionId: "session_abc123" },
+      },
+    };
+    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "Continue without prefix" }),
+      "Task started: task_chat_1\nUse /logs task_chat_1 to view output.\nResumed agent session: session_abc123",
+    );
+    assert.deepEqual(calls[0].args, ["exec", "--json", "resume", "session_abc123", "Continue without prefix"]);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app rejects ordinary chat-mode follow-up while an agent task is active in the same repository", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: "app",
+      cwd: repoDir,
+      tasks: {
+        task_run_1: {
+          taskId: "task_run_1",
+          type: "agent",
+          status: "running",
+          repoAlias: "app",
+          cwd: repoDir,
+        },
+      },
+      askSessions: {
+        "123": {
+          app: { codexSessionId: "session_abc123" },
+        },
+      },
+      agentChatModes: {
+        "123": {
+          app: "enabled",
+        },
+      },
+      approvalRequests: {},
+      approvalAllowRules: {},
+      telegramUpdateOffset: null,
+    }, null, 2)}\n`);
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      taskExecutor: {
+        startTask() {
+          throw new Error("should not start");
+        },
+      },
+    });
+
+    assert.equal(
+      app.handleMessage({ chatId: "123", text: "Follow up" }),
+      "An agent task is already running for this repository: task_run_1.\nUse /status or /stop task_run_1 before sending another follow-up.",
+    );
+    assert.equal(app.handleMessage({ chatId: "123", text: "/status" }).includes("task_run_1"), true);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
@@ -749,7 +737,7 @@ test("app handles /agent session, exit, new, resume, resume --last, and literal 
     assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/agent session" }),
-      "No agent session selected for the current chat and repository.",
+      "Current agent session:\nrepo: app\nsession: none\nchat mode: off",
     );
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/agent resume session_abc123 Continue here" }),
@@ -765,11 +753,17 @@ test("app handles /agent session, exit, new, resume, resume --last, and literal 
         other: { codexSessionId: "session_other123" },
       },
     };
+    state.agentChatModes = {
+      "123": {
+        app: "enabled",
+        other: "enabled",
+      },
+    };
     writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
 
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/agent session" }),
-      "Current agent session:\nrepo: app\nsession: session_abc123",
+      "Current agent session:\nrepo: app\nsession: session_abc123\nchat mode: on",
     );
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/agent new Start fresh" }),
@@ -794,12 +788,18 @@ test("app handles /agent session, exit, new, resume, resume --last, and literal 
 
     assert.equal(
       app.handleMessage({ chatId: "123", text: "/agent exit" }),
-      "Agent session cleared for the current chat and repository.",
+      "Agent chat mode disabled for the current chat and repository.",
     );
     const exitedState = JSON.parse(readFileSync(statePath, "utf8"));
     assert.deepEqual(exitedState.askSessions, {
       "123": {
+        app: { codexSessionId: "session_abc123" },
         other: { codexSessionId: "session_other123" },
+      },
+    });
+    assert.deepEqual(exitedState.agentChatModes, {
+      "123": {
+        other: "enabled",
       },
     });
   } finally {

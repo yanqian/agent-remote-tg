@@ -9,6 +9,7 @@ export function defaultState() {
     cwd: DEFAULT_STATE.cwd,
     tasks: {},
     askSessions: {},
+    agentChatModes: {},
     approvalRequests: {},
     approvalAllowRules: {},
     telegramUpdateOffset: DEFAULT_STATE.telegramUpdateOffset,
@@ -46,6 +47,7 @@ export function normalizeRuntimeState(state) {
       ? state.tasks
       : {},
     askSessions: normalizeAskSessions(state.askSessions),
+    agentChatModes: normalizeAgentChatModes(state.agentChatModes),
     approvalRequests: normalizeApprovalRequests(state.approvalRequests),
     approvalAllowRules: normalizeApprovalAllowRules(state.approvalAllowRules),
     telegramUpdateOffset: normalizeTelegramUpdateOffset(state.telegramUpdateOffset),
@@ -102,6 +104,59 @@ export function removeAskSessionBinding(state, { chatId, repoAlias }) {
   };
 }
 
+export function enableAgentChatMode(state, { chatId, repoAlias }) {
+  if (!isValidAskSessionKey(chatId) || !isValidAskSessionKey(repoAlias)) {
+    return normalizeRuntimeState(state);
+  }
+
+  const normalized = normalizeRuntimeState(state);
+  return {
+    ...normalized,
+    agentChatModes: {
+      ...normalized.agentChatModes,
+      [chatId]: {
+        ...(normalized.agentChatModes[chatId] ?? {}),
+        [repoAlias]: "enabled",
+      },
+    },
+  };
+}
+
+export function disableAgentChatMode(state, { chatId, repoAlias }) {
+  const normalized = normalizeRuntimeState(state);
+  if (!isValidAskSessionKey(chatId) || !isValidAskSessionKey(repoAlias)) {
+    return normalized;
+  }
+
+  const chatModes = normalized.agentChatModes[chatId];
+  if (!chatModes || !Object.hasOwn(chatModes, repoAlias)) {
+    return normalized;
+  }
+
+  const nextChatModes = { ...chatModes };
+  delete nextChatModes[repoAlias];
+  const nextAgentChatModes = { ...normalized.agentChatModes };
+  if (Object.keys(nextChatModes).length === 0) {
+    delete nextAgentChatModes[chatId];
+  } else {
+    nextAgentChatModes[chatId] = nextChatModes;
+  }
+
+  return {
+    ...normalized,
+    agentChatModes: nextAgentChatModes,
+  };
+}
+
+export function isAgentChatModeEnabled(state, { chatId, repoAlias }) {
+  if (!isValidAskSessionKey(chatId) || !isValidAskSessionKey(repoAlias)) {
+    return false;
+  }
+
+  const normalized = normalizeRuntimeState(state);
+  return normalized.agentChatModes[chatId]?.[repoAlias] === "enabled";
+}
+
 export function getAskSessionBinding(state, { chatId, repoAlias }) {
   if (!isValidAskSessionKey(chatId) || !isValidAskSessionKey(repoAlias)) {
     return null;
@@ -149,6 +204,32 @@ function normalizeAskSessions(value) {
     }
   }
   return sessions;
+}
+
+function normalizeAgentChatModes(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const modes = {};
+  for (const [chatId, repos] of Object.entries(value)) {
+    if (!isValidAskSessionKey(chatId) || !repos || typeof repos !== "object" || Array.isArray(repos)) {
+      continue;
+    }
+
+    const normalizedRepos = {};
+    for (const [repoAlias, mode] of Object.entries(repos)) {
+      if (!isValidAskSessionKey(repoAlias) || mode !== "enabled") {
+        continue;
+      }
+      normalizedRepos[repoAlias] = "enabled";
+    }
+
+    if (Object.keys(normalizedRepos).length > 0) {
+      modes[chatId] = normalizedRepos;
+    }
+  }
+  return modes;
 }
 
 function isValidAskSessionKey(value) {

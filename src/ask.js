@@ -1,8 +1,10 @@
 import { requireWorkspace } from "./workspace.js";
 import {
+  disableAgentChatMode,
+  enableAgentChatMode,
   getAskSessionBinding,
+  isAgentChatModeEnabled,
   isValidCodexSessionId,
-  removeAskSessionBinding,
 } from "./runtime-state.js";
 
 export const DEFAULT_AGENT_TASK_TIMEOUT_MS = null;
@@ -45,9 +47,9 @@ export function handleAgent(args, state, taskExecutor, chatId = null, options = 
   }
 
   if (request.action === "exit") {
-    const nextState = removeAskSessionBinding(state, { chatId: chatKey, repoAlias: workspace.currentRepo });
+    const nextState = disableAgentChatMode(state, { chatId: chatKey, repoAlias: workspace.currentRepo });
     return {
-      response: "Agent session cleared for the current chat and repository.",
+      response: "Agent chat mode disabled for the current chat and repository.",
       state: nextState,
       stateChanged: true,
     };
@@ -57,10 +59,16 @@ export function handleAgent(args, state, taskExecutor, chatId = null, options = 
     const binding = chatKey
       ? getAskSessionBinding(state, { chatId: chatKey, repoAlias: workspace.currentRepo })
       : null;
+    const mode = chatKey
+      ? isAgentChatModeEnabled(state, { chatId: chatKey, repoAlias: workspace.currentRepo })
+      : false;
     return {
-      response: binding
-        ? `Current agent session:\nrepo: ${workspace.currentRepo}\nsession: ${binding.codexSessionId}`
-        : "No agent session selected for the current chat and repository.",
+      response: [
+        "Current agent session:",
+        `repo: ${workspace.currentRepo}`,
+        `session: ${binding?.codexSessionId ?? "none"}`,
+        `chat mode: ${mode ? "on" : "off"}`,
+      ].join("\n"),
       stateChanged: false,
     };
   }
@@ -90,10 +98,20 @@ export function handleAgent(args, state, taskExecutor, chatId = null, options = 
     codexSessionId,
   });
 
+  const modeState = enableAgentChatMode(state, { chatId: chatKey, repoAlias: workspace.currentRepo });
+  const modeUpdate = {
+    enableAgentChatMode: {
+      chatId: chatKey,
+      repoAlias: workspace.currentRepo,
+    },
+    state: modeState,
+  };
+
   if (request.action === "resume" || (request.action === "plain" && codexSessionId)) {
     return {
       response: `${started.response}\nResumed agent session: ${codexSessionId}`,
       stateChanged: false,
+      ...modeUpdate,
     };
   }
 
@@ -102,6 +120,7 @@ export function handleAgent(args, state, taskExecutor, chatId = null, options = 
       ? `${started.response}\nUsing Codex CLI --last for the runtime user account; binding will update when the session ID is discovered.`
       : started.response,
     stateChanged: false,
+    ...modeUpdate,
   };
 }
 

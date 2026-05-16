@@ -345,9 +345,9 @@
     {
       "id": "F039",
       "description": "Implement explicit agent chat mode scoped by authorized Telegram chatId and selected repository alias so /agent, /agent new, /agent resume <session_id> <instruction>, and /agent resume --last <instruction> enter chat mode, authorized ordinary non-command text in chat mode with a current session binding resumes that session without requiring the /agent prefix, slash commands remain command-first, ordinary text without repo, without chat mode, without a session binding, or while another active agent task is running in the same repository is rejected with clear bounded responses, /agent session reports repo, session, and mode status, /agent exit disables only the current chat plus repository mode flag without deleting task history, /continue is removed from the public command whitelist, help, README, deployment docs, BotFather command menu docs, contract tests, and harness expectations so it returns Unknown command, and unit, harness, contract, smoke, and init coverage verify the behavior while preserving task metadata, finalResult extraction, completion pushes, approval bridging, secret redaction, Telegram truncation, and shell-disabled spawning.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     }
