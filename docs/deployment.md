@@ -19,7 +19,7 @@ Set these variables before starting the service:
 
 `ALLOWED_CHAT_IDS` must be non-empty outside `NODE_ENV=test`. Keep the Bot token out of source control, runtime logs, and target repository state files.
 
-`AGENT_TASK_TIMEOUT_MS` applies to `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, and `/agent resume --last <instruction>`. Startup rejects non-integer, zero, and negative values. `/continue` remains untimed; use `/stop <task_id>` when a running Bot-recorded task should be terminated.
+`AGENT_TASK_TIMEOUT_MS` applies to `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, `/agent resume --last <instruction>`, and ordinary text follow-ups in agent chat mode. Startup rejects non-integer, zero, and negative values. Use `/stop <task_id>` when a running Bot-recorded task should be terminated.
 
 Example repository whitelist:
 
@@ -89,7 +89,6 @@ pwd - Show the selected workspace
 ls - List selected workspace files
 git - Show branch, status, and commits
 agent - Manage Codex agent sessions
-continue - Resume repository workflow
 approve - Approve a pending agent request
 reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
@@ -104,13 +103,13 @@ The supported command names are compatible with BotFather because they use lower
 
 ## Long-Running Operation
 
-The `/agent`, `/agent new`, `/agent resume`, and `/continue` commands create Bot-recorded local tasks. Full output is written to task logs, while Telegram responses stay bounded. `/agent` tasks have no forced timeout by default unless `AGENT_TASK_TIMEOUT_MS` is configured; `/continue` tasks always remain untimed. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/agent exit` and `/agent session` only inspect or update the current chat and repository session binding. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
+The `/agent`, `/agent new`, and `/agent resume` commands create Bot-recorded local tasks and enter agent chat mode for the current chat plus selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository creates a resumed agent task without requiring the `/agent` prefix. Full output is written to task logs, while Telegram responses stay bounded. `/agent` tasks and ordinary follow-ups have no forced timeout by default unless `AGENT_TASK_TIMEOUT_MS` is configured. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/agent exit` leaves agent chat mode for the current chat and repository; `/agent session` reports the current session and mode status. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
 
-Only one active workflow task of type `work`, `continue`, or `run-orch` can run in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
+Only one active agent task can receive ordinary text follow-ups in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 
 ## Logs And State Files
 
-`runtime_state.json` stores the selected repository alias, selected workspace path, Bot task metadata, legacy-compatible ask-session bindings used by `/agent`, pending approval requests, remembered approval allow rules, and Telegram polling update offset. `logs/` stores full task output as `logs/<task_id>.log`.
+`runtime_state.json` stores the selected repository alias, selected workspace path, Bot task metadata, legacy-compatible ask-session bindings used by `/agent`, agent chat mode flags, pending approval requests, remembered approval allow rules, and Telegram polling update offset. `logs/` stores full task output as `logs/<task_id>.log`.
 
 `runtime_state.json` and `logs/` are runtime artifacts and must not be used as target repository feature state. For VPS, VM, container, Cloud Run, and hosted Node.js webhook deployments, these paths must be on persistent storage so selected workspace state, Bot task metadata, polling offsets, and task logs survive process restarts and redeploys. Target repository source of truth remains in `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, `orchestrator.py`, and git history.
 
@@ -132,10 +131,9 @@ After startup, verify operation from an authorized Telegram chat:
 - `/repos` lists the expected repository aliases and paths.
 - `/use <repo>` selects the intended whitelisted repository.
 - `/pwd`, `/ls`, and `/git` inspect only the selected workspace.
-- `/agent session` reports the selected agent session, or `/agent <instruction>` starts a task after a workspace is selected.
+- `/agent session` reports the selected agent session and agent chat mode status, or `/agent <instruction>` starts a task after a workspace is selected.
+- After agent chat mode is enabled and a session is bound, ordinary text continues that session.
 - `/status` reports active tasks and recent finished tasks.
-
-Before running `/continue`, confirm the selected workspace contains the required agent workflow files and has a clean or intentionally understood working tree.
 
 ## Failure Handling
 

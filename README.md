@@ -16,10 +16,9 @@ Repository development state remains in repository files and git history. Telegr
 - `/agent <instruction>` - start or continue a Codex agent task in the selected workspace.
 - `/agent new <instruction>` - force a new agent session for the selected workspace.
 - `/agent resume <session_id|--last> <instruction>` - resume a specific agent session or Codex CLI's most recent session for the runtime user account.
-- `/agent exit` - clear the selected agent session for the current chat and repository.
-- `/agent session` - show the selected agent session for the current chat and repository.
+- `/agent exit` - leave agent chat mode for the current chat and repository.
+- `/agent session` - show the selected agent session and agent chat mode status for the current chat and repository.
 - `/agent -- <instruction>` - send a literal instruction beginning with a reserved agent subcommand word.
-- `/continue <instruction>` - resume or recover repository workflow from repository state.
 - `/approve <request_id>` - approve a pending agent approval request.
 - `/reject <request_id>` - reject a pending agent approval request.
 - `/always_allow <request_id>` - approve a pending agent approval request and remember its future allow rule.
@@ -40,7 +39,6 @@ pwd - Show the selected workspace
 ls - List selected workspace files
 git - Show branch, status, and commits
 agent - Manage Codex agent sessions
-continue - Resume repository workflow
 approve - Approve a pending agent request
 reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
@@ -57,9 +55,9 @@ BotFather command names must use lowercase letters, digits, and underscores. The
 
 The Bot is a control plane, not the owner of feature lifecycle decisions. It validates commands, validates the selected workspace, starts local processes with shell execution disabled, records task metadata, and returns bounded Telegram responses.
 
-Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py`. `/continue` requires the selected workspace to contain the required agent workflow files before any process is spawned.
+Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py` when repository workflow automation is requested through `/agent`.
 
-`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/agent` tasks have no forced timeout by default; use `/stop <task_id>` when a running task should be terminated. `/continue` starts a `codex exec` recovery task that forces the spawned agent to reconstruct context from repository files and also has no forced timeout. When Bot-started Codex tasks emit permission prompts, the Bot stores a pending approval request and sends inline Telegram buttons that map to the Codex-provided options. Only one active workflow task of type `work`, `continue`, or `run-orch` is allowed per workspace; `work` and `run-orch` may appear only as legacy task records.
+`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/agent`, `/agent new`, and `/agent resume ...` enter agent chat mode for the current chat and selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository continues the current session without the `/agent` prefix. Slash commands are still parsed as commands first. Use `/agent exit` to leave agent chat mode, `/agent session` to inspect the current session and mode status, and `/stop <task_id>` when a running task should be terminated. When Bot-started Codex tasks emit permission prompts, the Bot stores a pending approval request and sends inline Telegram buttons that map to the Codex-provided options. Only one active agent task is allowed per workspace for ordinary follow-up text; `work`, `continue`, and `run-orch` may appear only as legacy task records.
 
 ## Transport Modes
 
@@ -91,7 +89,7 @@ Both modes must dispatch Telegram messages into the same `createApp().handleMess
 
 ## Runtime State And Logs
 
-Runtime state is stored in `runtime_state.json`. It contains the selected repository alias, selected workspace path, Bot-started task metadata, legacy-compatible ask-session bindings used by `/agent`, pending approval requests, remembered approval allow rules, and Telegram polling update offset. It must not contain target repository feature objects.
+Runtime state is stored in `runtime_state.json`. It contains the selected repository alias, selected workspace path, Bot-started task metadata, legacy-compatible ask-session bindings used by `/agent`, agent chat mode flags, pending approval requests, remembered approval allow rules, and Telegram polling update offset. It must not contain target repository feature objects.
 
 Task logs are stored under `logs/` as `logs/<task_id>.log`. Logs include command argv, timestamps, stdout, stderr, and exit code. Telegram responses are bounded, while full process output remains in the task log.
 
@@ -112,7 +110,7 @@ Set the required environment variables:
 
 Configure the repository whitelist through the required `REPO_WHITELIST_JSON` value. Repository aliases must be exact keys using only letters, numbers, dots, underscores, and hyphens, and each configured path must resolve to an existing local directory. Startup fails when the JSON is missing or invalid, an alias is unsafe, or a path is missing.
 
-`AGENT_TASK_TIMEOUT_MS` applies to `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, and `/agent resume --last <instruction>`. Startup rejects non-integer, zero, and negative values. `/continue` remains untimed; `/stop <task_id>` is the user-controlled termination mechanism.
+`AGENT_TASK_TIMEOUT_MS` applies to `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, `/agent resume --last <instruction>`, and ordinary text follow-ups in agent chat mode. Startup rejects non-integer, zero, and negative values. `/stop <task_id>` is the user-controlled termination mechanism.
 
 Example:
 
@@ -157,5 +155,5 @@ The script checks required project files, validates `feature_list.json`, verifie
 - Only configured local repositories can be selected.
 - Arbitrary shell command execution is not supported.
 - Free-form absolute path workspace selection is not supported.
-- `/continue` requires agent workflow files in the selected repository root.
-- Multiple active workflow tasks in the same workspace are rejected.
+- Ordinary text starts an agent follow-up only after agent chat mode is enabled and a session is bound for the current chat and repository.
+- Multiple active agent tasks in the same workspace are rejected for ordinary text follow-ups.

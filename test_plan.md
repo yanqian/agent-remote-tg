@@ -40,6 +40,7 @@ The initialization baseline verifies:
 | F010 | Unit and harness tests prove the orchestrator command validates rounds and spawns `python3 orchestrator.py --max-rounds <rounds>` with shell disabled. |
 | F011 | Unit and harness tests prove `/status`, `/logs`, and `/stop` behavior, including log confinement and SIGTERM restrictions. |
 | F012 | Contract tests prove exact help output, exact command whitelist, absence of prohibited commands, required prompt text, and runtime state schema limits. |
+| F039 | Unit, harness, and contract tests prove agent chat mode state, ordinary text follow-up dispatch, `/agent exit`, active task rejection, and `/continue` removal from the public command surface. |
 
 ## Script Conventions
 
@@ -63,15 +64,18 @@ Manual verification after Bot implementation must execute this Telegram sequence
 /pwd
 /ls
 /git
-/ask Explain the repository workflow without editing files.
-/work Add a documentation-only requirement and run one orchestrator round.
+/agent new Explain the repository workflow.
+What is the next implementation step?
+/agent session
+/agent exit
 /status
 /logs <task_id>
 ```
 
 Manual verification passes only when:
 
-- `/ask` leaves the workspace unchanged.
-- `/work` delegates planning and execution to Codex.
+- `/agent new` creates or binds an agent session for the selected repository.
+- Ordinary follow-up text resumes the current agent session without the `/agent` prefix.
+- `/agent exit` disables ordinary text follow-ups for the current chat and repository.
 - Task status transitions are visible.
 - Logs are persisted under `logs/`.
