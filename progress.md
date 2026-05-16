@@ -61,15 +61,16 @@ Implemented behavior:
 - Agent task timeout policy for F037: `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, and `/agent resume --last <instruction>` now default to `timeoutMs: null`, optional `AGENT_TASK_TIMEOUT_MS` startup configuration applies a positive integer millisecond timeout, invalid configured values fail startup, `/continue` remains untimed, and documentation plus unit, harness, startup, and smoke coverage verify the behavior.
 - Codex thread session extraction for F038: `/agent new` task logs now trust real-shaped Codex JSONL `thread.started` events with `thread_id` or `threadId` before assistant output, persist the discovered thread ID as task `codexSessionId`, replace the current chat plus repository binding after completion, and make the next plain `/agent` resume the newly bound thread while preserving existing session and conversation metadata support and rejecting assistant prose or command-output lookalikes.
 - Agent chat mode for F039: `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, and `/agent resume --last <instruction>` now enable chat mode for the authorized Telegram chat plus selected repository; ordinary non-command text in that mode resumes the bound Codex session, clear rejection messages cover missing workspace, disabled mode, missing session, and active same-repository agent tasks, `/agent session` reports repo/session/mode status, `/agent exit` disables only the mode flag while preserving session history, and `/continue` is removed from the public command surface.
+- Non-blocking Codex task stdin policy for F040: Bot-started task spawning now ignores child stdin by default while preserving shell-disabled execution, stdout/stderr log capture, final-result extraction, session extraction, timeout handling, completion pushes, `/stop`, `/logs`, Telegram truncation, secret redaction, and approval request detection from output; explicitly opted-in tasks can still request piped stdin, and approval decisions now fail clearly when the running task has no writable stdin.
 
 ## Last Completed Feature
 
-`F038` - Fix Codex JSONL session extraction for `/agent new` thread metadata.
+`F039` - Implement explicit agent chat mode and remove `/continue` from the public command surface.
 
 ## Next Feature
 
-`F039` - Implement explicit agent chat mode and remove `/continue` from the public command surface. Implementation is complete and awaiting evaluator verification.
+`F040` - Fix Bot-started Codex exec task startup so agent prompts passed as argv do not hang on open piped stdin. Implementation is complete and awaiting evaluator verification.
 
 ## Known Issues
 
-- None currently known after F038 verification.
+- Approval decisions for default non-interactive Bot-started Codex tasks can only be detected and surfaced; delivering a decision requires a future explicit writable-stdin protocol opt-in from the task starter.

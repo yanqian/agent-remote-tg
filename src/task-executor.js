@@ -86,10 +86,12 @@ export function createTaskExecutor(options) {
     chatId = null,
     repoAlias = null,
     codexSessionId = null,
+    stdinMode = "ignore",
   }) {
     validateTaskType(type);
     validateSpawnRequest({ cwd, command, args });
     validateTimeout(timeoutMs);
+    validateStdinMode(stdinMode);
 
     const state = loadRuntimeState(statePath);
     const taskId = generateTaskId(state.tasks);
@@ -133,16 +135,17 @@ export function createTaskExecutor(options) {
     writeTaskLogLine(`startedAt=${startedAt}`);
     writeTaskLogLine(`cwd=${cwd}`);
     writeTaskLogLine(`argv=${JSON.stringify([command, ...args])}`);
+    writeTaskLogLine(`stdinMode=${stdinMode}`);
 
     const child = spawn(command, args, {
       cwd,
       shell: false,
       env,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: [stdinMode, "pipe", "pipe"],
     });
 
     task.pid = typeof child.pid === "number" ? child.pid : null;
-    children.set(taskId, child);
+    children.set(taskId, { child, stdinWritable: stdinMode === "pipe" });
     persistTask(task);
 
     let timedOut = false;
@@ -304,7 +307,8 @@ export function createTaskExecutor(options) {
       return { ok: false, response: `Task is not running: ${taskId}` };
     }
 
-    const child = children.get(taskId);
+    const record = children.get(taskId);
+    const child = record?.child;
     if (!child || typeof child.kill !== "function") {
       return { ok: false, response: `Task is not active: ${taskId}` };
     }
@@ -370,9 +374,13 @@ export function createTaskExecutor(options) {
     if (!task || task.status !== "running") {
       return { ok: false, response: "Approval task is not active." };
     }
-    const child = children.get(request.taskId);
+    const record = children.get(request.taskId);
+    const child = record?.child;
+    if (!record?.stdinWritable) {
+      return { ok: false, response: "Approval task has no writable stdin." };
+    }
     if (!child?.stdin || typeof child.stdin.write !== "function") {
-      return { ok: false, response: "Approval task is not active." };
+      return { ok: false, response: "Approval task has no writable stdin." };
     }
     const option = selectedOption ?? getSelectedOption(request, optionId);
     if (!option) {
@@ -459,6 +467,12 @@ export function validateTimeout(timeoutMs) {
   }
   if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
     throw new Error("timeoutMs must be a positive integer or null.");
+  }
+}
+
+export function validateStdinMode(stdinMode) {
+  if (stdinMode !== "ignore" && stdinMode !== "pipe") {
+    throw new Error("stdinMode must be \"ignore\" or \"pipe\".");
   }
 }
 
@@ -759,7 +773,8 @@ function isInitialTaskLogMetadataLine(line) {
   return trimmed === ""
     || /^startedAt=/.test(trimmed)
     || /^cwd=/.test(trimmed)
-    || /^argv=/.test(trimmed);
+    || /^argv=/.test(trimmed)
+    || /^stdinMode=/.test(trimmed);
 }
 
 function isAssistantOutputStartLine(line) {

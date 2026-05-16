@@ -16,6 +16,7 @@ import {
   logPathForTask,
   redactForTelegram,
   truncateTelegramResponse,
+  validateStdinMode,
   validateTimeout,
 } from "../../src/task-executor.js";
 
@@ -281,6 +282,7 @@ test("startTask spawns without shell, persists metadata, logs output, final resu
     assert.deepEqual(calls[0].args, ["exec", "say secret-token"]);
     assert.equal(calls[0].options.cwd, rootDir);
     assert.equal(calls[0].options.shell, false);
+    assert.deepEqual(calls[0].options.stdio, ["ignore", "pipe", "pipe"]);
 
     child.stdout.write("Session ID: session_abc123\nstdout line\n");
     child.stderr.write("stderr line\n");
@@ -546,6 +548,7 @@ test("startTask bridges Codex approval requests and resolves selected options to
       chatId: "123",
       repoAlias: "app",
       codexSessionId: "session_abc123",
+      stdinMode: "pipe",
     });
 
     child.stdout.write(`${JSON.stringify({
@@ -595,6 +598,88 @@ test("startTask bridges Codex approval requests and resolves selected options to
       request_id: "codex_perm_1",
       option_id: "always_allow",
     });
+
+    child.stdout.write("codex\nDone.\n");
+    child.emit("close", 0, null);
+    await started.completion;
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("startTask defaults to ignored stdin and approval delivery fails clearly without blocking startup", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-task-"));
+  const calls = [];
+  const approvalNotifications = [];
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const logsDir = join(rootDir, "logs");
+    const child = createFakeChild({ pid: 4252 });
+    const executor = createTaskExecutor({
+      statePath,
+      logsDir,
+      spawn(command, args, options) {
+        calls.push({ command, args, options });
+        return child;
+      },
+      onApprovalRequest(request) {
+        approvalNotifications.push(request);
+        return { telegramMessageId: 445 };
+      },
+    });
+
+    const started = executor.startTask({
+      type: "agent",
+      cwd: rootDir,
+      command: "codex",
+      args: ["exec", "--json", "prompt"],
+      chatId: "123",
+      repoAlias: "app",
+      codexSessionId: "session_abc123",
+    });
+
+    assert.deepEqual(calls[0].options.stdio, ["ignore", "pipe", "pipe"]);
+
+    child.stdout.write(`${JSON.stringify({
+      type: "permission_request",
+      id: "codex_perm_1",
+      category: "command",
+      command: "npm test",
+      options: [
+        { id: "approve_once", label: "Approve once" },
+        { id: "reject_once", label: "Reject" },
+      ],
+    })}\n`);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    const requestId = Object.keys(state.approvalRequests)[0];
+    assert.equal(approvalNotifications.length, 1);
+    assert.equal(state.approvalRequests[requestId].telegramMessageId, 445);
+
+    const selectedState = {
+      ...state,
+      approvalRequests: {
+        ...state.approvalRequests,
+        [requestId]: {
+          ...state.approvalRequests[requestId],
+          status: "approved",
+          selectedOptionId: "opt_1",
+          selectedCodexOptionId: "approve_once",
+        },
+      },
+    };
+    assert.deepEqual(executor.resolveApprovalOption({
+      requestId,
+      optionId: "opt_1",
+      selectedOption: state.approvalRequests[requestId].options[0],
+      state: selectedState,
+      chatId: "123",
+    }), {
+      ok: false,
+      response: "Approval task has no writable stdin.",
+    });
+    assert.equal(child.stdinWrites.length, 0);
 
     child.stdout.write("codex\nDone.\n");
     child.emit("close", 0, null);
@@ -970,6 +1055,13 @@ test("validateTimeout rejects invalid timeout values", () => {
   assert.doesNotThrow(() => validateTimeout(600000));
   assert.throws(() => validateTimeout(0), /timeoutMs/);
   assert.throws(() => validateTimeout(1.5), /timeoutMs/);
+});
+
+test("validateStdinMode accepts ignored stdin by default and explicit pipe opt-in only", () => {
+  assert.doesNotThrow(() => validateStdinMode("ignore"));
+  assert.doesNotThrow(() => validateStdinMode("pipe"));
+  assert.throws(() => validateStdinMode("inherit"), /stdinMode/);
+  assert.throws(() => validateStdinMode(null), /stdinMode/);
 });
 
 function createFakeChild({ pid }) {

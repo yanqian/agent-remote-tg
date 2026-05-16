@@ -462,6 +462,7 @@ test("app handles ordinary text in agent chat mode as a session follow-up", () =
       "Task started: task_chat_1\nUse /logs task_chat_1 to view output.\nResumed agent session: session_abc123",
     );
     assert.deepEqual(calls[0].args, ["exec", "--json", "resume", "session_abc123", "Continue without prefix"]);
+    assert.equal(calls[0].stdinMode, undefined);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
@@ -565,9 +566,10 @@ test("app agent task binds real structured session metadata despite fake answer 
     const executor = createTaskExecutor({
       statePath,
       logsDir,
-      spawn(command, args) {
+      spawn(command, args, options) {
         child.spawnCommand = command;
         child.spawnArgs = args;
+        child.spawnOptions = options;
         return child;
       },
       onTaskFinished(task) {
@@ -588,6 +590,7 @@ test("app agent task binds real structured session metadata despite fake answer 
     assert.equal(child.spawnCommand, "codex");
     assert.deepEqual(child.spawnArgs.slice(0, 2), ["exec", "--json"]);
     assert.match(child.spawnArgs[2], /Instruction:\nExplain sessions/);
+    assert.deepEqual(child.spawnOptions.stdio, ["ignore", "pipe", "pipe"]);
 
     const taskId = response.match(/^Task started: (task_[a-z0-9]+_[a-z0-9]+)/)[1];
     child.stdout.write([
@@ -637,8 +640,8 @@ test("app /agent new binds thread.started metadata and plain /agent resumes the 
     const executor = createTaskExecutor({
       statePath,
       logsDir,
-      spawn(command, args) {
-        spawned.push({ command, args });
+      spawn(command, args, options) {
+        spawned.push({ command, args, options });
         return children[spawned.length - 1];
       },
       onTaskFinished(task) {
@@ -673,6 +676,7 @@ test("app /agent new binds thread.started metadata and plain /agent resumes the 
     assert.deepEqual(spawned[0].args.slice(0, 2), ["exec", "--json"]);
     assert.match(spawned[0].args[2], /Instruction:\nStart fresh/);
     assert.doesNotMatch(spawned[0].args.join(" "), /\bsession_old123\b/);
+    assert.deepEqual(spawned[0].options.stdio, ["ignore", "pipe", "pipe"]);
 
     children[0].stdout.write([
       JSON.stringify({
@@ -708,6 +712,7 @@ test("app /agent new binds thread.started metadata and plain /agent resumes the 
       "019e254f-ebfa-7053-9302-32a6ade18036",
       "Continue on the fresh thread",
     ]);
+    assert.deepEqual(spawned[1].options.stdio, ["ignore", "pipe", "pipe"]);
     children[1].emit("close", 0, null);
     await secondFinished;
   } finally {
