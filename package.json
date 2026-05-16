@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "start:polling": "node src/polling.js",
     "webhook:set": "node scripts/set-telegram-webhook.js",
+    "test:codex-stdin-probe": "node scripts/codex-stdin-probe.js",
     "test:unit": "node --test test/unit/*.test.js",
     "test:harness": "node --test test/harness/*.test.js",
     "test:contract": "node --test test/contract/*.test.js",

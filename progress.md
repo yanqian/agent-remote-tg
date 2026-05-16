@@ -62,14 +62,15 @@ Implemented behavior:
 - Codex thread session extraction for F038: `/agent new` task logs now trust real-shaped Codex JSONL `thread.started` events with `thread_id` or `threadId` before assistant output, persist the discovered thread ID as task `codexSessionId`, replace the current chat plus repository binding after completion, and make the next plain `/agent` resume the newly bound thread while preserving existing session and conversation metadata support and rejecting assistant prose or command-output lookalikes.
 - Agent chat mode for F039: `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, and `/agent resume --last <instruction>` now enable chat mode for the authorized Telegram chat plus selected repository; ordinary non-command text in that mode resumes the bound Codex session, clear rejection messages cover missing workspace, disabled mode, missing session, and active same-repository agent tasks, `/agent session` reports repo/session/mode status, `/agent exit` disables only the mode flag while preserving session history, and `/continue` is removed from the public command surface.
 - Non-blocking Codex task stdin policy for F040: Bot-started task spawning now ignores child stdin by default while preserving shell-disabled execution, stdout/stderr log capture, final-result extraction, session extraction, timeout handling, completion pushes, `/stop`, `/logs`, Telegram truncation, secret redaction, and approval request detection from output; explicitly opted-in tasks can still request piped stdin, and approval decisions now fail clearly when the running task has no writable stdin.
+- External behavior verification guardrails for F041: contract tests now assert that `AGENTS.md` keeps the external behavior verification requirements for mocks, process semantics, structured output fields, and real-shaped fixtures; `npm run test:codex-stdin-probe` provides a disabled-by-default real Codex CLI stdin probe that can be enabled with `ENABLE_CODEX_STDIN_PROBE=1` without adding Codex, network, Telegram, or OpenAI account requirements to default `./init.sh`.
 
 ## Last Completed Feature
 
-`F039` - Implement explicit agent chat mode and remove `/continue` from the public command surface.
+`F040` - Fix Bot-started Codex exec task startup so agent prompts passed as argv do not hang on open piped stdin.
 
 ## Next Feature
 
-`F040` - Fix Bot-started Codex exec task startup so agent prompts passed as argv do not hang on open piped stdin. Implementation is complete and awaiting evaluator verification.
+`F041` - Add automated guardrail coverage for the AGENTS.md external behavior verification rule and an opt-in real Codex CLI stdin behavior probe. Implementation is complete and awaiting evaluator verification.
 
 ## Known Issues
 

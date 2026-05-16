@@ -47,6 +47,27 @@ Preview the cleanup without writing files:
 node scripts/clear-runtime-history.js --dry-run
 ```
 
+## codex-stdin-probe.js
+
+Runs the explicit opt-in real Codex CLI stdin behavior probe for F041. Default verification does not run the real Codex CLI, does not require network access, and does not require an OpenAI account.
+
+The disabled default mode is deterministic and safe for `./init.sh`:
+
+```bash
+npm run test:codex-stdin-probe
+```
+
+Run the real probe only on a machine with Codex CLI configured:
+
+```bash
+ENABLE_CODEX_STDIN_PROBE=1 npm run test:codex-stdin-probe
+```
+
+Optional environment variables:
+
+- `CODEX_BIN` selects a Codex binary path. Default: `codex`.
+- `CODEX_STDIN_PROBE_TIMEOUT_MS` sets the per-command timeout. Default: `5000`.
+
 ## set-telegram-webhook.js
 
 Registers the deployed Telegram webhook URL with Telegram. It requires `TELEGRAM_BOT_TOKEN` and an HTTPS `TELEGRAM_WEBHOOK_URL`.

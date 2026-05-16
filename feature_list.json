@@ -363,9 +363,9 @@
     {
       "id": "F041",
       "description": "Add automated guardrail coverage for the AGENTS.md external behavior verification rule by asserting the rule remains present and includes the core requirements that unknown external behavior must not be inferred from mocks, process semantic changes such as argv, stdio, cwd, env, timeout, signal handling, or shell mode require real command verification or documented inability to verify, structured output fields require real-shaped fixtures, and mocks or fake children only prove repository state-machine behavior; add a real Codex CLI stdin behavior probe that is disabled by default unless explicitly enabled by environment variable, document how to run it, keep default ./init.sh deterministic without Codex CLI, network, Telegram, or OpenAI account requirements, and preserve existing F040 non-blocking stdin unit and harness coverage.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P1"
     }
