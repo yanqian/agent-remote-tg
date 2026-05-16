@@ -245,7 +245,27 @@ The Coding Agent updates `progress.md` after implementation work.
 
 ---
 
-# External Tool Schema Rules
+# External Behavior Verification
+
+When implementation depends on behavior outside this repository's own code, agents must verify that behavior before relying on it.
+
+Examples include:
+
+* CLI tools and their flags, stdin/stdout/stderr behavior, exit codes, signals, working directory, environment variables, and timeout behavior
+* Third-party APIs, webhooks, SDKs, protocol payloads, callback formats, and version-specific fields
+* Runtime and platform behavior such as process management, filesystem semantics, shell behavior, permissions, networking, deployment platforms, and operating-system differences
+* Model or tool output schemas, streamed event formats, JSONL event fields, and approval or permission protocols
+
+Rules:
+
+* Do not infer unknown external behavior from intuition or local mocks
+* Prefer primary sources: official help output, official documentation, real minimal commands, real sample payloads, or captured logs from the target tool
+* Treat mocks and fake children as tests of this repository's state machine only; they do not prove the external tool or platform behaves that way
+* When changing process semantics such as argv, stdio, cwd, env, timeout, signal handling, or shell mode, verify the real command behavior or document why direct verification is not possible
+* When depending on structured output fields, verify with real-shaped output from the source and add regression tests using those captured shapes
+* If behavior remains uncertain, state the uncertainty explicitly in `SPEC.md`, `progress.md`, or implementation notes, and choose the safer default
+
+## External Tool Schema Rules
 
 When implementing behavior that parses output from external tools such as Codex CLI JSONL:
 
