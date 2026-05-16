@@ -63,14 +63,15 @@ Implemented behavior:
 - Agent chat mode for F039: `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, and `/agent resume --last <instruction>` now enable chat mode for the authorized Telegram chat plus selected repository; ordinary non-command text in that mode resumes the bound Codex session, clear rejection messages cover missing workspace, disabled mode, missing session, and active same-repository agent tasks, `/agent session` reports repo/session/mode status, `/agent exit` disables only the mode flag while preserving session history, and `/continue` is removed from the public command surface.
 - Non-blocking Codex task stdin policy for F040: Bot-started task spawning now ignores child stdin by default while preserving shell-disabled execution, stdout/stderr log capture, final-result extraction, session extraction, timeout handling, completion pushes, `/stop`, `/logs`, Telegram truncation, secret redaction, and approval request detection from output; explicitly opted-in tasks can still request piped stdin, and approval decisions now fail clearly when the running task has no writable stdin.
 - External behavior verification guardrails for F041: contract tests now assert that `AGENTS.md` keeps the external behavior verification requirements for mocks, process semantics, structured output fields, and real-shaped fixtures; `npm run test:codex-stdin-probe` provides a disabled-by-default real Codex CLI stdin probe that can be enabled with `ENABLE_CODEX_STDIN_PROBE=1` without adding Codex, network, Telegram, or OpenAI account requirements to default `./init.sh`.
+- Bot-local approval testing for F042: `/approval_test` is available to authorized chats, creates a pending Bot-local approval request without requiring a workspace or running Codex task, includes approve, reject, always-allow, and always-reject options, supports command, reply, and callback resolution through the existing approval flow, skips task stdin delivery because no task is associated, and documents the command in help, README, deployment, and BotFather command menu references.
 
 ## Last Completed Feature
 
-`F040` - Fix Bot-started Codex exec task startup so agent prompts passed as argv do not hang on open piped stdin.
+`F041` - Add automated guardrail coverage for the AGENTS.md external behavior verification rule and an opt-in real Codex CLI stdin behavior probe.
 
 ## Next Feature
 
-`F041` - Add automated guardrail coverage for the AGENTS.md external behavior verification rule and an opt-in real Codex CLI stdin behavior probe. Implementation is complete and awaiting evaluator verification.
+`F042` - Add a safe Bot-local `/approval_test` command for authorized Telegram chats. Implementation is complete and awaiting evaluator verification.
 
 ## Known Issues
 

@@ -3,6 +3,9 @@ import { handleAgent } from "./ask.js";
 import { authorizeMessage } from "./auth.js";
 import {
   applyApprovalOptionSelection,
+  buildApprovalInlineKeyboard,
+  buildApprovalTelegramMessage,
+  createApprovalTestRequest,
   handleApprovalCommand,
   handleApprovalReply,
   parseApprovalCallbackData,
@@ -20,7 +23,7 @@ import { handleLogs, handleStatus, handleStop } from "./task-management.js";
 import { createTaskExecutor } from "./task-executor.js";
 import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
 
-export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecutor, agentTaskTimeoutMs = null }) {
+export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecutor, agentTaskTimeoutMs = null, onApprovalRequest = null }) {
   if (!Array.isArray(allowedChatIds)) {
     throw new Error("allowedChatIds must be an array.");
   }
@@ -30,6 +33,7 @@ export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecu
   if (!statePath) {
     throw new Error("statePath is required.");
   }
+  const approvalRequestNotifier = typeof onApprovalRequest === "function" ? onApprovalRequest : null;
   const executor = taskExecutor ?? createTaskExecutor({
     statePath,
     logsDir: logsDir ?? resolve(dirname(statePath), "logs"),
@@ -80,6 +84,11 @@ export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecu
           chatId: message.chatId,
         });
         saveRuntimeState(statePath, delivered.state ?? result.state);
+        notifyApprovalRequestIfNeeded({
+          statePath,
+          onApprovalRequest: approvalRequestNotifier,
+          result: delivered.state ? { ...result, state: delivered.state } : result,
+        });
         return delivered.response ?? result.response;
       }
 
@@ -175,6 +184,8 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
     case "/always_allow":
     case "/always_reject":
       return handleApprovalCommand(parsed.command, parsed.args, state, chatId);
+    case "/approval_test":
+      return handleApprovalTest(state, chatId);
     case "/status":
       return handleStatus(state);
     case "/logs":
@@ -189,6 +200,51 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
         stateChanged: false,
       };
   }
+}
+
+function handleApprovalTest(state, chatId) {
+  const result = createApprovalTestRequest({ state, chatId });
+  return {
+    ...result,
+    approvalNotification: {
+      requestId: result.request.requestId,
+      chatId: result.request.chatId,
+      text: buildApprovalTelegramMessage(result.request),
+      replyMarkup: buildApprovalInlineKeyboard(result.request),
+      request: result.request,
+    },
+  };
+}
+
+function notifyApprovalRequestIfNeeded({ onApprovalRequest, statePath, result }) {
+  if (!onApprovalRequest || !result?.approvalNotification) {
+    return;
+  }
+
+  void (async () => {
+    try {
+      const sent = await onApprovalRequest(result.approvalNotification);
+      if (!sent || !Number.isSafeInteger(sent.telegramMessageId)) {
+        return;
+      }
+      const currentState = loadRuntimeState(statePath);
+      const current = currentState.approvalRequests[result.approvalNotification.requestId];
+      if (current?.status === "pending") {
+        saveRuntimeState(statePath, {
+          ...currentState,
+          approvalRequests: {
+            ...currentState.approvalRequests,
+            [current.requestId]: {
+              ...current,
+              telegramMessageId: sent.telegramMessageId,
+            },
+          },
+        });
+      }
+    } catch {
+      // Approval test notification failures must not make command handling fail.
+    }
+  })();
 }
 
 function handleAgentChatText(text, repos, state, taskExecutor, chatId, options = {}) {

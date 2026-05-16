@@ -10,6 +10,10 @@ export function start(env = process.env, options = {}) {
   const rawRepos = options.repos ?? parseRepoWhitelistJson(env.REPO_WHITELIST_JSON);
   const repos = normalizeRepoConfig(rawRepos, context.rootDir, { requireExisting: true });
   loadRuntimeState(context.statePath);
+  const approvalNotifier = createTelegramApprovalNotifier({
+    botToken: context.telegramBotToken,
+    fetchImpl: options.fetchImpl,
+  });
   const taskExecutor = options.taskExecutor ?? createTaskExecutor({
     statePath: context.statePath,
     logsDir: context.logsDir,
@@ -18,10 +22,7 @@ export function start(env = process.env, options = {}) {
       botToken: context.telegramBotToken,
       fetchImpl: options.fetchImpl,
     }),
-    onApprovalRequest: createTelegramApprovalNotifier({
-      botToken: context.telegramBotToken,
-      fetchImpl: options.fetchImpl,
-    }),
+    onApprovalRequest: approvalNotifier,
   });
   const app = options.app ?? createApp({
     allowedChatIds: context.allowedChatIds,
@@ -30,6 +31,7 @@ export function start(env = process.env, options = {}) {
     logsDir: context.logsDir,
     taskExecutor,
     agentTaskTimeoutMs: context.agentTaskTimeoutMs,
+    onApprovalRequest: approvalNotifier,
   });
   const server = createTelegramHttpServer({
     app,

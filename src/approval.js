@@ -6,6 +6,7 @@ const ALWAYS_ALLOW_WORDS = new Set(["always", "always allow", "always_allow", "ä
 const CALLBACK_PREFIX = "approval";
 const APPROVAL_MESSAGE_LIMIT = 1800;
 const SECRET_NAME_PATTERN = /TOKEN|SECRET|PASSWORD|KEY/i;
+let approvalTestSequence = 0;
 
 export function handleApprovalCommand(command, requestId, state, chatId, now = new Date()) {
   const decision = commandToDecision(command);
@@ -35,6 +36,51 @@ export function handleApprovalReply(message, state, now = new Date()) {
       chatId: message.chatId,
       now,
     }),
+  };
+}
+
+export function createApprovalTestRequest({ state, chatId, now = new Date() }) {
+  const normalized = normalizeRuntimeState(state);
+  const requestId = generateApprovalTestRequestId(normalized.approvalRequests);
+  const chatKey = String(chatId);
+  const request = {
+    requestId,
+    status: "pending",
+    taskId: null,
+    chatId: chatKey,
+    botLocalTest: true,
+    source: "approval_test",
+    detail: {
+      category: "bot_local_test",
+      action: "approval_test",
+      description: "Bot-local approval flow test. No Codex task, shell command, process signal, or child stdin is involved.",
+    },
+    options: [
+      { optionId: "opt_1", codexOptionId: "test_approve", label: "Approve", decision: "approved" },
+      { optionId: "opt_2", codexOptionId: "test_reject", label: "Reject", decision: "rejected" },
+      { optionId: "opt_3", codexOptionId: "test_always_allow", label: "Always allow", decision: "always_allow" },
+      { optionId: "opt_4", codexOptionId: "test_always_reject", label: "Always reject", decision: "always_reject" },
+    ],
+    createdAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+    telegramMessageId: null,
+    allowRule: {
+      source: "approval_test",
+      botLocalTest: true,
+    },
+  };
+
+  return {
+    request,
+    response: formatApprovalTestResponse(requestId),
+    state: {
+      ...normalized,
+      approvalRequests: {
+        ...normalized.approvalRequests,
+        [requestId]: request,
+      },
+    },
+    stateChanged: true,
   };
 }
 
@@ -296,6 +342,17 @@ export function buildApprovalCallbackData(requestId, optionId) {
   return `${CALLBACK_PREFIX}:${requestId}:${optionId}`;
 }
 
+export function formatApprovalTestResponse(requestId) {
+  return [
+    `Approval test request: ${requestId}`,
+    `Use /approve ${requestId}`,
+    `Use /reject ${requestId}`,
+    `Use /always_allow ${requestId}`,
+    `Use /always_reject ${requestId}`,
+    "Reply yes, no, or always to the Bot approval message when Telegram reply metadata is available.",
+  ].join("\n");
+}
+
 export function buildApprovalTelegramMessage(request, env = process.env, extraSecrets = []) {
   const detail = request?.detail && typeof request.detail === "object" ? request.detail : {};
   const lines = [
@@ -387,6 +444,15 @@ function normalizeCodexOptions(rawOptions) {
       decision: inferDecision(codexOptionId, label),
     };
   });
+}
+
+function generateApprovalTestRequestId(existingRequests = {}) {
+  let requestId;
+  do {
+    approvalTestSequence += 1;
+    requestId = `req_${Date.now().toString(36)}_${approvalTestSequence.toString(36)}`;
+  } while (existingRequests && Object.hasOwn(existingRequests, requestId));
+  return requestId;
 }
 
 function inferDecision(...values) {

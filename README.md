@@ -23,6 +23,7 @@ Repository development state remains in repository files and git history. Telegr
 - `/reject <request_id>` - reject a pending agent approval request.
 - `/always_allow <request_id>` - approve a pending agent approval request and remember its future allow rule.
 - `/always_reject <request_id>` - reject a pending agent approval request and remember its future reject rule.
+- `/approval_test` - create a safe Bot-local approval request for testing approval commands, replies, and buttons.
 - `/status` - show active tasks and the five most recent finished tasks.
 - `/logs <task_id>` - show the stored final task result.
 - `/stop <task_id>` - stop a running Bot-recorded task with `SIGTERM`.
@@ -43,6 +44,7 @@ approve - Approve a pending agent request
 reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
 always_reject - Reject and remember a reject rule
+approval_test - Create a safe approval test request
 status - Show active and recent tasks
 logs - Show task final result
 stop - Stop a running task
@@ -57,7 +59,7 @@ The Bot is a control plane, not the owner of feature lifecycle decisions. It val
 
 Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py` when repository workflow automation is requested through `/agent`.
 
-`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/agent`, `/agent new`, and `/agent resume ...` enter agent chat mode for the current chat and selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository continues the current session without the `/agent` prefix. Slash commands are still parsed as commands first. Use `/agent exit` to leave agent chat mode, `/agent session` to inspect the current session and mode status, and `/stop <task_id>` when a running task should be terminated. When Bot-started Codex tasks emit permission prompts, the Bot stores a pending approval request and sends inline Telegram buttons that map to the Codex-provided options. Only one active agent task is allowed per workspace for ordinary follow-up text; `work`, `continue`, and `run-orch` may appear only as legacy task records.
+`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/agent`, `/agent new`, and `/agent resume ...` enter agent chat mode for the current chat and selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository continues the current session without the `/agent` prefix. Slash commands are still parsed as commands first. Use `/agent exit` to leave agent chat mode, `/agent session` to inspect the current session and mode status, and `/stop <task_id>` when a running task should be terminated. When Bot-started Codex tasks emit permission prompts, the Bot stores a pending approval request and sends inline Telegram buttons that map to the Codex-provided options. `/approval_test` creates a Bot-local pending request with approve, reject, always-allow, and always-reject options without starting Codex, running shell commands, requiring a workspace, or using child stdin. Only one active agent task is allowed per workspace for ordinary follow-up text; `work`, `continue`, and `run-orch` may appear only as legacy task records.
 
 ## Transport Modes
 

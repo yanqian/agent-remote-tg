@@ -167,6 +167,61 @@ test("app handles approval commands and reply-based decisions", () => {
   }
 });
 
+test("app creates and resolves Bot-local approval test requests", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const notifications = [];
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath,
+      taskExecutor: {
+        resolveApprovalOption() {
+          throw new Error("Bot-local approval tests must not deliver to task stdin");
+        },
+      },
+      onApprovalRequest(notification) {
+        notifications.push(notification);
+        return Promise.resolve({ telegramMessageId: 804 });
+      },
+    });
+
+    const response = app.handleMessage({ chatId: "123", text: "/approval_test" });
+    assert.match(response, /^Approval test request: req_[a-z0-9]+_[a-z0-9]+/);
+    assert.match(response, /\/approve req_/);
+    assert.match(response, /\/always_reject req_/);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    let state = JSON.parse(readFileSync(statePath, "utf8"));
+    const requestId = Object.keys(state.approvalRequests)[0];
+    assert.equal(state.approvalRequests[requestId].botLocalTest, true);
+    assert.equal(state.approvalRequests[requestId].taskId, null);
+    assert.equal(state.approvalRequests[requestId].status, "pending");
+    assert.equal(state.approvalRequests[requestId].telegramMessageId, 804);
+    assert.equal(notifications.length, 1);
+    assert.equal(notifications[0].replyMarkup.inline_keyboard[0].length, 4);
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "yes", replyToMessageId: 804 }), `Approved request: ${requestId}`);
+    state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.approvalRequests[requestId].status, "approved");
+
+    const secondResponse = app.handleMessage({ chatId: "123", text: "/approval_test" });
+    const secondRequestId = secondResponse.match(/Approval test request: (req_[a-z0-9]+_[a-z0-9]+)/)[1];
+    assert.notEqual(secondRequestId, requestId);
+    assert.equal(
+      app.handleCallbackQuery({ chatId: "123", data: `approval:${secondRequestId}:opt_4` }),
+      `Rejected and stored future reject rule: ${secondRequestId}`,
+    );
+    state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.approvalRequests[secondRequestId].status, "always_rejected");
+    assert.equal(state.approvalAllowRules[secondRequestId].source, "approval_test");
+    assert.equal(app.handleMessage({ chatId: "999", text: "/approval_test" }), "Unauthorized chat.");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("app rejects unsafe, unknown, expired, resolved, and unauthorized approval requests", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   try {

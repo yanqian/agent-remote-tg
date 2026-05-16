@@ -93,6 +93,7 @@ approve - Approve a pending agent request
 reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
 always_reject - Reject and remember a reject rule
+approval_test - Create a safe approval test request
 status - Show active and recent tasks
 logs - Show task log output
 stop - Stop a running task
@@ -103,7 +104,7 @@ The supported command names are compatible with BotFather because they use lower
 
 ## Long-Running Operation
 
-The `/agent`, `/agent new`, and `/agent resume` commands create Bot-recorded local tasks and enter agent chat mode for the current chat plus selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository creates a resumed agent task without requiring the `/agent` prefix. Full output is written to task logs, while Telegram responses stay bounded. `/agent` tasks and ordinary follow-ups have no forced timeout by default unless `AGENT_TASK_TIMEOUT_MS` is configured. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/agent exit` leaves agent chat mode for the current chat and repository; `/agent session` reports the current session and mode status. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
+The `/agent`, `/agent new`, and `/agent resume` commands create Bot-recorded local tasks and enter agent chat mode for the current chat plus selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository creates a resumed agent task without requiring the `/agent` prefix. Full output is written to task logs, while Telegram responses stay bounded. `/agent` tasks and ordinary follow-ups have no forced timeout by default unless `AGENT_TASK_TIMEOUT_MS` is configured. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/approval_test` creates the same style of Bot-local pending request for testing approvals without starting Codex, executing shell commands, requiring a workspace, or writing to child stdin. `/agent exit` leaves agent chat mode for the current chat and repository; `/agent session` reports the current session and mode status. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
 
 Only one active agent task can receive ordinary text follow-ups in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 

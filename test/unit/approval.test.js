@@ -6,6 +6,7 @@ import {
   buildApprovalCallbackData,
   buildApprovalInlineKeyboard,
   buildApprovalTelegramMessage,
+  createApprovalTestRequest,
   extractCodexApprovalRequest,
   findReplyApprovalRequestId,
   handleApprovalReply,
@@ -153,6 +154,30 @@ test("extractCodexApprovalRequest maps Codex options to bounded Telegram buttons
     "approval:req_123:opt_3",
   ]);
   assert.match(buildApprovalTelegramMessage(request, { TELEGRAM_BOT_TOKEN: "SECRET_VALUE" }), /Command: npm test \[REDACTED\]/);
+});
+
+test("createApprovalTestRequest creates Bot-local test approval data", () => {
+  const first = createApprovalTestRequest({ state: {}, chatId: "123", now: NOW });
+  const second = createApprovalTestRequest({ state: first.state, chatId: "123", now: NOW });
+
+  assert.match(first.request.requestId, /^req_[a-z0-9]+_[a-z0-9]+$/);
+  assert.notEqual(first.request.requestId, second.request.requestId);
+  assert.equal(first.request.botLocalTest, true);
+  assert.equal(first.request.taskId, null);
+  assert.equal(first.request.chatId, "123");
+  assert.deepEqual(first.request.options.map((option) => option.decision), [
+    "approved",
+    "rejected",
+    "always_allow",
+    "always_reject",
+  ]);
+  assert.match(first.response, new RegExp(`/approve ${first.request.requestId}`));
+  assert.deepEqual(buildApprovalInlineKeyboard(first.request).inline_keyboard[0].map((button) => button.callback_data), [
+    `approval:${first.request.requestId}:opt_1`,
+    `approval:${first.request.requestId}:opt_2`,
+    `approval:${first.request.requestId}:opt_3`,
+    `approval:${first.request.requestId}:opt_4`,
+  ]);
 });
 
 test("applyApprovalDecision rejects unsafe, unknown, expired, resolved, and unauthorized requests", () => {
