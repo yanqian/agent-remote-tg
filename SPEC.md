@@ -1983,3 +1983,43 @@ Exclude:
 - Run focused task executor unit tests for approval decision resolution without writable stdin.
 - Run harness tests for `/agent new` task startup arguments and task metadata.
 - Run `./init.sh`.
+
+## 25. External Behavior Verification Test Coverage
+
+### 25.1 Goal
+
+Add automated coverage that preserves the development rule that unknown external behavior must be verified instead of inferred from mocks.
+
+This coverage must make the rule visible in tests and provide an explicit opt-in path for checking real CLI behavior when the local environment supports it.
+
+### 25.2 Scope
+
+Include:
+
+- Add contract coverage that asserts `AGENTS.md` contains the external behavior verification rule.
+- The contract must cover the requirements that mocks or fake children do not prove external tool behavior, process semantic changes require real command verification or documented inability to verify, and structured output fields require real-shaped output fixtures.
+- Add a small integration or smoke test entrypoint for real Codex CLI stdin behavior that is disabled by default unless explicitly enabled with an environment variable.
+- The real CLI test must verify the F040 failure mode directly: `codex exec --json <prompt>` must not be launched by the Bot with open piped stdin by default, and a real command-level probe must document the Codex CLI stdin behavior when enabled.
+- Keep default `./init.sh` deterministic and free of real Codex or network requirements.
+- Document how to run the explicit opt-in external behavior verification test.
+
+Exclude:
+
+- Do not require Codex CLI or network access for normal unit, harness, contract, smoke, or `./init.sh` runs.
+- Do not make CI depend on a real OpenAI account, Telegram token, or live external service.
+- Do not replace existing fake-child unit tests; they remain useful for repository state-machine behavior.
+
+### 25.3 Acceptance Criteria
+
+- Contract tests fail if the AGENTS external behavior verification section is removed or weakened below the core requirements.
+- Default test and init commands still pass without Codex CLI.
+- An explicit opt-in command exists for the real Codex CLI stdin behavior probe.
+- The opt-in test is documented in `scripts/README.md` or another appropriate docs file.
+- Existing F040 unit and harness regression coverage remains intact.
+- `./init.sh` passes.
+
+### 25.4 Verification Plan
+
+- Run contract tests for AGENTS.md rule coverage.
+- Run any new explicit opt-in smoke test in disabled/default mode.
+- Run `./init.sh`.
