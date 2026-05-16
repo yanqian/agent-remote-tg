@@ -2023,3 +2023,78 @@ Exclude:
 - Run contract tests for AGENTS.md rule coverage.
 - Run any new explicit opt-in smoke test in disabled/default mode.
 - Run `./init.sh`.
+
+## 26. Bot-Local Approval Test Command
+
+### 26.1 Goal
+
+Add a safe Telegram command that lets the owner test Bot approval interactions without depending on a real Codex task, real process termination, shell execution, writable child stdin, network access, or dangerous commands.
+
+The command must create a Bot-local pending approval request and send the same Telegram approval interaction shape used by real detected approval requests.
+
+### 26.2 Command
+
+Add:
+
+```text
+/approval_test
+```
+
+The command must be available only to authorized chats through the existing authorization path.
+
+The command must not require a selected repository. If a repository is selected, the generated test request may include the current repository alias for display and state context.
+
+### 26.3 Behavior
+
+When an authorized user sends `/approval_test`, the Bot must:
+
+1. Create a pending approval request in `runtime_state.json`.
+2. Mark the request as Bot-local test data so it is not treated as a running Codex task delivery.
+3. Include approve, reject, always allow, and always reject options.
+4. Send or return a bounded response that includes the generated request id and instructions for testing `/approve <request_id>`, `/reject <request_id>`, `/always_allow <request_id>`, and `/always_reject <request_id>`.
+5. In Telegram transports that support inline keyboards, send an approval message with inline buttons for all test options.
+6. Allow the normal approval command flow, reply flow, and callback flow to resolve the test request.
+7. Store resulting status changes in runtime state.
+8. Avoid calling `taskExecutor.resolveApprovalOption` for Bot-local test requests.
+
+### 26.4 Scope
+
+Include:
+
+- Add `/approval_test` to the public command whitelist, help output, README command surface, BotFather command menu documentation, and contract tests.
+- Reuse existing approval request validation, option selection, command decisions, reply decisions, callback parsing, and state normalization.
+- Ensure Bot-local approval test requests cannot try to write to a Codex child stdin.
+- Ensure repeated `/approval_test` invocations create distinct request ids.
+- Preserve existing real approval request behavior.
+
+Exclude:
+
+- Do not start Codex.
+- Do not execute shell commands.
+- Do not kill processes.
+- Do not require a running task.
+- Do not require a selected repository.
+- Do not change the F040 non-blocking stdin policy.
+
+### 26.5 Acceptance Criteria
+
+- `/approval_test` creates a pending Bot-local approval request for the authorized chat.
+- `/approval_test` returns or sends a response containing the generated request id and test instructions.
+- The generated request contains compatible approve, reject, always allow, and always reject options.
+- `/approve <request_id>` resolves the test request as approved.
+- `/reject <request_id>` resolves the test request as rejected.
+- `/always_allow <request_id>` resolves the test request as always allowed and stores an allow rule.
+- `/always_reject <request_id>` resolves the test request as always rejected and stores a reject rule.
+- Inline callback selection resolves the test request without invoking `taskExecutor.resolveApprovalOption`.
+- Reply-based yes/no decisions still work for test approval messages when a Telegram message id is available.
+- Unauthorized chats cannot create or resolve test approval requests.
+- Unknown, invalid, expired, and already resolved request behavior remains unchanged.
+- Existing unit, harness, contract, and smoke checks pass.
+- `./init.sh` passes.
+
+### 26.6 Verification Plan
+
+- Run unit tests for Bot-local approval test request creation.
+- Run harness tests for `/approval_test`, command decisions, callback decisions, and no task executor delivery.
+- Run contract tests for command whitelist and help output.
+- Run `./init.sh`.
