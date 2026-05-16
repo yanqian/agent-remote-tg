@@ -374,8 +374,8 @@
       "description": "Add a safe Bot-local /approval_test command for authorized Telegram chats that creates a pending test approval request in runtime_state.json without starting Codex, executing shell commands, killing processes, requiring a selected repository, requiring a running task, or depending on writable child stdin; the generated request must be marked as Bot-local test data, include approve, reject, always allow, and always reject options, return or send a bounded response with the generated request id and instructions for /approve <request_id>, /reject <request_id>, /always_allow <request_id>, and /always_reject <request_id>, support inline keyboard callback selection where transports support it, support existing approval command and reply flows, persist resulting statuses and allow rules, avoid taskExecutor.resolveApprovalOption for Bot-local test requests, add /approval_test to the command whitelist, help output, README command surface, BotFather command menu documentation, and contract tests, preserve real approval request behavior and F040 non-blocking stdin policy, and add unit, harness, contract, smoke, and init coverage.",
       "passes": false,
       "status": "todo",
-      "attempts": 0,
-      "last_error": "",
+      "attempts": 1,
+      "last_error": "coding agent exited with code 1",
       "priority": "P1"
     }
   ]
