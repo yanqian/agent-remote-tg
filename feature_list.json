@@ -350,6 +350,15 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F040",
+      "description": "Fix Bot-started Codex exec task startup so /agent, /agent new, /agent resume <session_id> <instruction>, /agent resume --last <instruction>, and ordinary agent chat mode follow-ups do not hang at `Reading additional input from stdin...` because the Bot leaves a piped child stdin open while also passing the prompt as a command argument; default task spawning must use ignored or closed stdin unless an explicitly supported interactive protocol opts in, preserve shell-disabled spawning, task metadata, logs, finalResult extraction, session extraction, completion pushes, timeout handling, /stop, /logs, Telegram truncation, secret redaction, and approval request detection from output, make approval decision writing fail clearly when no writable child stdin exists instead of blocking task startup, and add unit, harness, and init regression coverage proving the non-blocking stdin policy.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }

@@ -1921,3 +1921,65 @@ Removed public commands:
 - Run harness tests for `/agent` entering mode, ordinary text follow-up, `/agent exit`, `/use` repository scoping, active task rejection, and `/continue` rejection.
 - Run contract tests for exact command whitelist and help output.
 - Run `./init.sh`.
+
+## 24. Codex Exec Stdin Blocking Requirements
+
+### 24.1 Goal
+
+Prevent Bot-started `/agent` tasks from hanging before execution when `codex exec --json <prompt>` observes an open piped stdin and waits for additional stdin content.
+
+The Bot must not leave stdin open for Codex exec tasks unless an explicitly supported interactive protocol requires it.
+
+### 24.2 Problem
+
+A user sent:
+
+```text
+/agent new 我现在想测试一下 approve或者reject命令，你来帮我弹出个需要approve或者reject的命令，我看看我能不能approve
+```
+
+The task log contained only:
+
+```text
+Reading additional input from stdin...
+```
+
+and the task remained `running` for several minutes without JSONL output or a final result.
+
+`codex exec --help` documents that when a prompt is provided as an argument and stdin is piped, stdin is appended as a `<stdin>` block. Because the Bot spawned the child with an open stdin pipe for approval decisions, Codex waited for EOF before starting the turn.
+
+### 24.3 Scope
+
+Include:
+
+- Ensure ordinary Bot-started `codex exec --json <prompt>` tasks do not expose an open stdin pipe that makes Codex wait for EOF.
+- Preserve shell-disabled process spawning.
+- Preserve task metadata, logs, final result extraction, completion pushes, session extraction, timeout handling, stop handling, Telegram truncation, and secret redaction.
+- Preserve approval request detection from Codex JSONL output and pending approval persistence.
+- Make any stdin-based approval decision writing opt-in or otherwise guarded so it cannot block normal Codex exec startup.
+- Add regression coverage proving Codex exec tasks are spawned with non-piped stdin by default.
+- Add regression coverage proving approval stdin writing is unavailable unless the child was intentionally started with writable stdin.
+
+Exclude:
+
+- Do not bypass Codex approvals with `--dangerously-bypass-approvals-and-sandbox`.
+- Do not remove the public approval commands.
+- Do not fake a successful approval flow when the underlying Codex CLI protocol cannot consume decisions through stdin in this mode.
+- Do not make normal `/agent` tasks interactive TTY sessions.
+
+### 24.4 Acceptance Criteria
+
+- `/agent new <instruction>` starts `codex exec --json <prompt>` without leaving stdin open in a way that causes `Reading additional input from stdin...` hangs.
+- Plain `/agent <instruction>`, `/agent resume <session_id> <instruction>`, `/agent resume --last <instruction>`, and ordinary agent chat mode follow-ups use the same non-blocking stdin policy.
+- The task executor default spawn options use ignored or closed stdin unless explicitly configured otherwise for a supported interactive protocol.
+- `resolveApprovalOption` returns a clear "Approval task is not active." style response when no writable child stdin exists.
+- Existing approval request detection and Telegram approval message creation continue to work from task output.
+- Existing tests for task spawning, final result extraction, session extraction, completion pushes, `/stop`, `/logs`, and timeout behavior continue to pass.
+- `./init.sh` passes.
+
+### 24.5 Verification Plan
+
+- Run focused task executor unit tests for default stdio configuration.
+- Run focused task executor unit tests for approval decision resolution without writable stdin.
+- Run harness tests for `/agent new` task startup arguments and task metadata.
+- Run `./init.sh`.
