@@ -198,6 +198,13 @@ test("extractCodexSessionIdFromLog trusts structured and pre-answer metadata onl
   assert.equal(extractCodexSessionIdFromLog("{\"type\":\"session_configured\",\"session_id\":\"550e8400-e29b-41d4-a716-446655440000\"}\nassistant\nDone"), "550e8400-e29b-41d4-a716-446655440000");
   assert.equal(extractCodexSessionIdFromLog("{\"type\":\"thread.started\",\"thread_id\":\"019e254f-ebfa-7053-9302-32a6ade18036\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"Done\"}}"), "019e254f-ebfa-7053-9302-32a6ade18036");
   assert.equal(extractCodexSessionIdFromLog("{\"type\":\"thread.started\",\"threadId\":\"550e8400-e29b-41d4-a716-446655440000\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"Done\"}}"), "550e8400-e29b-41d4-a716-446655440000");
+  assert.equal(extractCodexSessionIdFromLog([
+    "stdinMode=ignore",
+    "Reading additional input from stdin...",
+    "{\"type\":\"thread.started\",\"thread_id\":\"019e3035-56a6-73e1-83c3-d086d99ed9ba\"}",
+    "{\"type\":\"turn.started\"}",
+    "{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"Done\"}}",
+  ].join("\n")), "019e3035-56a6-73e1-83c3-d086d99ed9ba");
   assert.equal(extractCodexSessionIdFromLog("{\"type\":\"assistant_message\",\"message\":\"Codex session: session_run123\"}"), "");
   assert.equal(extractCodexSessionIdFromLog("Session ID: ../secret"), "");
 });
@@ -419,6 +426,8 @@ test("startTask persists real thread.started metadata and replaces older agent b
     });
 
     child.stdout.write([
+      "stdinMode=ignore",
+      "Reading additional input from stdin...",
       JSON.stringify({
         type: "thread.started",
         thread_id: "019e254f-ebfa-7053-9302-32a6ade18036",

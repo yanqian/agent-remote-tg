@@ -381,9 +381,9 @@
     {
       "id": "F043",
       "description": "Fix Codex session metadata extraction so /agent new tasks still bind the discovered Codex thread when real-shaped logs contain harmless Codex CLI prelude lines such as stdinMode=ignore and Reading additional input from stdin... before top-level JSONL thread.started metadata; trust top-level structured Codex session metadata events before assistant or user-facing output starts, preserve rejection of assistant prose, item.completed agent messages, command execution output, source/test/docs output, and log-tail session lookalikes, persist the discovered thread id to both task codexSessionId and askSessions chat-plus-repo binding, make the next ordinary agent chat mode follow-up resume that newly bound thread instead of returning the no-session-bound error, preserve task id versus Codex session id separation, F039 chat mode behavior, F040 non-blocking stdin policy, F041 real-shaped fixture expectations, and F042 approval-test behavior, and add unit, task executor, harness, and init regression coverage using the observed local Codex JSONL log shape.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     }

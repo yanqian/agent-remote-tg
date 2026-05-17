@@ -64,14 +64,15 @@ Implemented behavior:
 - Non-blocking Codex task stdin policy for F040: Bot-started task spawning now ignores child stdin by default while preserving shell-disabled execution, stdout/stderr log capture, final-result extraction, session extraction, timeout handling, completion pushes, `/stop`, `/logs`, Telegram truncation, secret redaction, and approval request detection from output; explicitly opted-in tasks can still request piped stdin, and approval decisions now fail clearly when the running task has no writable stdin.
 - External behavior verification guardrails for F041: contract tests now assert that `AGENTS.md` keeps the external behavior verification requirements for mocks, process semantics, structured output fields, and real-shaped fixtures; `npm run test:codex-stdin-probe` provides a disabled-by-default real Codex CLI stdin probe that can be enabled with `ENABLE_CODEX_STDIN_PROBE=1` without adding Codex, network, Telegram, or OpenAI account requirements to default `./init.sh`.
 - Bot-local approval testing for F042: `/approval_test` is available to authorized chats, creates a pending Bot-local approval request without requiring a workspace or running Codex task, includes approve, reject, always-allow, and always-reject options, supports command, reply, and callback resolution through the existing approval flow, skips task stdin delivery because no task is associated, and documents the command in help, README, deployment, and BotFather command menu references.
+- Robust Codex session metadata extraction for F043: `/agent new` task logs now keep the trusted pre-answer metadata window open across harmless Codex CLI prelude lines such as `stdinMode=ignore` and `Reading additional input from stdin...`, then bind top-level `thread.started` metadata to the task and chat-plus-repo session while preserving rejection of assistant prose and command-output lookalikes.
 
 ## Last Completed Feature
 
-`F042` - Add a safe Bot-local `/approval_test` command for authorized Telegram chats.
+`F043` - Fix Codex session metadata extraction when harmless CLI prelude lines appear before top-level JSONL `thread.started` metadata.
 
 ## Next Feature
 
-`F043` - Fix Codex session metadata extraction when harmless CLI prelude lines appear before top-level JSONL `thread.started` metadata.
+None currently listed.
 
 ## Known Issues
 

@@ -734,6 +734,8 @@ test("app /agent new binds thread.started metadata and plain /agent resumes the 
     assert.deepEqual(spawned[0].options.stdio, ["ignore", "pipe", "pipe"]);
 
     children[0].stdout.write([
+      "stdinMode=ignore",
+      "Reading additional input from stdin...",
       JSON.stringify({
         type: "thread.started",
         threadId: "019e254f-ebfa-7053-9302-32a6ade18036",

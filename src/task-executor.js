@@ -653,6 +653,10 @@ export function extractCodexSessionIdFromLog(rawLog) {
       }
     }
 
+    if (isCodexPreludeLine(line)) {
+      continue;
+    }
+
     if (line.trim() !== "") {
       preAnswerMetadataOpen = false;
     }
@@ -775,6 +779,19 @@ function isInitialTaskLogMetadataLine(line) {
     || /^cwd=/.test(trimmed)
     || /^argv=/.test(trimmed)
     || /^stdinMode=/.test(trimmed);
+}
+
+function isCodexPreludeLine(line) {
+  const trimmed = line.trim();
+  if (trimmed === "") {
+    return true;
+  }
+  if (/^-{3,}$/.test(trimmed) || /^={3,}$/.test(trimmed)) {
+    return true;
+  }
+  return /^Reading additional input from stdin\.\.\.$/i.test(trimmed)
+    || /^OpenAI Codex\b/i.test(trimmed)
+    || /^(?:workdir|model|provider|approval|sandbox|reasoning effort|reasoning summaries|session id)\s*[:=]\s*\S/i.test(trimmed);
 }
 
 function isAssistantOutputStartLine(line) {
