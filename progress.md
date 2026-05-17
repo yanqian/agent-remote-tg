@@ -67,11 +67,11 @@ Implemented behavior:
 
 ## Last Completed Feature
 
-`F041` - Add automated guardrail coverage for the AGENTS.md external behavior verification rule and an opt-in real Codex CLI stdin behavior probe.
+`F042` - Add a safe Bot-local `/approval_test` command for authorized Telegram chats.
 
 ## Next Feature
 
-`F042` - Add a safe Bot-local `/approval_test` command for authorized Telegram chats. Implementation is complete, `./init.sh` passes, and the feature is awaiting evaluator verification.
+`F043` - Fix Codex session metadata extraction when harmless CLI prelude lines appear before top-level JSONL `thread.started` metadata.
 
 ## Known Issues
 

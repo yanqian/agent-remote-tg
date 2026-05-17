@@ -2098,3 +2098,65 @@ Exclude:
 - Run harness tests for `/approval_test`, command decisions, callback decisions, and no task executor delivery.
 - Run contract tests for command whitelist and help output.
 - Run `./init.sh`.
+
+## 27. Robust Codex Session Metadata Extraction After CLI Prelude Lines
+
+### 27.1 Goal
+
+Fix agent chat mode session binding when Codex CLI emits human-readable prelude lines before structured JSONL session metadata.
+
+The Bot must continue to reject assistant prose and command output lookalikes, but it must not discard trusted top-level Codex JSONL metadata only because a harmless CLI prelude line such as `Reading additional input from stdin...` appeared first.
+
+### 27.2 Problem
+
+Observed local logs for `/agent new ...` can contain this shape:
+
+```text
+stdinMode=ignore
+Reading additional input from stdin...
+{"type":"thread.started","thread_id":"019e3035-56a6-73e1-83c3-d086d99ed9ba"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"type":"agent_message","text":"..."}}
+```
+
+Current extraction can close the trusted pre-answer metadata window on the `Reading additional input from stdin...` line. The later real `thread.started.thread_id` is then ignored, so the task finishes with `codexSessionId: null`; agent chat mode remains enabled but no `askSessions[chatId][repoAlias]` binding is stored, causing ordinary follow-up text to return:
+
+```text
+No agent session is bound for agent chat mode.
+Use /agent new <instruction> or /agent resume <session_id> <instruction>.
+```
+
+### 27.3 Scope
+
+Include:
+
+- Make `extractCodexSessionIdFromLog` trust top-level Codex JSONL session metadata events before assistant/user-facing output starts, even if harmless CLI prelude lines appear first.
+- Treat known Codex CLI prelude/header lines such as `Reading additional input from stdin...`, `OpenAI Codex ...`, `workdir: ...`, `model: ...`, `provider: ...`, `approval: ...`, `sandbox: ...`, `reasoning effort: ...`, `reasoning summaries: ...`, `session id: ...`, separators, and task log metadata as non-answer prelude.
+- Preserve rejection of session-looking strings from assistant final answers, `item.completed` agent messages, command execution output, source/test/docs output, log tails, and other untrusted content.
+- Add regression coverage using the real-shaped local log fragment with `stdinMode=ignore`, `Reading additional input from stdin...`, and a following `thread.started.thread_id`.
+- Add task executor coverage proving the discovered thread ID is persisted to both task metadata and `askSessions`.
+- Add harness coverage proving an `/agent new` task with CLI prelude lines binds the session and the next ordinary agent chat mode follow-up starts `codex exec --json resume <thread_id> ...` instead of returning the no-binding error.
+- Preserve F033/F038 schema safeguards, F039 chat mode behavior, F040 non-blocking stdin policy, F041 external behavior fixture expectations, and F042 approval-test behavior.
+
+Exclude:
+
+- Do not extract session IDs from assistant prose or command output.
+- Do not make task IDs equal Codex session IDs.
+- Do not add live Codex CLI, network, Telegram, or OpenAI account requirements to default tests or `./init.sh`.
+- Do not automatically migrate or backfill old runtime history from logs unless explicitly requested as a separate maintenance feature.
+
+### 27.4 Acceptance Criteria
+
+- A log containing `Reading additional input from stdin...` before a top-level `{"type":"thread.started","thread_id":"..."}` still yields that thread ID.
+- `/agent new` tasks that emit the observed prelude-plus-JSONL shape persist `codexSessionId` on the task.
+- The same completed task updates `askSessions[chatId][repoAlias].codexSessionId`.
+- With agent chat mode enabled, ordinary follow-up text after that completion resumes the newly bound Codex thread.
+- Existing tests that reject assistant prose, command output, source output, docs output, and log-tail session lookalikes remain in place and pass.
+- `./init.sh` passes.
+
+### 27.5 Verification Plan
+
+- Run focused unit tests for `extractCodexSessionIdFromLog`.
+- Run focused task executor unit tests for persisted task and binding metadata.
+- Run harness tests for `/agent new` followed by ordinary text in agent chat mode.
+- Run `./init.sh`.
