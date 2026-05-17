@@ -71,7 +71,7 @@ Implemented behavior:
 
 ## Next Feature
 
-`F042` - Add a safe Bot-local `/approval_test` command for authorized Telegram chats. Implementation is complete and awaiting evaluator verification.
+`F042` - Add a safe Bot-local `/approval_test` command for authorized Telegram chats. Implementation is complete, `./init.sh` passes, and the feature is awaiting evaluator verification.
 
 ## Known Issues
 
