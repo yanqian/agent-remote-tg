@@ -112,7 +112,7 @@ Set the required environment variables:
 - `REPO_WHITELIST_JSON` - JSON object mapping repository aliases to local repository paths.
 - `AGENT_TASK_TIMEOUT_MS` - optional positive integer millisecond timeout for `/agent` task processes. When unset or empty, `/agent` tasks have no forced timeout.
 - `ENABLE_CAMERA_CLIP_COMMAND` - set to `1` to enable `/camera_clip`; unset or any other value keeps the command disabled.
-- `CAMERA_CLIP_COMMAND_JSON` - JSON argv template for `/camera_clip`, required only when enabled. It may be an array or an object with `argv`, must include `{seconds}` and `{output}`, and is run without a shell.
+- `CAMERA_CLIP_COMMAND_JSON` - JSON argv array template for `/camera_clip`, required only when enabled. It must be an array of strings, include `{seconds}` and `{output}`, and is run without a shell.
 
 Configure the repository whitelist through the required `REPO_WHITELIST_JSON` value. Repository aliases must be exact keys using only letters, numbers, dots, underscores, and hyphens, and each configured path must resolve to an existing local directory. Startup fails when the JSON is missing or invalid, an alias is unsafe, or a path is missing.
 

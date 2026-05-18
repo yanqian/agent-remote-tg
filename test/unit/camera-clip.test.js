@@ -19,10 +19,14 @@ test("parseCameraClipConfig requires explicit enablement and a safe argv templat
 
   assert.equal(parseCameraClipConfig({ enabledValue: "1", commandJson: "" }).error.includes("required"), true);
   assert.equal(parseCameraClipConfig({ enabledValue: "1", commandJson: "{" }).error.includes("valid JSON"), true);
+  assert.equal(parseCameraClipConfig({
+    enabledValue: "1",
+    commandJson: JSON.stringify({ argv: ["camera", "--seconds", "{seconds}", "--output", "{output}"] }),
+  }).error.includes("array"), true);
   assert.equal(parseCameraClipConfig({ enabledValue: "1", commandJson: JSON.stringify(["camera", "{seconds}"]) }).error.includes("{output}"), true);
   assert.deepEqual(parseCameraClipConfig({
     enabledValue: "1",
-    commandJson: JSON.stringify({ argv: ["camera", "--seconds", "{seconds}", "--output", "{output}"] }),
+    commandJson: JSON.stringify(["camera", "--seconds", "{seconds}", "--output", "{output}"]),
   }), {
     enabled: true,
     argvTemplate: ["camera", "--seconds", "{seconds}", "--output", "{output}"],

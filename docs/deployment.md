@@ -17,7 +17,7 @@ Set these variables before starting the service:
 - `PORT` - HTTP port used by the service. When unset, the service uses `3000`.
 - `AGENT_TASK_TIMEOUT_MS` - optional positive integer millisecond timeout for `/agent` task processes. When unset or empty, `/agent` tasks have no forced timeout.
 - `ENABLE_CAMERA_CLIP_COMMAND` - set to `1` to enable `/camera_clip`; unset or any other value keeps the command disabled.
-- `CAMERA_CLIP_COMMAND_JSON` - JSON argv template for `/camera_clip`, required only when enabled. It may be an array or an object with `argv`, must include `{seconds}` and `{output}`, and is run without a shell.
+- `CAMERA_CLIP_COMMAND_JSON` - JSON argv array template for `/camera_clip`, required only when enabled. It must be an array of strings, include `{seconds}` and `{output}`, and is run without a shell.
 
 `ALLOWED_CHAT_IDS` must be non-empty outside `NODE_ENV=test`. Keep the Bot token out of source control, runtime logs, and target repository state files.
 

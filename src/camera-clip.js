@@ -32,11 +32,10 @@ export function parseCameraClipConfig({ enabledValue, commandJson }) {
     return { enabled: true, argvTemplate: null, error: "CAMERA_CLIP_COMMAND_JSON must be valid JSON." };
   }
 
-  const argvTemplate = Array.isArray(parsed) ? parsed : parsed?.argv;
-  const validationError = validateCameraClipArgvTemplate(argvTemplate);
+  const validationError = validateCameraClipArgvTemplate(parsed);
   return validationError
     ? { enabled: true, argvTemplate: null, error: validationError }
-    : { enabled: true, argvTemplate, error: null };
+    : { enabled: true, argvTemplate: parsed, error: null };
 }
 
 export function validateCameraClipArgvTemplate(argvTemplate) {
