@@ -2160,3 +2160,78 @@ Exclude:
 - Run focused task executor unit tests for persisted task and binding metadata.
 - Run harness tests for `/agent new` followed by ordinary text in agent chat mode.
 - Run `./init.sh`.
+
+## 28. Short Local Camera Clip Command
+
+### 28.1 Goal
+
+Add a safe `/camera_clip <seconds>` Telegram command that records a short local camera clip on the Bot host and sends the resulting video back to the authorized Telegram chat.
+
+The command records a bounded clip only. It must not start live streaming, keep the camera open after the clip duration, start Codex, or require a selected repository.
+
+### 28.2 Safety Model
+
+The command is disabled by default.
+
+To enable it, startup configuration must set:
+
+- `ENABLE_CAMERA_CLIP_COMMAND=1`
+- `CAMERA_CLIP_COMMAND_JSON` to a JSON argv array template for the local capture command
+
+`CAMERA_CLIP_COMMAND_JSON` must include both `{seconds}` and `{output}` placeholders. The Bot replaces `{seconds}` with the validated integer duration and `{output}` with a temporary output path.
+
+The Bot must spawn the capture command with `shell=false`. The Bot must not accept a string shell command for camera capture.
+
+The command is allowed only from authorized Telegram chats. The command must never bypass existing chat authorization checks.
+
+### 28.3 Scope
+
+Include:
+
+- Add `/camera_clip <seconds>` to the authorized command surface, help output, README, deployment documentation, and BotFather command menu documentation.
+- Parse `<seconds>` as an integer from 1 through 10.
+- Reject missing, non-integer, zero, negative, and greater-than-10 durations with bounded user-facing responses.
+- Reject the command when `ENABLE_CAMERA_CLIP_COMMAND` is not `1`.
+- Reject the command when `CAMERA_CLIP_COMMAND_JSON` is missing, invalid JSON, not an array of strings, or lacks `{seconds}` or `{output}`.
+- Reject concurrent camera capture attempts while another camera clip is active in the same Bot process.
+- Create a temporary output path outside repository state, pass it to the configured capture argv, and delete the temporary file after send success or failure.
+- Enforce a capture timeout slightly above the requested duration.
+- Verify the configured capture process exits successfully and produces a non-empty output file before sending.
+- Send the result with Telegram `sendVideo` through webhook and polling transports.
+- Avoid logging media contents or raw video bytes.
+- Preserve existing `/agent`, agent chat mode, task tracking, approval test, repository commands, and runtime state behavior.
+- Add automated coverage with fake capture commands and fake Telegram transport only; default tests must not require a real camera, ffmpeg, Telegram network, or macOS camera permission.
+
+Exclude:
+
+- No live streaming.
+- No continuous monitoring mode.
+- No hidden background camera activation.
+- No Codex task start.
+- No shell command string execution.
+- No repository selection requirement.
+- No persistent local video archive.
+
+### 28.4 Acceptance Criteria
+
+- `/camera_clip 5` records a 5 second clip only when the command is enabled and a valid capture argv template is configured.
+- Disabled configuration returns a clear bounded response and does not touch the camera.
+- Invalid durations are rejected before any capture process starts.
+- Missing or malformed capture configuration is rejected during startup or command handling with a clear bounded error.
+- The capture command is spawned with `shell=false` and argv placeholders expanded only for validated values.
+- A capture process timeout terminates the capture and returns a bounded failure response.
+- A failed capture or empty output file does not call Telegram `sendVideo`.
+- A successful capture calls Telegram `sendVideo` with the generated video file.
+- Temporary video files are deleted after success and after failure.
+- Concurrent camera capture requests are rejected while one clip is active.
+- Unauthorized chats cannot use `/camera_clip`.
+- Existing unit, harness, contract, smoke, and init checks pass.
+
+### 28.5 Verification Plan
+
+- Run startup/config unit tests for camera command settings.
+- Run command unit tests for duration parsing, disabled behavior, malformed config, concurrent capture, timeout, cleanup, and send failure.
+- Run harness tests using a fake capture command that writes a small file.
+- Run fake Telegram API tests proving `sendVideo` multipart behavior without real network calls.
+- Run contract tests for command whitelist, help output, and BotFather docs.
+- Run `./init.sh`.

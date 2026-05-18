@@ -386,6 +386,15 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F044",
+      "description": "Add a safe /camera_clip <seconds> command for authorized Telegram chats that records a short local camera clip and sends it as Telegram video only when ENABLE_CAMERA_CLIP_COMMAND=1 and CAMERA_CLIP_COMMAND_JSON provides a shell-disabled argv template with {seconds} and {output}; validate seconds as an integer from 1 through 10; reject unauthorized chats, disabled command, invalid duration, missing or malformed capture config, concurrent capture, capture timeout, missing or empty output, and send failures with bounded responses; never start Codex, never live stream, never run through shell, never require selected repository, never keep recordings after send or failure, delete temp files, avoid logging media content, support Telegram sendVideo in polling and webhook transports, update command whitelist, help, README, deployment, BotFather docs, contract tests, and add unit, harness, contract, smoke, and init coverage using fake capture and fake Telegram transport without real camera or network requirements.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
     }
   ]
 }
