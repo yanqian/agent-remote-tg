@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { parseCameraClipConfig } from "./camera-clip.js";
 
 export function parseAllowedChatIds(value) {
   if (!value) {
@@ -38,6 +39,10 @@ export function assertStartupEnv(env = process.env) {
     telegramBotToken: env.TELEGRAM_BOT_TOKEN,
     allowedChatIds,
     agentTaskTimeoutMs: parseAgentTaskTimeoutMs(env.AGENT_TASK_TIMEOUT_MS),
+    cameraClipConfig: parseCameraClipConfig({
+      enabledValue: env.ENABLE_CAMERA_CLIP_COMMAND,
+      commandJson: env.CAMERA_CLIP_COMMAND_JSON,
+    }),
   };
 }
 

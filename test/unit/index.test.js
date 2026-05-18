@@ -23,6 +23,56 @@ test("start loads repository whitelist from REPO_WHITELIST_JSON", () => {
     assert.equal(result.repoCount, 1);
     assert.equal(result.port, 3010);
     assert.equal(result.agentTaskTimeoutMs, null);
+    assert.equal(result.cameraClipConfig.enabled, false);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("start parses camera clip command configuration", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-start-"));
+  const repoDir = join(rootDir, "repo");
+  try {
+    mkdirSync(repoDir);
+    const result = start(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        ALLOWED_CHAT_IDS: "123",
+        NODE_ENV: "test",
+        REPO_WHITELIST_JSON: JSON.stringify({ app: "repo" }),
+        ENABLE_CAMERA_CLIP_COMMAND: "1",
+        CAMERA_CLIP_COMMAND_JSON: JSON.stringify(["fake-camera", "{seconds}", "{output}"]),
+      },
+      { rootDir },
+    );
+    assert.deepEqual(result.cameraClipConfig, {
+      enabled: true,
+      argvTemplate: ["fake-camera", "{seconds}", "{output}"],
+      error: null,
+    });
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("start preserves malformed camera clip command configuration for command-time rejection", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-start-"));
+  const repoDir = join(rootDir, "repo");
+  try {
+    mkdirSync(repoDir);
+    const result = start(
+      {
+        TELEGRAM_BOT_TOKEN: "token",
+        ALLOWED_CHAT_IDS: "123",
+        NODE_ENV: "test",
+        REPO_WHITELIST_JSON: JSON.stringify({ app: "repo" }),
+        ENABLE_CAMERA_CLIP_COMMAND: "1",
+        CAMERA_CLIP_COMMAND_JSON: JSON.stringify(["fake-camera", "{seconds}"]),
+      },
+      { rootDir },
+    );
+    assert.equal(result.cameraClipConfig.enabled, true);
+    assert.match(result.cameraClipConfig.error, /output/);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }

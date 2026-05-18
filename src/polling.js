@@ -10,7 +10,7 @@ import {
   createTelegramTaskCompletionNotifier,
   parseTelegramCallbackQuery,
   parseTelegramMessage,
-  sendTelegramMessage,
+  sendTelegramReply,
 } from "./telegram-transport.js";
 
 const DEFAULT_POLL_TIMEOUT_SECONDS = 25;
@@ -43,6 +43,11 @@ export function start(env = process.env, options = {}) {
     taskExecutor,
     agentTaskTimeoutMs: context.agentTaskTimeoutMs,
     onApprovalRequest: approvalNotifier,
+    cameraClipConfig: context.cameraClipConfig,
+    cameraClipOptions: {
+      spawnImpl: options.cameraClipSpawn,
+      timeoutMs: options.cameraClipTimeoutMs,
+    },
   });
 
   const controller = startPolling({
@@ -61,6 +66,7 @@ export function start(env = process.env, options = {}) {
     statePath: context.statePath,
     repoCount: Object.keys(repos).length,
     agentTaskTimeoutMs: context.agentTaskTimeoutMs,
+    cameraClipConfig: context.cameraClipConfig,
     controller,
   };
 }
@@ -121,17 +127,17 @@ export async function pollOnce({
 
     const message = parseTelegramMessage(update);
     if (message) {
-      const text = app.handleMessage(message);
+      const text = await app.handleMessage(message);
       await attemptTelegramReply({
         botToken: telegramBotToken,
         chatId: message.chatId,
-        text,
+        reply: text,
         fetchImpl,
       });
     } else {
       const callbackQuery = parseTelegramCallbackQuery(update);
       if (callbackQuery && typeof app.handleCallbackQuery === "function") {
-        const text = app.handleCallbackQuery(callbackQuery);
+        const text = await app.handleCallbackQuery(callbackQuery);
         await attemptTelegramCallbackAnswer({
           botToken: telegramBotToken,
           callbackQueryId: callbackQuery.callbackQueryId,
@@ -141,7 +147,7 @@ export async function pollOnce({
         await attemptTelegramReply({
           botToken: telegramBotToken,
           chatId: callbackQuery.chatId,
-          text,
+          reply: text,
           fetchImpl,
         });
       }
@@ -188,7 +194,7 @@ export async function getTelegramUpdates({
 
 async function attemptTelegramReply(options) {
   try {
-    await sendTelegramMessage(options);
+    await sendTelegramReply(options);
   } catch {
     // Delivery errors must not re-run already handled commands.
   }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../../src/app.js";
@@ -91,6 +91,53 @@ test("app rejects unknown commands", () => {
       statePath: join(rootDir, "runtime_state.json"),
     });
     assert.equal(app.handleMessage({ chatId: "123", text: "/eval-feature F001" }), "Unknown command.\nUse /help.");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("app handles /camera_clip without requiring a workspace or starting Codex", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const captureCalls = [];
+  try {
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath: join(rootDir, "runtime_state.json"),
+      cameraClipConfig: {
+        enabled: true,
+        argvTemplate: ["fake-camera", "--seconds", "{seconds}", "--output", "{output}"],
+        error: null,
+      },
+      cameraClipOptions: {
+        timeoutMs: 1000,
+        spawnImpl(command, args, options) {
+          captureCalls.push({ command, args, options });
+          const child = new EventEmitter();
+          setImmediate(() => {
+            writeFileSync(args[3], "fake-video");
+            child.emit("close", 0);
+          });
+          child.kill = () => true;
+          return child;
+        },
+      },
+      taskExecutor: {
+        startTask() {
+          throw new Error("camera clip must not start Codex tasks");
+        },
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "999", text: "/camera_clip 2" }), "Unauthorized chat.");
+    assert.equal(await app.handleMessage({ chatId: "123", text: "/camera_clip nope" }), "Usage: /camera_clip <seconds> where seconds is an integer from 1 to 10.");
+    const reply = await app.handleMessage({ chatId: "123", text: "/camera_clip 2" });
+    assert.equal(reply.text, "Camera clip ready: 2s");
+    assert.equal(reply.telegramVideo.caption, "Camera clip (2s)");
+    assert.equal(existsSync(reply.telegramVideo.path), true);
+    assert.equal(captureCalls[0].command, "fake-camera");
+    assert.deepEqual(captureCalls[0].args.slice(0, 3), ["--seconds", "2", "--output"]);
+    rmSync(reply.telegramVideo.cleanupPaths[0], { recursive: true, force: true });
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }

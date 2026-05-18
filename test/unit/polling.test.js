@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../../src/app.js";
@@ -82,6 +82,148 @@ test("pollOnce dispatches valid messages, sends replies, and persists next offse
       text: "reply to /help",
     });
     assert.equal(JSON.parse(readFileSync(statePath, "utf8")).telegramUpdateOffset, 7);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("pollOnce sends camera clips as Telegram video and deletes temp files", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-poll-"));
+  const statePath = join(rootDir, "runtime_state.json");
+  const calls = [];
+  const captureOutputs = [];
+  try {
+    saveRuntimeState(statePath, {
+      currentRepo: null,
+      cwd: null,
+      tasks: {},
+      telegramUpdateOffset: 50,
+    });
+
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath,
+      cameraClipConfig: {
+        enabled: true,
+        argvTemplate: ["fake-camera", "--seconds", "{seconds}", "--output", "{output}"],
+        error: null,
+      },
+      cameraClipOptions: {
+        timeoutMs: 1000,
+        spawnImpl(command, args) {
+          const child = new EventEmitter();
+          setImmediate(() => {
+            captureOutputs.push(args[3]);
+            writeFileSync(args[3], "fake-video");
+            child.emit("close", 0);
+          });
+          child.kill = () => true;
+          return child;
+        },
+      },
+    });
+
+    await pollOnce({
+      statePath,
+      telegramBotToken: "test-token",
+      app,
+      fetchImpl(url, options) {
+        calls.push({ url: url.toString(), options });
+        if (url.toString().includes("/getUpdates")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              ok: true,
+              result: [
+                { update_id: 50, message: { chat: { id: 123 }, text: "/camera_clip 2" } },
+              ],
+            }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      },
+      pollTimeoutSeconds: 1,
+    });
+
+    assert.equal(calls[1].url, "https://api.telegram.org/bottest-token/sendVideo");
+    assert.equal(calls[1].options.method, "POST");
+    assert.equal(existsSync(captureOutputs[0]), false);
+    assert.equal(JSON.parse(readFileSync(statePath, "utf8")).telegramUpdateOffset, 51);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("pollOnce reports camera video send failures with a bounded text response and deletes temp files", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-poll-"));
+  const statePath = join(rootDir, "runtime_state.json");
+  const calls = [];
+  const captureOutputs = [];
+  try {
+    saveRuntimeState(statePath, {
+      currentRepo: null,
+      cwd: null,
+      tasks: {},
+      telegramUpdateOffset: 60,
+    });
+
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: {},
+      statePath,
+      cameraClipConfig: {
+        enabled: true,
+        argvTemplate: ["fake-camera", "{seconds}", "{output}"],
+        error: null,
+      },
+      cameraClipOptions: {
+        timeoutMs: 1000,
+        spawnImpl(command, args) {
+          const child = new EventEmitter();
+          setImmediate(() => {
+            captureOutputs.push(args[1]);
+            writeFileSync(args[1], "fake-video");
+            child.emit("close", 0);
+          });
+          child.kill = () => true;
+          return child;
+        },
+      },
+    });
+
+    await pollOnce({
+      statePath,
+      telegramBotToken: "test-token",
+      app,
+      fetchImpl(url, options) {
+        calls.push({ url: url.toString(), options });
+        if (url.toString().includes("/getUpdates")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              ok: true,
+              result: [
+                { update_id: 60, message: { chat: { id: 123 }, text: "/camera_clip 1" } },
+              ],
+            }),
+          });
+        }
+        if (url.toString().includes("/sendVideo")) {
+          return Promise.resolve({ ok: false, json: () => Promise.resolve({ ok: false }) });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      },
+      pollTimeoutSeconds: 1,
+    });
+
+    assert.equal(calls[1].url, "https://api.telegram.org/bottest-token/sendVideo");
+    assert.equal(calls[2].url, "https://api.telegram.org/bottest-token/sendMessage");
+    assert.deepEqual(JSON.parse(calls[2].options.body), {
+      chat_id: "123",
+      text: "Camera clip send failed.",
+    });
+    assert.equal(existsSync(captureOutputs[0]), false);
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
   }

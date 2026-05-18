@@ -24,6 +24,7 @@ Repository development state remains in repository files and git history. Telegr
 - `/always_allow <request_id>` - approve a pending agent approval request and remember its future allow rule.
 - `/always_reject <request_id>` - reject a pending agent approval request and remember its future reject rule.
 - `/approval_test` - create a safe Bot-local approval request for testing approval commands, replies, and buttons.
+- `/camera_clip <seconds>` - capture and send a short local camera clip when explicitly enabled.
 - `/status` - show active tasks and the five most recent finished tasks.
 - `/logs <task_id>` - show the stored final task result.
 - `/stop <task_id>` - stop a running Bot-recorded task with `SIGTERM`.
@@ -45,6 +46,7 @@ reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
 always_reject - Reject and remember a reject rule
 approval_test - Create a safe approval test request
+camera_clip - Capture a short local camera clip
 status - Show active and recent tasks
 logs - Show task final result
 stop - Stop a running task
@@ -87,7 +89,7 @@ npm run start:polling
 
 The `start:polling` script must run `node src/polling.js`.
 
-Both modes must dispatch Telegram messages into the same `createApp().handleMessage(...)` application path and must send Bot replies through Telegram `sendMessage`.
+Both modes must dispatch Telegram messages into the same `createApp().handleMessage(...)` application path and must send Bot text replies through Telegram `sendMessage`. The optional `/camera_clip` command sends video through Telegram `sendVideo`.
 
 ## Runtime State And Logs
 
@@ -109,10 +111,14 @@ Set the required environment variables:
 - `ALLOWED_CHAT_IDS` - comma-separated Telegram chat IDs allowed to use the Bot.
 - `REPO_WHITELIST_JSON` - JSON object mapping repository aliases to local repository paths.
 - `AGENT_TASK_TIMEOUT_MS` - optional positive integer millisecond timeout for `/agent` task processes. When unset or empty, `/agent` tasks have no forced timeout.
+- `ENABLE_CAMERA_CLIP_COMMAND` - set to `1` to enable `/camera_clip`; unset or any other value keeps the command disabled.
+- `CAMERA_CLIP_COMMAND_JSON` - JSON argv template for `/camera_clip`, required only when enabled. It may be an array or an object with `argv`, must include `{seconds}` and `{output}`, and is run without a shell.
 
 Configure the repository whitelist through the required `REPO_WHITELIST_JSON` value. Repository aliases must be exact keys using only letters, numbers, dots, underscores, and hyphens, and each configured path must resolve to an existing local directory. Startup fails when the JSON is missing or invalid, an alias is unsafe, or a path is missing.
 
 `AGENT_TASK_TIMEOUT_MS` applies to `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, `/agent resume --last <instruction>`, and ordinary text follow-ups in agent chat mode. Startup rejects non-integer, zero, and negative values. `/stop <task_id>` is the user-controlled termination mechanism.
+
+`/camera_clip <seconds>` accepts only integer durations from 1 through 10. It never starts Codex, never requires a selected repository, never live streams, runs the configured capture argv with shell execution disabled, sends the resulting file through Telegram `sendVideo`, and deletes temporary recordings after send success or failure.
 
 Example:
 
@@ -159,3 +165,4 @@ The script checks required project files, validates `feature_list.json`, verifie
 - Free-form absolute path workspace selection is not supported.
 - Ordinary text starts an agent follow-up only after agent chat mode is enabled and a session is bound for the current chat and repository.
 - Multiple active agent tasks in the same workspace are rejected for ordinary text follow-ups.
+- `/camera_clip` depends on a host-local camera capture command supplied through `CAMERA_CLIP_COMMAND_JSON`; the project test suite uses fake capture commands and does not require a real camera.

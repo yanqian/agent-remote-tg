@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Readable } from "node:stream";
 import {
   createTelegramApprovalNotifier,
@@ -47,6 +50,54 @@ test("POST /telegram/webhook dispatches message updates and sends Telegram repli
     chat_id: "123",
     text: "Available repos:\n- app -> /repo",
   });
+});
+
+test("POST /telegram/webhook sends camera clip replies through Telegram sendVideo and cleans up", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-video-"));
+  const videoPath = join(tempDir, "clip.mp4");
+  const telegramCalls = [];
+  try {
+    writeFileSync(videoPath, "fake-video");
+    const response = await fakeHttpRequest({
+      method: "POST",
+      path: "/telegram/webhook",
+      body: JSON.stringify({
+        update_id: 2,
+        message: {
+          chat: { id: 123 },
+          text: "/camera_clip 1",
+        },
+      }),
+      app: {
+        handleMessage() {
+          return {
+            text: "Camera clip ready: 1s",
+            telegramVideo: {
+              path: videoPath,
+              caption: "Camera clip (1s)",
+              cleanupPaths: [tempDir],
+            },
+          };
+        },
+      },
+      fetchImpl(url, options) {
+        telegramCalls.push({ url, options });
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ ok: true }),
+        });
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(telegramCalls.length, 1);
+    assert.equal(telegramCalls[0].url, "https://api.telegram.org/bottest-token/sendVideo");
+    assert.equal(telegramCalls[0].options.method, "POST");
+    assert.equal(existsSync(videoPath), false);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("POST /telegram/webhook ignores updates without message chat id and text", async () => {

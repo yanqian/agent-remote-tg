@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { CAMERA_CLIP_RESPONSES, cleanupCameraClipResult, sendTelegramVideo } from "./camera-clip.js";
 import { formatTaskCompletionMessage } from "./task-executor.js";
 
 const WEBHOOK_PATH = "/telegram/webhook";
@@ -51,7 +52,7 @@ export async function handleHttpRequest(request, response, { app, telegramBotTok
   if (!message) {
     const callbackQuery = parseTelegramCallbackQuery(update);
     if (callbackQuery && typeof app.handleCallbackQuery === "function") {
-      const text = app.handleCallbackQuery(callbackQuery);
+      const text = await app.handleCallbackQuery(callbackQuery);
       await attemptTelegramCallbackAnswer({
         botToken: telegramBotToken,
         callbackQueryId: callbackQuery.callbackQueryId,
@@ -61,7 +62,7 @@ export async function handleHttpRequest(request, response, { app, telegramBotTok
       await attemptTelegramReply({
         botToken: telegramBotToken,
         chatId: callbackQuery.chatId,
-        text,
+        reply: text,
         fetchImpl,
       });
     }
@@ -69,11 +70,11 @@ export async function handleHttpRequest(request, response, { app, telegramBotTok
     return;
   }
 
-  const text = app.handleMessage(message);
+  const text = await app.handleMessage(message);
   await attemptTelegramReply({
     botToken: telegramBotToken,
     chatId: message.chatId,
-    text,
+    reply: text,
     fetchImpl,
   });
 
@@ -141,6 +142,37 @@ export async function sendTelegramMessage({ botToken, chatId, text, replyMarkup 
   });
 }
 
+export async function sendTelegramReply({ botToken, chatId, reply, fetchImpl = globalThis.fetch }) {
+  if (reply?.telegramVideo) {
+    try {
+      await sendTelegramVideo({
+        botToken,
+        chatId,
+        videoPath: reply.telegramVideo.path,
+        caption: reply.telegramVideo.caption ?? reply.text,
+        fetchImpl,
+      });
+    } catch {
+      await sendTelegramMessage({
+        botToken,
+        chatId,
+        text: CAMERA_CLIP_RESPONSES.sendFailed,
+        fetchImpl,
+      });
+    } finally {
+      cleanupCameraClipResult(reply.telegramVideo);
+    }
+    return;
+  }
+
+  await sendTelegramMessage({
+    botToken,
+    chatId,
+    text: typeof reply === "string" ? reply : String(reply?.text ?? ""),
+    fetchImpl,
+  });
+}
+
 export async function answerTelegramCallbackQuery({ botToken, callbackQueryId, text, fetchImpl = globalThis.fetch }) {
   if (typeof fetchImpl !== "function") {
     throw new Error("fetch implementation is required.");
@@ -198,7 +230,7 @@ export function createTelegramApprovalNotifier({ botToken, fetchImpl = globalThi
 
 async function attemptTelegramReply(options) {
   try {
-    await sendTelegramMessage(options);
+    await sendTelegramReply(options);
   } catch {
     // Telegram delivery errors must not make Telegram retry command execution.
   }

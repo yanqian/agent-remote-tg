@@ -16,10 +16,14 @@ Set these variables before starting the service:
 - `TELEGRAM_WEBHOOK_URL` - public HTTPS webhook URL registered with Telegram.
 - `PORT` - HTTP port used by the service. When unset, the service uses `3000`.
 - `AGENT_TASK_TIMEOUT_MS` - optional positive integer millisecond timeout for `/agent` task processes. When unset or empty, `/agent` tasks have no forced timeout.
+- `ENABLE_CAMERA_CLIP_COMMAND` - set to `1` to enable `/camera_clip`; unset or any other value keeps the command disabled.
+- `CAMERA_CLIP_COMMAND_JSON` - JSON argv template for `/camera_clip`, required only when enabled. It may be an array or an object with `argv`, must include `{seconds}` and `{output}`, and is run without a shell.
 
 `ALLOWED_CHAT_IDS` must be non-empty outside `NODE_ENV=test`. Keep the Bot token out of source control, runtime logs, and target repository state files.
 
 `AGENT_TASK_TIMEOUT_MS` applies to `/agent`, `/agent new`, `/agent resume <session_id> <instruction>`, `/agent resume --last <instruction>`, and ordinary text follow-ups in agent chat mode. Startup rejects non-integer, zero, and negative values. Use `/stop <task_id>` when a running Bot-recorded task should be terminated.
+
+`/camera_clip <seconds>` accepts only integer durations from 1 through 10. It never starts Codex, never requires a selected repository, never live streams, runs the configured capture argv with shell execution disabled, sends the resulting file through Telegram `sendVideo`, and deletes temporary recordings after send success or failure. Configure a host-local capture command appropriate for the deployment machine, for example an argv template whose command writes a video file to `{output}` and uses `{seconds}` as its duration.
 
 Example repository whitelist:
 
@@ -76,7 +80,7 @@ For local polling deployment:
 5. Send `/help` from an authorized Telegram chat.
 6. Verify that `/repos` returns aliases loaded from `REPO_WHITELIST_JSON`.
 
-Polling mode must call Telegram `getUpdates`, dispatch valid message updates into the same app handler used by webhook mode, send replies through Telegram `sendMessage`, and persist the next update offset in `runtime_state.json`.
+Polling mode must call Telegram `getUpdates`, dispatch valid message updates into the same app handler used by webhook mode, send text replies through Telegram `sendMessage`, send optional camera clips through Telegram `sendVideo`, and persist the next update offset in `runtime_state.json`.
 
 ## BotFather Command Menu
 
@@ -94,6 +98,7 @@ reject - Reject a pending agent request
 always_allow - Approve and remember an allow rule
 always_reject - Reject and remember a reject rule
 approval_test - Create a safe approval test request
+camera_clip - Capture a short local camera clip
 status - Show active and recent tasks
 logs - Show task log output
 stop - Stop a running task
@@ -104,7 +109,7 @@ The supported command names are compatible with BotFather because they use lower
 
 ## Long-Running Operation
 
-The `/agent`, `/agent new`, and `/agent resume` commands create Bot-recorded local tasks and enter agent chat mode for the current chat plus selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository creates a resumed agent task without requiring the `/agent` prefix. Full output is written to task logs, while Telegram responses stay bounded. `/agent` tasks and ordinary follow-ups have no forced timeout by default unless `AGENT_TASK_TIMEOUT_MS` is configured. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/approval_test` creates the same style of Bot-local pending request for testing approvals without starting Codex, executing shell commands, requiring a workspace, or writing to child stdin. `/agent exit` leaves agent chat mode for the current chat and repository; `/agent session` reports the current session and mode status. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
+The `/agent`, `/agent new`, and `/agent resume` commands create Bot-recorded local tasks and enter agent chat mode for the current chat plus selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository creates a resumed agent task without requiring the `/agent` prefix. Full output is written to task logs, while Telegram responses stay bounded. `/agent` tasks and ordinary follow-ups have no forced timeout by default unless `AGENT_TASK_TIMEOUT_MS` is configured. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/approval_test` creates the same style of Bot-local pending request for testing approvals without starting Codex, executing shell commands, requiring a workspace, or writing to child stdin. `/camera_clip` is disabled unless explicitly enabled and does not write media into task logs. `/agent exit` leaves agent chat mode for the current chat and repository; `/agent session` reports the current session and mode status. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
 
 Only one active agent task can receive ordinary text follow-ups in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 

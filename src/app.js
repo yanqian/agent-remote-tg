@@ -11,6 +11,7 @@ import {
   parseApprovalCallbackData,
 } from "./approval.js";
 import { HELP_RESPONSE } from "./constants.js";
+import { handleCameraClip } from "./camera-clip.js";
 import { parseCommand } from "./commands.js";
 import {
   enableAgentChatMode,
@@ -23,7 +24,17 @@ import { handleLogs, handleStatus, handleStop } from "./task-management.js";
 import { createTaskExecutor } from "./task-executor.js";
 import { handleGit, handleLs, handlePwd, handleRepos, handleUse } from "./workspace.js";
 
-export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecutor, agentTaskTimeoutMs = null, onApprovalRequest = null }) {
+export function createApp({
+  allowedChatIds,
+  repos,
+  statePath,
+  logsDir,
+  taskExecutor,
+  agentTaskTimeoutMs = null,
+  onApprovalRequest = null,
+  cameraClipConfig = { enabled: false, argvTemplate: null, error: null },
+  cameraClipOptions = {},
+}) {
   if (!Array.isArray(allowedChatIds)) {
     throw new Error("allowedChatIds must be an array.");
   }
@@ -75,24 +86,29 @@ export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecu
         return parsed.response;
       }
 
-      const result = handleParsedCommand(parsed, repos, state, executor, message.chatId, { agentTaskTimeoutMs });
-      persistAgentChatModeIfNeeded(result, statePath);
-      if (result.stateChanged) {
-        const delivered = deliverApprovalSelection({
-          executor,
-          result,
-          chatId: message.chatId,
-        });
-        saveRuntimeState(statePath, delivered.state ?? result.state);
-        notifyApprovalRequestIfNeeded({
+      const result = handleParsedCommand(parsed, repos, state, executor, message.chatId, {
+        agentTaskTimeoutMs,
+        cameraClipConfig,
+        cameraClipOptions,
+      });
+      if (result && typeof result.then === "function") {
+        return result.then((resolved) => finalizeParsedCommandResult({
+          result: resolved,
+          state,
           statePath,
+          executor,
           onApprovalRequest: approvalRequestNotifier,
-          result: delivered.state ? { ...result, state: delivered.state } : result,
-        });
-        return delivered.response ?? result.response;
+          chatId: message.chatId,
+        }));
       }
-
-      return result.response;
+      return finalizeParsedCommandResult({
+        result,
+        state,
+        statePath,
+        executor,
+        onApprovalRequest: approvalRequestNotifier,
+        chatId: message.chatId,
+      });
     },
 
     handleCallbackQuery(callbackQuery) {
@@ -130,6 +146,29 @@ export function createApp({ allowedChatIds, repos, statePath, logsDir, taskExecu
       return result.response;
     },
   };
+}
+
+function finalizeParsedCommandResult({ result, state, statePath, executor, onApprovalRequest, chatId }) {
+  persistAgentChatModeIfNeeded(result, statePath);
+  if (result.stateChanged) {
+    const delivered = deliverApprovalSelection({
+      executor,
+      result,
+      chatId,
+    });
+    saveRuntimeState(statePath, delivered.state ?? result.state);
+    notifyApprovalRequestIfNeeded({
+      statePath,
+      onApprovalRequest,
+      result: delivered.state ? { ...result, state: delivered.state } : result,
+    });
+    return delivered.response ?? result.response;
+  }
+
+  if (result.telegramVideo) {
+    return { text: result.response, telegramVideo: result.telegramVideo };
+  }
+  return result.response;
 }
 
 function deliverApprovalSelection({ executor, result, chatId }) {
@@ -186,6 +225,8 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
       return handleApprovalCommand(parsed.command, parsed.args, state, chatId);
     case "/approval_test":
       return handleApprovalTest(state, chatId);
+    case "/camera_clip":
+      return handleCameraClip(parsed.args, options.cameraClipConfig, options.cameraClipOptions);
     case "/status":
       return handleStatus(state);
     case "/logs":

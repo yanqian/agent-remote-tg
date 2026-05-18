@@ -63,6 +63,10 @@ test("parseCommand rejects missing required arguments", () => {
     ok: false,
     response: "Usage: /approve <request_id>",
   });
+  assert.deepEqual(parseCommand("/camera_clip   "), {
+    ok: false,
+    response: "Usage: /camera_clip <seconds>",
+  });
 });
 
 test("parseCommand rejects non-command text", () => {
@@ -91,6 +95,7 @@ test("help response documents the exact command surface", () => {
     "/always_allow <request_id> - approve and remember a future allow rule",
     "/always_reject <request_id> - reject and remember a future reject rule",
     "/approval_test - create a safe Bot-local approval request",
+    "/camera_clip <seconds> - capture and send a short local camera clip",
     "/status - show active and recent tasks",
     "/logs <task_id> - show the task final result",
     "/stop <task_id> - stop a running Bot-recorded task",
