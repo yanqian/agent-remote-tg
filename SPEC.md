@@ -2235,3 +2235,49 @@ Exclude:
 - Run fake Telegram API tests proving `sendVideo` multipart behavior without real network calls.
 - Run contract tests for command whitelist, help output, and BotFather docs.
 - Run `./init.sh`.
+
+## 29. Remove Home-Watch Camera Clip From Agent Control Plane
+
+### 29.1 Goal
+
+Remove the temporary home-watch `/camera_clip` feature from `agent-remote-tg` now that the capability lives in the standalone `home-watch-tg` repository.
+
+`agent-remote-tg` must return to being a Telegram control plane for repository and Codex agent workflows. It must not expose camera, home monitoring, local media capture, or Telegram video-send behavior.
+
+### 29.2 Scope
+
+Include:
+
+- Remove `/camera_clip` from the public command whitelist, parser requirements, help output, README command surface, deployment documentation, and BotFather command menu documentation.
+- Remove camera capture startup configuration parsing for `ENABLE_CAMERA_CLIP_COMMAND` and `CAMERA_CLIP_COMMAND_JSON`.
+- Remove camera capture implementation files, imports, handlers, and sendVideo handling added only for camera clips.
+- Remove unit, harness, contract, smoke, and startup tests that exist only for `/camera_clip`.
+- Preserve Telegram text reply behavior, task completion push behavior, approval notification behavior, callback handling, polling, webhook, `/agent`, agent chat mode, repository commands, task management, approval commands, and `/approval_test`.
+- Keep historical F044 records in `SPEC.md` and `feature_list.json`; do not rewrite past completed feature history.
+- Mention in documentation that home-watch camera functionality has been moved to `/Users/armstrong/Project/home-watch-tg`.
+
+Exclude:
+
+- Do not delete or modify the standalone `home-watch-tg` repository.
+- Do not remove generic Telegram `sendMessage`, callback, approval, or task completion code.
+- Do not remove any Codex or repository workflow feature.
+
+### 29.3 Acceptance Criteria
+
+- `/camera_clip` returns Unknown command.
+- `ENABLE_CAMERA_CLIP_COMMAND` and `CAMERA_CLIP_COMMAND_JSON` are no longer parsed by startup.
+- No source file imports `camera-clip.js`.
+- No `src/camera-clip.js` remains.
+- No default unit, harness, contract, smoke, or init test references `/camera_clip`, `CAMERA_CLIP`, `sendVideo`, or camera capture.
+- README and deployment docs no longer list `/camera_clip` as a command.
+- Documentation points users to `home-watch-tg` for the separated home-watch camera Bot.
+- Existing non-camera command surface remains unchanged.
+- `./init.sh` passes.
+
+### 29.4 Verification Plan
+
+- Run focused text searches for camera clip and sendVideo references in source, tests, and docs.
+- Run command surface contract tests.
+- Run startup tests.
+- Run polling and webhook transport tests.
+- Run `./init.sh`.

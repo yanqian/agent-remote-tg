@@ -395,6 +395,15 @@
       "attempts": 2,
       "last_error": "",
       "priority": "P1"
+    },
+    {
+      "id": "F045",
+      "description": "Remove the temporary home-watch /camera_clip capability from agent-remote-tg now that it lives in /Users/armstrong/Project/home-watch-tg; remove the command from whitelist, parser requirements, help, README, deployment docs, BotFather docs, app handler, startup config parsing, Telegram sendVideo handling, camera capture source, and camera-only tests; keep historical F044 records unchanged, preserve all non-camera /agent, agent chat mode, repository, polling, webhook, approval, /approval_test, task management, completion push, and text Telegram behavior; document that home-watch camera functionality moved to home-watch-tg; verify /camera_clip returns Unknown command, no source imports camera-clip.js, no src/camera-clip.js remains, default tests do not reference camera clip or sendVideo, and ./init.sh passes.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P1"
     }
   ]
 }
