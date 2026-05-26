@@ -1,5 +1,4 @@
 import { createServer } from "node:http";
-import { CAMERA_CLIP_RESPONSES, cleanupCameraClipResult, sendTelegramVideo } from "./camera-clip.js";
 import { formatTaskCompletionMessage } from "./task-executor.js";
 
 const WEBHOOK_PATH = "/telegram/webhook";
@@ -143,28 +142,6 @@ export async function sendTelegramMessage({ botToken, chatId, text, replyMarkup 
 }
 
 export async function sendTelegramReply({ botToken, chatId, reply, fetchImpl = globalThis.fetch }) {
-  if (reply?.telegramVideo) {
-    try {
-      await sendTelegramVideo({
-        botToken,
-        chatId,
-        videoPath: reply.telegramVideo.path,
-        caption: reply.telegramVideo.caption ?? reply.text,
-        fetchImpl,
-      });
-    } catch {
-      await sendTelegramMessage({
-        botToken,
-        chatId,
-        text: CAMERA_CLIP_RESPONSES.sendFailed,
-        fetchImpl,
-      });
-    } finally {
-      cleanupCameraClipResult(reply.telegramVideo);
-    }
-    return;
-  }
-
   await sendTelegramMessage({
     botToken,
     chatId,

@@ -65,15 +65,15 @@ Implemented behavior:
 - External behavior verification guardrails for F041: contract tests now assert that `AGENTS.md` keeps the external behavior verification requirements for mocks, process semantics, structured output fields, and real-shaped fixtures; `npm run test:codex-stdin-probe` provides a disabled-by-default real Codex CLI stdin probe that can be enabled with `ENABLE_CODEX_STDIN_PROBE=1` without adding Codex, network, Telegram, or OpenAI account requirements to default `./init.sh`.
 - Bot-local approval testing for F042: `/approval_test` is available to authorized chats, creates a pending Bot-local approval request without requiring a workspace or running Codex task, includes approve, reject, always-allow, and always-reject options, supports command, reply, and callback resolution through the existing approval flow, skips task stdin delivery because no task is associated, and documents the command in help, README, deployment, and BotFather command menu references.
 - Robust Codex session metadata extraction for F043: `/agent new` task logs now keep the trusted pre-answer metadata window open across harmless Codex CLI prelude lines such as `stdinMode=ignore` and `Reading additional input from stdin...`, then bind top-level `thread.started` metadata to the task and chat-plus-repo session while preserving rejection of assistant prose and command-output lookalikes.
-- Safe local camera clip command for F044 is implemented and awaiting evaluator confirmation: `/camera_clip <seconds>` is authorized-chat only, disabled unless `ENABLE_CAMERA_CLIP_COMMAND=1`, validates integer durations from 1 through 10, requires `CAMERA_CLIP_COMMAND_JSON` to be a JSON argv array template with `{seconds}` and `{output}`, never starts Codex or requires a selected repository, rejects malformed config and capture failures with bounded responses, sends clips through Telegram `sendVideo` in polling and webhook transports, deletes temporary recordings after success or failure, and has fake capture plus real shell-disabled argv fixture coverage without requiring a real camera or network.
+- Temporary home-watch camera clip handling has been removed from this repository for F045: `/camera_clip` is no longer in the command whitelist, help output, app handler, startup configuration, Telegram transport, README, deployment docs, BotFather docs, source files, or default tests. Home-watch camera functionality now lives in `/Users/armstrong/Project/home-watch-tg`.
 
 ## Last Completed Feature
 
-`F043` - Fix Codex session metadata extraction when harmless CLI prelude lines appear before top-level JSONL `thread.started` metadata.
+`F045` - Remove the temporary home-watch `/camera_clip` capability from this control plane after moving that functionality to `/Users/armstrong/Project/home-watch-tg`.
 
 ## Next Feature
 
-`F044` awaits evaluator verification.
+No planned next feature is currently listed after `F045`.
 
 ## Known Issues
 

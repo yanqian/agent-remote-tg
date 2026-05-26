@@ -11,7 +11,6 @@ import {
   parseApprovalCallbackData,
 } from "./approval.js";
 import { HELP_RESPONSE } from "./constants.js";
-import { handleCameraClip } from "./camera-clip.js";
 import { parseCommand } from "./commands.js";
 import {
   enableAgentChatMode,
@@ -32,8 +31,6 @@ export function createApp({
   taskExecutor,
   agentTaskTimeoutMs = null,
   onApprovalRequest = null,
-  cameraClipConfig = { enabled: false, argvTemplate: null, error: null },
-  cameraClipOptions = {},
 }) {
   if (!Array.isArray(allowedChatIds)) {
     throw new Error("allowedChatIds must be an array.");
@@ -88,8 +85,6 @@ export function createApp({
 
       const result = handleParsedCommand(parsed, repos, state, executor, message.chatId, {
         agentTaskTimeoutMs,
-        cameraClipConfig,
-        cameraClipOptions,
       });
       if (result && typeof result.then === "function") {
         return result.then((resolved) => finalizeParsedCommandResult({
@@ -165,9 +160,6 @@ function finalizeParsedCommandResult({ result, state, statePath, executor, onApp
     return delivered.response ?? result.response;
   }
 
-  if (result.telegramVideo) {
-    return { text: result.response, telegramVideo: result.telegramVideo };
-  }
   return result.response;
 }
 
@@ -225,8 +217,6 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
       return handleApprovalCommand(parsed.command, parsed.args, state, chatId);
     case "/approval_test":
       return handleApprovalTest(state, chatId);
-    case "/camera_clip":
-      return handleCameraClip(parsed.args, options.cameraClipConfig, options.cameraClipOptions);
     case "/status":
       return handleStatus(state);
     case "/logs":

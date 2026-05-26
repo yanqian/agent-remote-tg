@@ -32,11 +32,6 @@ export function start(env = process.env, options = {}) {
     taskExecutor,
     agentTaskTimeoutMs: context.agentTaskTimeoutMs,
     onApprovalRequest: approvalNotifier,
-    cameraClipConfig: context.cameraClipConfig,
-    cameraClipOptions: {
-      spawnImpl: options.cameraClipSpawn,
-      timeoutMs: options.cameraClipTimeoutMs,
-    },
   });
   const server = createTelegramHttpServer({
     app,
@@ -57,7 +52,6 @@ export function start(env = process.env, options = {}) {
     repoCount: Object.keys(repos).length,
     port,
     agentTaskTimeoutMs: context.agentTaskTimeoutMs,
-    cameraClipConfig: context.cameraClipConfig,
     server,
   };
 }

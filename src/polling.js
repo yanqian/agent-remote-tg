@@ -43,11 +43,6 @@ export function start(env = process.env, options = {}) {
     taskExecutor,
     agentTaskTimeoutMs: context.agentTaskTimeoutMs,
     onApprovalRequest: approvalNotifier,
-    cameraClipConfig: context.cameraClipConfig,
-    cameraClipOptions: {
-      spawnImpl: options.cameraClipSpawn,
-      timeoutMs: options.cameraClipTimeoutMs,
-    },
   });
 
   const controller = startPolling({
@@ -66,7 +61,6 @@ export function start(env = process.env, options = {}) {
     statePath: context.statePath,
     repoCount: Object.keys(repos).length,
     agentTaskTimeoutMs: context.agentTaskTimeoutMs,
-    cameraClipConfig: context.cameraClipConfig,
     controller,
   };
 }
