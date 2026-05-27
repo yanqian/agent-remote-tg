@@ -2281,3 +2281,85 @@ Exclude:
 - Run startup tests.
 - Run polling and webhook transport tests.
 - Run `./init.sh`.
+
+## 30. Bot-Local Git Commit And Push Command
+
+### 30.1 Goal
+
+Add a restricted Telegram command that lets an authorized user commit and push changes in the currently selected repository without going through Codex CLI.
+
+This command exists because Codex CLI tasks can run inside a narrower non-interactive environment than the Bot process, so repository publication should be a Bot-local operation with explicit user approval, fixed git argv, and clear failure reporting.
+
+### 30.2 Safety Model
+
+The command must be available only to authorized chats and only for the repository selected by `/use <repo>`.
+
+The command must not execute arbitrary shell. All git operations must be spawned with `shell=false` and fixed argv shapes:
+
+- `git status --short`
+- `git diff --cached --name-status`
+- `git rev-parse --abbrev-ref HEAD`
+- `git add -- <explicit file paths>`
+- `git commit -m <message>`
+- `git push origin <current-branch>`
+
+The command must require explicit approval through the existing `/approve` flow or inline approval buttons before it runs mutating git operations.
+
+The command must never operate outside the selected whitelisted repository.
+
+### 30.3 Scope
+
+Include:
+
+- Add a BotFather-compatible command such as `/git_commit_push <message>`.
+- Require an authorized chat and a current `/use` selected repository.
+- Require a non-empty commit message.
+- Inspect the selected repository before approval with `git status --short`, current branch, and the staged file list from `git diff --cached --name-status`.
+- Return a bounded preview that clearly shows current branch, short status, staged files, and the approval request id.
+- Require approval via existing `/approve <request_id>` or inline button before any mutating git operation runs.
+- After approval, execute only fixed-argv git operations in the selected repository.
+- Stage only explicit file paths determined from the previewed `git status --short`; do not pass user-supplied shell snippets or glob patterns to git.
+- Preserve unrelated repository boundaries and prevent path traversal or paths outside the selected repo.
+- Commit with `git commit -m <message>`.
+- Push to `origin <current-branch>`.
+- Persist enough pending request metadata to ensure the approved operation matches the previewed repo alias, cwd, branch, file list, and commit message.
+- Report success with commit and push summary.
+- Report commit failure separately from push failure.
+- Classify obvious push failures where possible, including network/DNS failure and authentication/permission failure, while preserving bounded redacted output.
+- Log enough local detail for diagnosis without exposing secrets in Telegram replies.
+- Update command whitelist, help output, README command surface, deployment docs, BotFather command menu docs, and tests.
+- Add unit and harness coverage for authorization, no selected repo, empty message, clean repo/no files, preview creation, approval resolution, fixed argv usage, commit failure, push failure, network failure, authentication failure, and success.
+
+Exclude:
+
+- Do not run through Codex CLI.
+- Do not allow arbitrary shell commands.
+- Do not allow user-provided git flags.
+- Do not allow selecting an unwhitelisted repository path.
+- Do not bypass approval.
+- Do not automatically push when the branch cannot be determined.
+- Do not solve Codex CLI sandbox, DNS, SSH agent, keychain, or GitHub credential inheritance in this feature.
+
+### 30.4 Acceptance Criteria
+
+- `/git_commit_push <message>` from an unauthorized chat is rejected by existing authorization.
+- `/git_commit_push <message>` without `/use <repo>` returns a clear no-workspace response.
+- `/git_commit_push` without a commit message is rejected.
+- The command previews `git status --short`, current branch, and staged files before mutating anything.
+- The preview creates a pending approval request tied to the selected repo alias, cwd, branch, file list, and commit message.
+- Rejecting the approval leaves the repository untouched.
+- Approving the request runs fixed argv git commands with `shell=false`.
+- Only explicit file paths from the previewed status are passed to `git add --`.
+- Successful commit and push returns a clear success message.
+- Commit failure returns a clear commit-failed response and does not run push.
+- Push failure returns a clear push-failed response and distinguishes network/DNS failures from authentication/permission failures when the output shape is recognizable.
+- The command cannot operate outside the selected whitelisted repository.
+- Existing `/agent`, agent chat mode, repository commands, task management, approval commands, `/approval_test`, polling, webhook, and task completion behavior remains unchanged.
+- `./init.sh` passes.
+
+### 30.5 Verification Plan
+
+- Run unit tests for parsing, preview metadata, path safety, approval handling, fixed git argv, and failure classification.
+- Run harness tests for `/use`, `/git_commit_push`, reject, approve, commit failure, push failure, and success using fake git execution.
+- Run contract tests for command whitelist, help output, README, deployment docs, and BotFather command menu.
+- Run `./init.sh`.
