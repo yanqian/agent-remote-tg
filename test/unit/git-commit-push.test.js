@@ -87,6 +87,7 @@ test("resolveGitCommitPushApproval runs fixed git argv and separates commit and 
     state: baseState,
     selectedOption: { decision: "approved" },
     runner: gitRunner({
+      "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
       "git add -- README.md src/new.js": { ok: true },
       "git commit -m Publish changes": { ok: true, stdout: "[main abc123] Publish changes\n" },
       "git push origin main": { ok: true, stderr: "To github.com:owner/repo.git\n" },
@@ -95,11 +96,25 @@ test("resolveGitCommitPushApproval runs fixed git argv and separates commit and 
   assert.equal(success.handled, true);
   assert.match(success.response, /Git commit and push succeeded/);
   assert.deepEqual(calls.map((call) => call.args), [
+    ["rev-parse", "--abbrev-ref", "HEAD"],
     ["add", "--", "README.md", "src/new.js"],
     ["commit", "-m", "Publish changes"],
     ["push", "origin", "main"],
   ]);
   assert.equal(success.state.approvalRequests.gcp_test.gitCommitPushResult.ok, true);
+
+  const changedBranchCalls = [];
+  const changedBranch = resolveGitCommitPushApproval({
+    request: baseRequest,
+    state: baseState,
+    selectedOption: { decision: "approved" },
+    runner: gitRunner({
+      "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "release\n" },
+    }, changedBranchCalls),
+  });
+  assert.equal(changedBranch.response, "Git branch changed from main to release. Repository was not changed.");
+  assert.equal(changedBranchCalls.some((call) => call.args[0] === "add"), false);
+  assert.equal(changedBranch.state.approvalRequests.gcp_test.gitCommitPushResult.phase, "branch");
 
   const commitFailCalls = [];
   const commitFail = resolveGitCommitPushApproval({
@@ -107,6 +122,7 @@ test("resolveGitCommitPushApproval runs fixed git argv and separates commit and 
     state: baseState,
     selectedOption: { decision: "approved" },
     runner: gitRunner({
+      "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
       "git add -- README.md src/new.js": { ok: true },
       "git commit -m Publish changes": { ok: false, stderr: "nothing to commit\n" },
     }, commitFailCalls),
@@ -119,6 +135,7 @@ test("resolveGitCommitPushApproval runs fixed git argv and separates commit and 
     state: baseState,
     selectedOption: { decision: "approved" },
     runner: gitRunner({
+      "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
       "git add -- README.md src/new.js": { ok: true },
       "git commit -m Publish changes": { ok: true, stdout: "[main abc123] Publish changes\n" },
       "git push origin main": { ok: false, stderr: "fatal: could not resolve host: github.com\n" },

@@ -122,6 +122,33 @@ export function resolveGitCommitPushApproval({ request, state, selectedOption, r
     };
   }
 
+  const branch = runner(request.cwd, "git", ["rev-parse", "--abbrev-ref", "HEAD"]);
+  if (!branch.ok) {
+    const response = redactForTelegram(formatGitFailure("Git branch recheck failed. Repository was not changed.", branch));
+    return {
+      handled: true,
+      response,
+      state: recordGitCommitPushResult(state, request.requestId, { ok: false, phase: "branch", response }),
+    };
+  }
+  const branchName = branch.stdout.trim();
+  if (!isSafeBranchName(branchName)) {
+    const response = "Git branch recheck could not determine a safe current branch. Repository was not changed.";
+    return {
+      handled: true,
+      response,
+      state: recordGitCommitPushResult(state, request.requestId, { ok: false, phase: "branch", response }),
+    };
+  }
+  if (branchName !== request.branch) {
+    const response = `Git branch changed from ${request.branch} to ${branchName || "(unknown)"}. Repository was not changed.`;
+    return {
+      handled: true,
+      response,
+      state: recordGitCommitPushResult(state, request.requestId, { ok: false, phase: "branch", response }),
+    };
+  }
+
   const add = runner(request.cwd, "git", ["add", "--", ...request.fileList]);
   if (!add.ok) {
     const response = redactForTelegram(formatGitFailure("Git add failed.", add));

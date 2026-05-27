@@ -269,6 +269,7 @@ test("app previews and approves Bot-local git commit push requests", async () =>
       ["rev-parse", "--abbrev-ref", "HEAD"],
       ["status", "--short", "--untracked-files=all"],
       ["diff", "--cached", "--name-status"],
+      ["rev-parse", "--abbrev-ref", "HEAD"],
       ["add", "--", "README.md", "src/new.js"],
       ["commit", "-m", "Publish changes"],
       ["push", "origin", "main"],
@@ -329,6 +330,30 @@ test("app rejects and reports Bot-local git commit push failures without running
       /^Approved request: gcp_[a-z0-9]+_[a-z0-9]+\nGit commit failed\. Push was not run\./,
     );
     assert.equal(failCalls.some((call) => call.args[0] === "push"), false);
+
+    const branchStatePath = join(rootDir, "branch_state.json");
+    const branchCalls = [];
+    const branchApp = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: branchStatePath,
+      gitRunner: fakeGitRunner({
+        "git rev-parse --abbrev-ref HEAD": [
+          { ok: true, stdout: "main\n" },
+          { ok: true, stdout: "release\n" },
+        ],
+        "git status --short --untracked-files=all": { ok: true, stdout: " M README.md\n" },
+        "git diff --cached --name-status": { ok: true, stdout: "" },
+      }, branchCalls),
+    });
+    assert.equal(branchApp.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    const branchPreview = branchApp.handleMessage({ chatId: "123", text: "/git_commit_push Publish changes" });
+    const branchRequestId = branchPreview.match(/approval request: (gcp_[a-z0-9]+_[a-z0-9]+)/i)[1];
+    assert.equal(
+      branchApp.handleMessage({ chatId: "123", text: `/approve ${branchRequestId}` }),
+      `Approved request: ${branchRequestId}\nGit branch changed from main to release. Repository was not changed.`,
+    );
+    assert.equal(branchCalls.some((call) => call.args[0] === "add"), false);
 
     const pushStatePath = join(rootDir, "push_state.json");
     const pushApp = createApp({
@@ -1083,6 +1108,7 @@ function fakeGitRunner(results, calls = []) {
   return (cwd, command, args) => {
     calls.push({ cwd, command, args });
     const key = `${command} ${args.join(" ")}`;
+    const result = Array.isArray(results[key]) ? results[key].shift() : results[key];
     return {
       ok: true,
       command,
@@ -1091,7 +1117,7 @@ function fakeGitRunner(results, calls = []) {
       stdout: "",
       stderr: "",
       error: "",
-      ...(results[key] ?? {}),
+      ...(result ?? {}),
     };
   };
 }
