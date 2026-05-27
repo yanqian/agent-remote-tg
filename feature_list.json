@@ -408,10 +408,10 @@
     {
       "id": "F046",
       "description": "Add a Bot-local /git_commit_push <message> command that lets authorized Telegram chats commit and push changes in the currently selected /use repository without going through Codex CLI; require a selected whitelisted repo and non-empty commit message; preview current branch, git status --short, and staged files before mutation; create a pending approval request tied to repo alias, cwd, branch, explicit file list, and commit message; require /approve or inline approval before running fixed-argv shell-disabled git add -- <explicit paths>, git commit -m <message>, and git push origin <current-branch>; reject approval leaves the repo untouched; prevent arbitrary shell, user-provided git flags, unwhitelisted paths, traversal, and operation outside the selected repo; report commit failures separately from push failures; classify recognizable network/DNS and authentication/permission push failures; update command whitelist, help, README, deployment docs, BotFather docs, and add unit, harness, contract, smoke, and init coverage while preserving existing /agent, agent chat mode, repository, approval, /approval_test, polling, webhook, and task management behavior.",
-      "passes": false,
-      "status": "blocked",
-      "attempts": 3,
-      "last_error": "approval execution does not verify that the stored request cwd/repo still matches the currently selected whitelisted repository; a crafted or stale git_commit_push approval request can run fixed git add/commit/push argv in an arbitrary cwd from runtime state, outside the selected whitelisted repo.",
+      "passes": true,
+      "status": "done",
+      "attempts": 4,
+      "last_error": "",
       "priority": "P0"
     }
   ]

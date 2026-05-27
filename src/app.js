@@ -65,6 +65,7 @@ export function createApp({
             result: replyDecision,
             chatId: message.chatId,
             gitRunner,
+            repos,
           });
           saveRuntimeState(statePath, delivered.state ?? replyDecision.state);
           return delivered.response ?? replyDecision.response;
@@ -99,6 +100,7 @@ export function createApp({
           onApprovalRequest: approvalRequestNotifier,
           chatId: message.chatId,
           gitRunner,
+          repos,
         }));
       }
       return finalizeParsedCommandResult({
@@ -109,6 +111,7 @@ export function createApp({
         onApprovalRequest: approvalRequestNotifier,
         chatId: message.chatId,
         gitRunner,
+        repos,
       });
     },
 
@@ -139,6 +142,7 @@ export function createApp({
         result,
         chatId: callbackQuery.chatId,
         gitRunner,
+        repos,
       });
       if (!delivered.ok) {
         return delivered.response;
@@ -150,7 +154,7 @@ export function createApp({
   };
 }
 
-function finalizeParsedCommandResult({ result, state, statePath, executor, onApprovalRequest, chatId, gitRunner = null }) {
+function finalizeParsedCommandResult({ result, state, statePath, executor, onApprovalRequest, chatId, gitRunner = null, repos = null }) {
   persistAgentChatModeIfNeeded(result, statePath);
   if (result.stateChanged) {
     const delivered = deliverApprovalSelection({
@@ -158,6 +162,7 @@ function finalizeParsedCommandResult({ result, state, statePath, executor, onApp
       result,
       chatId,
       gitRunner,
+      repos,
     });
     saveRuntimeState(statePath, delivered.state ?? result.state);
     notifyApprovalRequestIfNeeded({
@@ -171,7 +176,7 @@ function finalizeParsedCommandResult({ result, state, statePath, executor, onApp
   return result.response;
 }
 
-function deliverApprovalSelection({ executor, result, chatId, gitRunner = null }) {
+function deliverApprovalSelection({ executor, result, chatId, gitRunner = null, repos = null }) {
   if (!result?.selectedOption || !result?.state) {
     return { ok: true, state: result?.state, response: result?.response };
   }
@@ -184,6 +189,7 @@ function deliverApprovalSelection({ executor, result, chatId, gitRunner = null }
     state: result.state,
     selectedOption: result.selectedOption,
     runner: gitRunner ?? undefined,
+    repos,
   });
   if (gitCommitPush.handled) {
     return {
@@ -228,7 +234,7 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
     case "/git":
       return handleGit(state);
     case "/git_commit_push":
-      return handleGitCommitPush(parsed.args, state, chatId, options.gitRunner ?? undefined);
+      return handleGitCommitPush(parsed.args, state, chatId, options.gitRunner ?? undefined, new Date(), repos);
     case "/agent":
       return handleAgent(parsed.args, state, taskExecutor, chatId, {
         agentTaskTimeoutMs: options.agentTaskTimeoutMs ?? null,

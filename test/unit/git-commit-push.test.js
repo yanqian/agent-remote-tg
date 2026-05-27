@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   classifyPushFailure,
   handleGitCommitPush,
@@ -54,6 +57,53 @@ test("handleGitCommitPush creates a bounded approval request with preview metada
     ["status", "--short", "--untracked-files=all"],
     ["diff", "--cached", "--name-status"],
   ]);
+});
+
+test("git commit push requires approval requests to match the whitelisted repository", () => {
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-git-push-"));
+  try {
+    const preview = handleGitCommitPush(
+      "Publish changes",
+      { currentRepo: "app", cwd: "/not-whitelisted" },
+      "123",
+      gitRunner({}),
+      new Date("2026-05-27T00:00:00.000Z"),
+      { app: repoDir },
+    );
+    assert.equal(
+      preview.response,
+      "Selected workspace no longer matches the repository whitelist. Use /use <repo> again.",
+    );
+
+    const request = {
+      requestId: "gcp_test",
+      status: "approved",
+      source: "git_commit_push",
+      chatId: "123",
+      repoAlias: "app",
+      cwd: "/not-whitelisted",
+      branch: "main",
+      fileList: ["README.md"],
+      commitMessage: "Publish changes",
+    };
+    const resolved = resolveGitCommitPushApproval({
+      request,
+      state: { approvalRequests: { gcp_test: request } },
+      selectedOption: { decision: "approved" },
+      runner() {
+        throw new Error("should not run git");
+      },
+      repos: { app: repoDir },
+    });
+    assert.equal(resolved.handled, true);
+    assert.equal(
+      resolved.response,
+      "Selected workspace no longer matches the repository whitelist. Use /use <repo> again.",
+    );
+    assert.equal(resolved.state.approvalRequests.gcp_test.gitCommitPushResult.phase, "validation");
+  } finally {
+    rmSync(repoDir, { recursive: true, force: true });
+  }
 });
 
 test("parseStatusShort rejects unsafe paths and keeps explicit safe paths", () => {

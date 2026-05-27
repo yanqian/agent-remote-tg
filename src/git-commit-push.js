@@ -1,12 +1,13 @@
 import { relative, resolve } from "node:path";
 import { buildApprovalInlineKeyboard, buildApprovalTelegramMessage } from "./approval.js";
+import { lookupRepo } from "./repositories.js";
 import { isValidApprovalRequestId, normalizeRuntimeState } from "./runtime-state.js";
 import { redactForTelegram, truncateTelegramResponse } from "./task-executor.js";
 import { runWorkspaceCommand, requireWorkspace } from "./workspace.js";
 
 let gitCommitPushSequence = 0;
 
-export function handleGitCommitPush(message, state, chatId, runner = runWorkspaceCommand, now = new Date()) {
+export function handleGitCommitPush(message, state, chatId, runner = runWorkspaceCommand, now = new Date(), repos = null) {
   const commitMessage = String(message ?? "").trim();
   if (commitMessage.length === 0) {
     return { response: "Usage: /git_commit_push <message>", stateChanged: false };
@@ -15,6 +16,10 @@ export function handleGitCommitPush(message, state, chatId, runner = runWorkspac
   const workspace = requireWorkspace(state);
   if (!workspace.ok) {
     return { response: workspace.response, stateChanged: false };
+  }
+  const whitelist = validateWhitelistedWorkspace(workspace, repos);
+  if (!whitelist.ok) {
+    return { response: whitelist.response, stateChanged: false };
   }
 
   const branch = runner(workspace.cwd, "git", ["rev-parse", "--abbrev-ref", "HEAD"]);
@@ -105,7 +110,7 @@ export function handleGitCommitPush(message, state, chatId, runner = runWorkspac
   };
 }
 
-export function resolveGitCommitPushApproval({ request, state, selectedOption, runner = runWorkspaceCommand }) {
+export function resolveGitCommitPushApproval({ request, state, selectedOption, runner = runWorkspaceCommand, repos = null }) {
   if (!isGitCommitPushRequest(request)) {
     return { handled: false };
   }
@@ -113,7 +118,7 @@ export function resolveGitCommitPushApproval({ request, state, selectedOption, r
     return { handled: true, response: "Git commit/push rejected; repository was not changed.", state };
   }
 
-  const validation = validateGitCommitPushRequest(request);
+  const validation = validateGitCommitPushRequest(request, repos);
   if (!validation.ok) {
     return {
       handled: true,
@@ -220,7 +225,7 @@ export function parseStatusShort(stdout, cwd) {
   return { ok: true, paths };
 }
 
-function validateGitCommitPushRequest(request) {
+function validateGitCommitPushRequest(request, repos = null) {
   if (!isValidApprovalRequestId(request?.requestId)) {
     return { ok: false, response: "Invalid git commit/push approval request." };
   }
@@ -229,6 +234,13 @@ function validateGitCommitPushRequest(request) {
   }
   if (typeof request.cwd !== "string" || request.cwd.length === 0) {
     return { ok: false, response: "Git commit/push request is missing its repository path." };
+  }
+  const whitelist = validateWhitelistedWorkspace({
+    currentRepo: request.repoAlias,
+    cwd: request.cwd,
+  }, repos);
+  if (!whitelist.ok) {
+    return { ok: false, response: whitelist.response };
   }
   if (!isSafeBranchName(request.branch)) {
     return { ok: false, response: "Git commit/push request has an unsafe branch name." };
@@ -244,6 +256,23 @@ function validateGitCommitPushRequest(request) {
     if (!safe.ok || safe.path !== path) {
       return { ok: false, response: "Git commit/push request includes an unsafe file path." };
     }
+  }
+  return { ok: true };
+}
+
+function validateWhitelistedWorkspace(workspace, repos) {
+  if (!repos) {
+    return { ok: true };
+  }
+  const found = lookupRepo(repos, workspace.currentRepo);
+  if (!found.ok) {
+    return { ok: false, response: found.response };
+  }
+  if (resolve(found.path) !== resolve(workspace.cwd)) {
+    return {
+      ok: false,
+      response: "Selected workspace no longer matches the repository whitelist. Use /use <repo> again.",
+    };
   }
   return { ok: true };
 }
