@@ -410,8 +410,8 @@
       "description": "Add a Bot-local /git_commit_push <message> command that lets authorized Telegram chats commit and push changes in the currently selected /use repository without going through Codex CLI; require a selected whitelisted repo and non-empty commit message; preview current branch, git status --short, and staged files before mutation; create a pending approval request tied to repo alias, cwd, branch, explicit file list, and commit message; require /approve or inline approval before running fixed-argv shell-disabled git add -- <explicit paths>, git commit -m <message>, and git push origin <current-branch>; reject approval leaves the repo untouched; prevent arbitrary shell, user-provided git flags, unwhitelisted paths, traversal, and operation outside the selected repo; report commit failures separately from push failures; classify recognizable network/DNS and authentication/permission push failures; update command whitelist, help, README, deployment docs, BotFather docs, and add unit, harness, contract, smoke, and init coverage while preserving existing /agent, agent chat mode, repository, approval, /approval_test, polling, webhook, and task management behavior.",
       "passes": false,
       "status": "todo",
-      "attempts": 1,
-      "last_error": "`git status --short` previews untracked directories as `?? src/`; the implementation accepts that directory path and later runs `git add -- src/`, which can stage files that were not individually previewed or approved, so it does not satisfy the explicit previewed file-list safety requirement.",
+      "attempts": 2,
+      "last_error": "approval resolution does not re-verify that the selected repository is still on the previewed branch before mutating; `resolveGitCommitPushApproval` runs `git add`, `git commit`, and `git push origin <stored-branch>` without checking current branch, so if the repo branch changes between preview and approval the commit can happen on a different branch than the previewed/approved branch.",
       "priority": "P0"
     }
   ]

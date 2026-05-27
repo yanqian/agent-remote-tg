@@ -235,7 +235,7 @@ test("app previews and approves Bot-local git commit push requests", async () =>
       statePath,
       gitRunner: fakeGitRunner({
         "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
-        "git status --short": { ok: true, stdout: " M README.md\n?? src/new.js\n" },
+        "git status --short --untracked-files=all": { ok: true, stdout: " M README.md\n?? src/new.js\n" },
         "git diff --cached --name-status": { ok: true, stdout: "M\tREADME.md\n" },
         "git add -- README.md src/new.js": { ok: true },
         "git commit -m Publish changes": { ok: true, stdout: "[main abc123] Publish changes\n" },
@@ -267,7 +267,7 @@ test("app previews and approves Bot-local git commit push requests", async () =>
     assert.match(approved, new RegExp(`^Approved request: ${requestId}\\nGit commit and push succeeded\\.`));
     assert.deepEqual(calls.map((call) => call.args), [
       ["rev-parse", "--abbrev-ref", "HEAD"],
-      ["status", "--short"],
+      ["status", "--short", "--untracked-files=all"],
       ["diff", "--cached", "--name-status"],
       ["add", "--", "README.md", "src/new.js"],
       ["commit", "-m", "Publish changes"],
@@ -294,7 +294,7 @@ test("app rejects and reports Bot-local git commit push failures without running
       statePath: rejectStatePath,
       gitRunner: fakeGitRunner({
         "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
-        "git status --short": { ok: true, stdout: " M README.md\n" },
+        "git status --short --untracked-files=all": { ok: true, stdout: " M README.md\n" },
         "git diff --cached --name-status": { ok: true, stdout: "" },
       }, rejectCalls),
     });
@@ -315,7 +315,7 @@ test("app rejects and reports Bot-local git commit push failures without running
       statePath: failStatePath,
       gitRunner: fakeGitRunner({
         "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
-        "git status --short": { ok: true, stdout: " M README.md\n" },
+        "git status --short --untracked-files=all": { ok: true, stdout: " M README.md\n" },
         "git diff --cached --name-status": { ok: true, stdout: "" },
         "git add -- README.md": { ok: true },
         "git commit -m Publish changes": { ok: false, stderr: "nothing to commit\n" },
@@ -337,7 +337,7 @@ test("app rejects and reports Bot-local git commit push failures without running
       statePath: pushStatePath,
       gitRunner: fakeGitRunner({
         "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
-        "git status --short": { ok: true, stdout: " M README.md\n" },
+        "git status --short --untracked-files=all": { ok: true, stdout: " M README.md\n" },
         "git diff --cached --name-status": { ok: true, stdout: "" },
         "git add -- README.md": { ok: true },
         "git commit -m Publish changes": { ok: true, stdout: "[main abc123] Publish changes\n" },

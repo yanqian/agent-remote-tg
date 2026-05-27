@@ -26,7 +26,7 @@ export function handleGitCommitPush(message, state, chatId, runner = runWorkspac
     return { response: "Cannot commit and push because the current branch could not be determined.", stateChanged: false };
   }
 
-  const status = runner(workspace.cwd, "git", ["status", "--short"]);
+  const status = runner(workspace.cwd, "git", ["status", "--short", "--untracked-files=all"]);
   if (!status.ok) {
     return { response: redactForTelegram(formatGitFailure("git status failed.", status)), stateChanged: false };
   }
@@ -228,6 +228,7 @@ function normalizeGitPath(path, cwd) {
     value.startsWith("\"") ||
     value.includes("\0") ||
     value.startsWith("/") ||
+    value.endsWith("/") ||
     value.split(/[\\/]+/).includes("..")
   ) {
     return { ok: false, response: "Cannot commit because git reported an unsafe path." };

@@ -16,7 +16,7 @@ test("handleGitCommitPush requires workspace, message, branch, and changes befor
 
   const clean = handleGitCommitPush("Publish changes", { currentRepo: "app", cwd: "/repo" }, "123", gitRunner({
     "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
-    "git status --short": { ok: true, stdout: "" },
+    "git status --short --untracked-files=all": { ok: true, stdout: "" },
     "git diff --cached --name-status": { ok: true, stdout: "" },
   }));
   assert.equal(clean.response, "No changes to commit in the selected repository.");
@@ -31,7 +31,7 @@ test("handleGitCommitPush creates a bounded approval request with preview metada
   const calls = [];
   const result = handleGitCommitPush("Publish changes", { currentRepo: "app", cwd: "/repo" }, "123", gitRunner({
     "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
-    "git status --short": { ok: true, stdout: " M README.md\n?? src/new.js\n" },
+    "git status --short --untracked-files=all": { ok: true, stdout: " M README.md\n?? src/new.js\n" },
     "git diff --cached --name-status": { ok: true, stdout: "M\tREADME.md\n" },
   }, calls), new Date("2026-05-27T00:00:00.000Z"));
 
@@ -51,7 +51,7 @@ test("handleGitCommitPush creates a bounded approval request with preview metada
   assert.equal(result.approvalNotification.replyMarkup.inline_keyboard[0].length, 2);
   assert.deepEqual(calls.map((call) => call.args), [
     ["rev-parse", "--abbrev-ref", "HEAD"],
-    ["status", "--short"],
+    ["status", "--short", "--untracked-files=all"],
     ["diff", "--cached", "--name-status"],
   ]);
 });
@@ -64,6 +64,7 @@ test("parseStatusShort rejects unsafe paths and keeps explicit safe paths", () =
   assert.equal(parseStatusShort("?? ../secret\n", "/repo").ok, false);
   assert.equal(parseStatusShort("?? /tmp/secret\n", "/repo").ok, false);
   assert.equal(parseStatusShort("?? \"quoted name\"\n", "/repo").ok, false);
+  assert.equal(parseStatusShort("?? src/\n", "/repo").ok, false);
 });
 
 test("resolveGitCommitPushApproval runs fixed git argv and separates commit and push failures", () => {
