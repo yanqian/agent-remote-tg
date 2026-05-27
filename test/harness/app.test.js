@@ -222,6 +222,141 @@ test("app creates and resolves Bot-local approval test requests", async () => {
   }
 });
 
+test("app previews and approves Bot-local git commit push requests", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  const calls = [];
+  const notifications = [];
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      gitRunner: fakeGitRunner({
+        "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
+        "git status --short": { ok: true, stdout: " M README.md\n?? src/new.js\n" },
+        "git diff --cached --name-status": { ok: true, stdout: "M\tREADME.md\n" },
+        "git add -- README.md src/new.js": { ok: true },
+        "git commit -m Publish changes": { ok: true, stdout: "[main abc123] Publish changes\n" },
+        "git push origin main": { ok: true, stderr: "To github.com:owner/repo.git\n" },
+      }, calls),
+      onApprovalRequest(notification) {
+        notifications.push(notification);
+        return Promise.resolve({ telegramMessageId: 901 });
+      },
+    });
+
+    assert.equal(app.handleMessage({ chatId: "123", text: "/git_commit_push Publish changes" }), "No workspace selected.\nUse /repos then /use <repo>.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    assert.equal(app.handleMessage({ chatId: "123", text: "/git_commit_push" }), "Usage: /git_commit_push <message>");
+    const preview = app.handleMessage({ chatId: "123", text: "/git_commit_push Publish changes" });
+    assert.match(preview, /^Git commit\/push approval request: gcp_/);
+    assert.match(preview, /Status:\n M README\.md\n\?\? src\/new\.js/);
+    assert.match(preview, /Files to stage:\nREADME\.md\nsrc\/new\.js/);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    let state = JSON.parse(readFileSync(statePath, "utf8"));
+    const requestId = Object.keys(state.approvalRequests)[0];
+    assert.equal(state.approvalRequests[requestId].source, "git_commit_push");
+    assert.equal(state.approvalRequests[requestId].telegramMessageId, 901);
+    assert.equal(notifications.length, 1);
+    assert.equal(notifications[0].replyMarkup.inline_keyboard[0].length, 2);
+
+    const approved = app.handleMessage({ chatId: "123", text: `/approve ${requestId}` });
+    assert.match(approved, new RegExp(`^Approved request: ${requestId}\\nGit commit and push succeeded\\.`));
+    assert.deepEqual(calls.map((call) => call.args), [
+      ["rev-parse", "--abbrev-ref", "HEAD"],
+      ["status", "--short"],
+      ["diff", "--cached", "--name-status"],
+      ["add", "--", "README.md", "src/new.js"],
+      ["commit", "-m", "Publish changes"],
+      ["push", "origin", "main"],
+    ]);
+    state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.approvalRequests[requestId].status, "approved");
+    assert.equal(state.approvalRequests[requestId].gitCommitPushResult.ok, true);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app rejects and reports Bot-local git commit push failures without running later phases", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  try {
+    const rejectStatePath = join(rootDir, "reject_state.json");
+    const rejectCalls = [];
+    const rejectApp = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: rejectStatePath,
+      gitRunner: fakeGitRunner({
+        "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
+        "git status --short": { ok: true, stdout: " M README.md\n" },
+        "git diff --cached --name-status": { ok: true, stdout: "" },
+      }, rejectCalls),
+    });
+    assert.equal(rejectApp.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    const rejectPreview = rejectApp.handleMessage({ chatId: "123", text: "/git_commit_push Publish changes" });
+    const rejectRequestId = rejectPreview.match(/approval request: (gcp_[a-z0-9]+_[a-z0-9]+)/i)[1];
+    assert.equal(
+      rejectApp.handleMessage({ chatId: "123", text: `/reject ${rejectRequestId}` }),
+      `Rejected request: ${rejectRequestId}\nGit commit/push rejected; repository was not changed.`,
+    );
+    assert.equal(rejectCalls.some((call) => call.args[0] === "add"), false);
+
+    const failStatePath = join(rootDir, "fail_state.json");
+    const failCalls = [];
+    const failApp = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: failStatePath,
+      gitRunner: fakeGitRunner({
+        "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
+        "git status --short": { ok: true, stdout: " M README.md\n" },
+        "git diff --cached --name-status": { ok: true, stdout: "" },
+        "git add -- README.md": { ok: true },
+        "git commit -m Publish changes": { ok: false, stderr: "nothing to commit\n" },
+      }, failCalls),
+    });
+    assert.equal(failApp.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    const failPreview = failApp.handleMessage({ chatId: "123", text: "/git_commit_push Publish changes" });
+    const failRequestId = failPreview.match(/approval request: (gcp_[a-z0-9]+_[a-z0-9]+)/i)[1];
+    assert.match(
+      failApp.handleCallbackQuery({ chatId: "123", data: `approval:${failRequestId}:opt_1` }),
+      /^Approved request: gcp_[a-z0-9]+_[a-z0-9]+\nGit commit failed\. Push was not run\./,
+    );
+    assert.equal(failCalls.some((call) => call.args[0] === "push"), false);
+
+    const pushStatePath = join(rootDir, "push_state.json");
+    const pushApp = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath: pushStatePath,
+      gitRunner: fakeGitRunner({
+        "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
+        "git status --short": { ok: true, stdout: " M README.md\n" },
+        "git diff --cached --name-status": { ok: true, stdout: "" },
+        "git add -- README.md": { ok: true },
+        "git commit -m Publish changes": { ok: true, stdout: "[main abc123] Publish changes\n" },
+        "git push origin main": { ok: false, stderr: "Permission denied (publickey).\n" },
+      }),
+    });
+    assert.equal(pushApp.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
+    const pushPreview = pushApp.handleMessage({ chatId: "123", text: "/git_commit_push Publish changes" });
+    const pushRequestId = pushPreview.match(/approval request: (gcp_[a-z0-9]+_[a-z0-9]+)/i)[1];
+    assert.match(
+      pushApp.handleMessage({ chatId: "123", text: `/approve ${pushRequestId}` }),
+      /Git push failed \(authentication\/permission\)/,
+    );
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
 test("app rejects unsafe, unknown, expired, resolved, and unauthorized approval requests", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   try {
@@ -942,4 +1077,21 @@ function createFakeChild({ pid }) {
   child.stderr = new PassThrough();
   child.kill = () => true;
   return child;
+}
+
+function fakeGitRunner(results, calls = []) {
+  return (cwd, command, args) => {
+    calls.push({ cwd, command, args });
+    const key = `${command} ${args.join(" ")}`;
+    return {
+      ok: true,
+      command,
+      args,
+      status: 0,
+      stdout: "",
+      stderr: "",
+      error: "",
+      ...(results[key] ?? {}),
+    };
+  };
 }

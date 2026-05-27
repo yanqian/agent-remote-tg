@@ -4,6 +4,7 @@ export const COMMANDS = Object.freeze([
   "/pwd",
   "/ls",
   "/git",
+  "/git_commit_push",
   "/agent",
   "/approve",
   "/reject",
@@ -19,6 +20,7 @@ export const COMMANDS = Object.freeze([
 export const COMMANDS_REQUIRING_ARGS = Object.freeze({
   "/use": "Usage: /use <repo>",
   "/agent": "Usage: /agent <instruction> | /agent new <instruction> | /agent resume <session_id|--last> <instruction> | /agent exit | /agent session | /agent -- <instruction>",
+  "/git_commit_push": "Usage: /git_commit_push <message>",
   "/approve": "Usage: /approve <request_id>",
   "/reject": "Usage: /reject <request_id>",
   "/always_allow": "Usage: /always_allow <request_id>",
@@ -38,6 +40,7 @@ export const HELP_RESPONSE = [
   "/pwd - show the selected workspace",
   "/ls - list files in the selected workspace",
   "/git - show branch, status, and recent commits",
+  "/git_commit_push <message> - commit and push selected workspace changes after approval",
   "/agent <instruction> - start or continue a Codex agent task",
   "/agent new <instruction> - force a new agent session",
   "/agent resume <session_id|--last> <instruction> - resume an agent session",

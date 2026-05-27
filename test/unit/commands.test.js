@@ -59,6 +59,10 @@ test("parseCommand rejects missing required arguments", () => {
     ok: false,
     response: "Usage: /agent <instruction> | /agent new <instruction> | /agent resume <session_id|--last> <instruction> | /agent exit | /agent session | /agent -- <instruction>",
   });
+  assert.deepEqual(parseCommand("/git_commit_push   "), {
+    ok: false,
+    response: "Usage: /git_commit_push <message>",
+  });
   assert.deepEqual(parseCommand("/approve   "), {
     ok: false,
     response: "Usage: /approve <request_id>",
@@ -80,6 +84,7 @@ test("help response documents the exact command surface", () => {
     "/pwd - show the selected workspace",
     "/ls - list files in the selected workspace",
     "/git - show branch, status, and recent commits",
+    "/git_commit_push <message> - commit and push selected workspace changes after approval",
     "/agent <instruction> - start or continue a Codex agent task",
     "/agent new <instruction> - force a new agent session",
     "/agent resume <session_id|--last> <instruction> - resume an agent session",

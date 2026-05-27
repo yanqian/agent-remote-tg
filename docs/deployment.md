@@ -90,6 +90,7 @@ use - Select a repository by alias
 pwd - Show the selected workspace
 ls - List selected workspace files
 git - Show branch, status, and commits
+git_commit_push - Commit and push after approval
 agent - Manage Codex agent sessions
 approve - Approve a pending agent request
 reject - Reject a pending agent request
@@ -106,7 +107,7 @@ The supported command names are compatible with BotFather because they use lower
 
 ## Long-Running Operation
 
-The `/agent`, `/agent new`, and `/agent resume` commands create Bot-recorded local tasks and enter agent chat mode for the current chat plus selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository creates a resumed agent task without requiring the `/agent` prefix. Full output is written to task logs, while Telegram responses stay bounded. `/agent` tasks and ordinary follow-ups have no forced timeout by default unless `AGENT_TASK_TIMEOUT_MS` is configured. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/approval_test` creates the same style of Bot-local pending request for testing approvals without starting Codex, executing shell commands, requiring a workspace, or writing to child stdin. `/agent exit` leaves agent chat mode for the current chat and repository; `/agent session` reports the current session and mode status. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
+The `/agent`, `/agent new`, and `/agent resume` commands create Bot-recorded local tasks and enter agent chat mode for the current chat plus selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository creates a resumed agent task without requiring the `/agent` prefix. Full output is written to task logs, while Telegram responses stay bounded. `/agent` tasks and ordinary follow-ups have no forced timeout by default unless `AGENT_TASK_TIMEOUT_MS` is configured. When Codex emits a permission prompt, the Bot sends one inline Telegram button for each Codex-provided option and stores only safe local callback IDs in Telegram callback data. `/git_commit_push <message>` creates a Bot-local approval request after previewing the selected repository branch, `git status --short`, staged files, and explicit file paths; approval runs only fixed shell-disabled `git add -- <paths>`, `git commit -m <message>`, and `git push origin <branch>` commands in the selected whitelisted repository. `/approval_test` creates the same style of Bot-local pending request for testing approvals without starting Codex, executing shell commands, requiring a workspace, or writing to child stdin. `/agent exit` leaves agent chat mode for the current chat and repository; `/agent session` reports the current session and mode status. `/approve`, `/reject`, `/always_allow`, and `/always_reject` resolve compatible pending agent approval requests; users can also reply to the approval request message with `yes`, `approve`, `no`, `reject`, `always`, `always allow`, or `以后都允许`.
 
 Only one active agent task can receive ordinary text follow-ups in the same workspace. Use `/status` to inspect active and recent tasks, `/logs <task_id>` to inspect the stored final result, and `/stop <task_id>` to send `SIGTERM` to a Bot-recorded running task.
 
@@ -134,6 +135,7 @@ After startup, verify operation from an authorized Telegram chat:
 - `/repos` lists the expected repository aliases and paths.
 - `/use <repo>` selects the intended whitelisted repository.
 - `/pwd`, `/ls`, and `/git` inspect only the selected workspace.
+- `/git_commit_push <message>` previews selected repository changes and requires approval before commit and push.
 - `/agent session` reports the selected agent session and agent chat mode status, or `/agent <instruction>` starts a task after a workspace is selected.
 - After agent chat mode is enabled and a session is bound, ordinary text continues that session.
 - `/status` reports active tasks and recent finished tasks.

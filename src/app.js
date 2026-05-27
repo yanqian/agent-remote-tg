@@ -12,6 +12,7 @@ import {
 } from "./approval.js";
 import { HELP_RESPONSE } from "./constants.js";
 import { parseCommand } from "./commands.js";
+import { handleGitCommitPush, resolveGitCommitPushApproval } from "./git-commit-push.js";
 import {
   enableAgentChatMode,
   getAskSessionBinding,
@@ -31,6 +32,7 @@ export function createApp({
   taskExecutor,
   agentTaskTimeoutMs = null,
   onApprovalRequest = null,
+  gitRunner = null,
 }) {
   if (!Array.isArray(allowedChatIds)) {
     throw new Error("allowedChatIds must be an array.");
@@ -62,6 +64,7 @@ export function createApp({
             executor,
             result: replyDecision,
             chatId: message.chatId,
+            gitRunner,
           });
           saveRuntimeState(statePath, delivered.state ?? replyDecision.state);
           return delivered.response ?? replyDecision.response;
@@ -85,6 +88,7 @@ export function createApp({
 
       const result = handleParsedCommand(parsed, repos, state, executor, message.chatId, {
         agentTaskTimeoutMs,
+        gitRunner,
       });
       if (result && typeof result.then === "function") {
         return result.then((resolved) => finalizeParsedCommandResult({
@@ -94,6 +98,7 @@ export function createApp({
           executor,
           onApprovalRequest: approvalRequestNotifier,
           chatId: message.chatId,
+          gitRunner,
         }));
       }
       return finalizeParsedCommandResult({
@@ -103,6 +108,7 @@ export function createApp({
         executor,
         onApprovalRequest: approvalRequestNotifier,
         chatId: message.chatId,
+        gitRunner,
       });
     },
 
@@ -132,24 +138,26 @@ export function createApp({
         executor,
         result,
         chatId: callbackQuery.chatId,
+        gitRunner,
       });
       if (!delivered.ok) {
         return delivered.response;
       }
 
       saveRuntimeState(statePath, delivered.state ?? result.state);
-      return result.response;
+      return delivered.response ?? result.response;
     },
   };
 }
 
-function finalizeParsedCommandResult({ result, state, statePath, executor, onApprovalRequest, chatId }) {
+function finalizeParsedCommandResult({ result, state, statePath, executor, onApprovalRequest, chatId, gitRunner = null }) {
   persistAgentChatModeIfNeeded(result, statePath);
   if (result.stateChanged) {
     const delivered = deliverApprovalSelection({
       executor,
       result,
       chatId,
+      gitRunner,
     });
     saveRuntimeState(statePath, delivered.state ?? result.state);
     notifyApprovalRequestIfNeeded({
@@ -163,13 +171,26 @@ function finalizeParsedCommandResult({ result, state, statePath, executor, onApp
   return result.response;
 }
 
-function deliverApprovalSelection({ executor, result, chatId }) {
+function deliverApprovalSelection({ executor, result, chatId, gitRunner = null }) {
   if (!result?.selectedOption || !result?.state) {
     return { ok: true, state: result?.state, response: result?.response };
   }
   const request = findSelectedApprovalRequest(result.state, result.selectedOption);
   if (!request) {
     return { ok: false, response: "Approval request option incompatible." };
+  }
+  const gitCommitPush = resolveGitCommitPushApproval({
+    request,
+    state: result.state,
+    selectedOption: result.selectedOption,
+    runner: gitRunner ?? undefined,
+  });
+  if (gitCommitPush.handled) {
+    return {
+      ok: true,
+      state: gitCommitPush.state ?? result.state,
+      response: gitCommitPush.response ? `${result.response}\n${gitCommitPush.response}` : result.response,
+    };
   }
   if (!request.taskId) {
     return { ok: true, state: result.state, response: result.response };
@@ -206,6 +227,8 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
       return handleLs(state);
     case "/git":
       return handleGit(state);
+    case "/git_commit_push":
+      return handleGitCommitPush(parsed.args, state, chatId, options.gitRunner ?? undefined);
     case "/agent":
       return handleAgent(parsed.args, state, taskExecutor, chatId, {
         agentTaskTimeoutMs: options.agentTaskTimeoutMs ?? null,

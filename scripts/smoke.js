@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { commandList } from "../src/commands.js";
 import { start } from "../src/index.js";
 
 const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-smoke-"));
@@ -33,6 +34,9 @@ try {
   );
   if (configured.agentTaskTimeoutMs !== 3600000) {
     throw new Error("smoke startup did not apply configured agent timeout");
+  }
+  if (!commandList().includes("/git_commit_push")) {
+    throw new Error("smoke command surface did not include /git_commit_push");
   }
 
   console.log("smoke passed");
