@@ -566,6 +566,9 @@ test("app starts /agent tasks in the selected workspace", () => {
     assert.equal(calls[0].args[0], "exec");
     assert.equal(calls[0].args[1], "--json");
     assert.match(calls[0].args[2], /follow AGENTS\.md/);
+    assert.match(calls[0].args[2], /Use available local tools for repository investigation, implementation, and verification when needed\./);
+    assert.match(calls[0].args[2], /Respect the active sandbox, approval policy, repository rules, and user instructions\./);
+    assert.doesNotMatch(calls[0].args[2], /Keep shell execution disabled/);
     assert.match(calls[0].args[2], /Instruction:\nExplain the repo/);
     assert.equal(calls[0].timeoutMs, null);
     assert.equal(calls[0].chatId, "123");

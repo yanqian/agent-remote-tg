@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { buildAgentPrompt } from "../src/ask.js";
 import { commandList } from "../src/commands.js";
 import { start } from "../src/index.js";
 
@@ -37,6 +38,17 @@ try {
   }
   if (!commandList().includes("/git_commit_push")) {
     throw new Error("smoke command surface did not include /git_commit_push");
+  }
+
+  const agentPrompt = buildAgentPrompt("Investigate and verify locally.");
+  if (agentPrompt.includes("Keep shell execution disabled")) {
+    throw new Error("smoke agent prompt still contains the broad shell-disabled prohibition");
+  }
+  if (!agentPrompt.includes("Use available local tools for repository investigation, implementation, and verification when needed.")) {
+    throw new Error("smoke agent prompt did not allow available local tools");
+  }
+  if (!agentPrompt.includes("Respect the active sandbox, approval policy, repository rules, and user instructions.")) {
+    throw new Error("smoke agent prompt did not preserve sandbox and approval guidance");
   }
 
   console.log("smoke passed");

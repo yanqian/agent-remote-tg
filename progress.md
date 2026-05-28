@@ -67,14 +67,15 @@ Implemented behavior:
 - Robust Codex session metadata extraction for F043: `/agent new` task logs now keep the trusted pre-answer metadata window open across harmless Codex CLI prelude lines such as `stdinMode=ignore` and `Reading additional input from stdin...`, then bind top-level `thread.started` metadata to the task and chat-plus-repo session while preserving rejection of assistant prose and command-output lookalikes.
 - Temporary home-watch camera clip handling has been removed from this repository for F045: `/camera_clip` is no longer in the command whitelist, help output, app handler, startup configuration, Telegram transport, README, deployment docs, BotFather docs, source files, or default tests. Home-watch camera functionality now lives in `/Users/armstrong/Project/home-watch-tg`.
 - Bot-local git commit and push handling is implemented for F046: `/git_commit_push <message>` requires a selected whitelisted repository, previews the current branch, `git status --short --untracked-files=all`, staged files, and explicit paths, rejects unsafe directory summary paths, creates a pending approval request, validates that the request repo alias and cwd still match the configured whitelist at approval time, rechecks that the live branch still matches the approved preview before mutation, and only after `/approve` or inline approval runs shell-disabled fixed `git add -- <paths>`, `git commit -m <message>`, and `git push origin <branch>` commands with separate commit and push failure reporting. A local temporary-repository git probe verified the real `rev-parse`, `status --short --untracked-files=all`, `diff --cached --name-status`, `add -- <paths>`, and `commit -m` shapes used by the implementation.
+- Agent prompt shell-prohibition relaxation is implemented for F047: `/agent` prompts now allow available local tools for repository investigation, implementation, and verification, explicitly require respect for the active sandbox and approval policy, preserve repository files and git history as the source of truth, preserve `AGENTS.md` requirements for implementation requests, and keep Bot-owned shell-disabled fixed-argv process safety as a separate Bot responsibility. Unit, contract, harness, smoke, and full `./init.sh` coverage verify that the broad `Keep shell execution disabled` prompt prohibition is absent while the required safety and repository workflow language remains.
 
 ## Last Completed Feature
 
-`F045` - Remove the temporary home-watch `/camera_clip` capability from this control plane after moving that functionality to `/Users/armstrong/Project/home-watch-tg`.
+`F046` - Add a Bot-local `/git_commit_push <message>` command that lets authorized Telegram chats commit and push selected repository changes after approval.
 
 ## Next Feature
 
-`F046` has been implemented by the Coding Agent and is awaiting evaluator verification.
+`F047` has been implemented by the Coding Agent and is awaiting evaluator verification.
 
 ## Known Issues
 

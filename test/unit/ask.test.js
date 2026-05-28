@@ -7,7 +7,10 @@ test("buildAgentPrompt includes the required general agent rules and instruction
 
   assert.match(prompt, /Use repository files and git history as the source of truth\./);
   assert.match(prompt, /For implementation requests, read and follow AGENTS\.md before changing files\./);
+  assert.match(prompt, /Use available local tools for repository investigation, implementation, and verification when needed\./);
+  assert.match(prompt, /Respect the active sandbox, approval policy, repository rules, and user instructions\./);
   assert.match(prompt, /Summarize actions taken, changed files, verification commands, and remaining issues\./);
+  assert.doesNotMatch(prompt, /Keep shell execution disabled/);
   assert.match(prompt, /Instruction:\nImplement the workflow\./);
 });
 

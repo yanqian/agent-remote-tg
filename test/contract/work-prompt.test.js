@@ -11,11 +11,15 @@ test("/agent prompt contains the required general agent contract", () => {
     "Do not rely on Telegram chat history.",
     "For implementation requests, read and follow AGENTS.md before changing files.",
     "Preserve unrelated user changes and existing git history.",
+    "Use available local tools for repository investigation, implementation, and verification when needed.",
+    "Respect the active sandbox, approval policy, repository rules, and user instructions.",
+    "The Telegram Bot remains responsible for its own shell-disabled fixed-argv process safety.",
     "Summarize actions taken, changed files, verification commands, and remaining issues.",
   ]) {
     assert.ok(prompt.includes(requiredText), `missing prompt text: ${requiredText}`);
   }
 
+  assert.doesNotMatch(prompt, /Keep shell execution disabled/);
   assert.doesNotMatch(prompt, /Do not modify files\./);
   assert.doesNotMatch(prompt, /Do not update SPEC\.md\./);
   assert.doesNotMatch(prompt, /Do not update feature_list\.json\./);
