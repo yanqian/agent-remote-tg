@@ -6,5 +6,6 @@ logs/
 runtime_state.json
 .env
 .env.*
+.vscode/
 __pycache__/
 *.pyc
