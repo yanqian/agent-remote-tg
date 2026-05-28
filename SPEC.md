@@ -2494,3 +2494,127 @@ Exclude:
 - Assert the later request receives `gitCommitPushResult` and the older request is not overwritten by the later result.
 - Run focused harness tests for app approval and `/git_commit_push`.
 - Run `./init.sh`.
+
+## 33. Agent Git Write Boundary Guidance
+
+### 33.1 Goal
+
+Update `/agent` behavior and documentation so Codex repository agents do not attempt Git metadata writes such as `git add`, `git reset`, `git commit`, `git update-index` when it must write the index, or `git push` from inside the Codex task sandbox.
+
+The observed local behavior is that Bot-started Codex `/agent` tasks can write normal workspace files but cannot create new files under `.git/`, including `.git/index.lock`. Therefore `/agent` can implement changes and run verification, but repository publication must be done by the Bot-local git command path.
+
+### 33.2 Safety Model
+
+There are two intentional execution boundaries:
+
+- `/agent` Codex task boundary: may inspect files, edit workspace files, run tests, and summarize changed files and suggested commit messages, but must not rely on writing `.git` metadata or pushing remotes.
+- Bot-local git boundary: may perform fixed-argv Git staging, commit, and push only after explicit approval through the git command flow.
+
+The Bot must continue to prevent arbitrary shell execution through Telegram.
+
+### 33.3 Scope
+
+Include:
+
+- Update the `/agent` prompt to tell agents not to run Git write/publish operations from the Codex task sandbox.
+- Explicitly direct agents to finish implementation by summarizing changed files, verification commands, remaining issues, and a suggested commit message.
+- Tell users to use the Bot-local git command path for commit and push.
+- Preserve permission for `/agent` to run read-only Git commands such as `git status`, `git diff`, and `git log` when useful.
+- Preserve permission for `/agent` to edit ordinary workspace files and run tests.
+- Update README and deployment or workflow documentation if they describe repository publication flow.
+- Add regression coverage proving the prompt contains the Git write boundary and still permits normal local investigation and verification.
+- Preserve existing `/agent`, agent chat mode, approval, repository, polling, webhook, task management, and `/git_commit_push` behavior.
+
+Exclude:
+
+- Do not remove `/agent` local tool access.
+- Do not make `/agent` read-only for workspace files.
+- Do not change Codex CLI sandbox flags.
+- Do not add arbitrary shell support to the Bot.
+- Do not change Bot-local git fixed-argv safety.
+
+### 33.4 Acceptance Criteria
+
+- The `/agent` prompt clearly states that Codex agents should not run Git staging, reset, commit, update-index writes, or push from the Codex task sandbox.
+- The prompt still allows read-only Git inspection and normal workspace file edits.
+- The prompt directs users to the Bot-local git command path for commit and push.
+- The final answer expectation includes changed files, verification, remaining issues, and suggested commit message.
+- Existing `/agent` prompt safety language for sandbox, approval policy, AGENTS.md, repository state, and no chat-history reliance remains intact.
+- `./init.sh` passes.
+
+### 33.5 Verification Plan
+
+- Run focused prompt unit/contract tests for the new Git write boundary text.
+- Run harness tests proving `/agent` still starts with expected fixed Codex argv.
+- Run existing command surface, prompt, and agent chat mode tests.
+- Run `./init.sh`.
+
+## 34. Git Command Subcommands And Commit Push Integration
+
+### 34.1 Goal
+
+Merge the Bot-local git commit/push workflow into the `/git` command so users can inspect repository status and start an approved commit/push flow through one command namespace.
+
+The new primary commit/push entry point should be:
+
+```text
+/git commit_push <message>
+```
+
+The current `/git` with no arguments must keep returning branch, status, and recent commits. The existing `/git_commit_push <message>` command should remain as a backward-compatible alias unless explicitly removed in a future feature.
+
+### 34.2 Safety Model
+
+The `/git commit_push <message>` subcommand must reuse the existing Bot-local git safety model:
+
+- authorized chats only;
+- selected whitelisted repository only;
+- non-empty commit message;
+- preview before mutation;
+- explicit approval required before `git add`, `git commit`, or `git push`;
+- fixed argv with `shell=false`;
+- explicit file paths from previewed `git status --short --untracked-files=all`;
+- request-id correlated approval delivery;
+- no arbitrary user-provided Git flags or shell snippets.
+
+### 34.3 Scope
+
+Include:
+
+- Extend command parsing and app dispatch so `/git` works both with no arguments and with supported subcommands.
+- Preserve `/git` with no arguments as the existing repository inspection command.
+- Add `/git commit_push <message>` as the primary approved commit/push entry point.
+- Reuse the existing `/git_commit_push` implementation and approval request shape where possible.
+- Keep `/git_commit_push <message>` as a compatibility alias, but update help and documentation to prefer `/git commit_push <message>`.
+- Ensure `/git commit_push` without a message returns clear usage guidance.
+- Ensure unknown `/git` subcommands return clear usage guidance instead of running shell or Git.
+- Update README, deployment docs, BotFather command menu docs, help output, and command surface tests.
+- Add unit and harness coverage for `/git` status, `/git commit_push`, `/git commit_push` approval success/failure paths as needed, `/git commit_push` missing message, unknown `/git` subcommands, and legacy `/git_commit_push` alias compatibility.
+
+Exclude:
+
+- Do not remove the legacy `/git_commit_push` command in this feature.
+- Do not add arbitrary `/git <raw args>` passthrough.
+- Do not add user-provided Git flags.
+- Do not weaken approval or repository whitelist validation.
+- Do not change the fixed git argv shapes used after approval.
+
+### 34.4 Acceptance Criteria
+
+- `/git` with no arguments still shows branch, status, and recent commits.
+- `/git commit_push <message>` creates the same bounded approval preview and pending request as the legacy command.
+- Approving a `/git commit_push` request stages only previewed files, commits with the message, and pushes the current branch using fixed argv.
+- Rejecting a `/git commit_push` request leaves the repository untouched.
+- `/git commit_push` without a message returns usage guidance.
+- Unknown `/git` subcommands return usage guidance and do not run Git mutation.
+- `/git_commit_push <message>` remains functional as a compatibility alias.
+- Help and docs prefer `/git commit_push <message>`.
+- Existing `/agent`, approval, `/approval_test`, repository, polling, webhook, and task-management behavior remains unchanged.
+- `./init.sh` passes.
+
+### 34.5 Verification Plan
+
+- Run parser and command surface unit tests for `/git` with no arguments and `/git commit_push` usage.
+- Run harness tests for `/git`, `/git commit_push` preview, approval, rejection, and legacy alias compatibility.
+- Run command surface contract tests and documentation checks.
+- Run `./init.sh`.

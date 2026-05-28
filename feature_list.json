@@ -431,6 +431,24 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F049",
+      "description": "Update /agent prompt and documentation to make the Codex task Git write boundary explicit: Bot-started Codex agents may inspect Git state with read-only commands, edit ordinary workspace files, and run tests, but should not attempt Git staging, reset, commit, update-index writes, or push from inside the Codex sandbox because local probes show workspace writes succeed while .git metadata writes such as .git/index.lock fail; agents must instead summarize changed files, verification, remaining issues, and a suggested commit message, and direct users to the Bot-local git command path for commit and push; preserve local tool access, AGENTS.md requirements, sandbox and approval-policy respect, repository files as source of truth, no chat-history reliance, Bot shell=false safety, and existing /agent, approval, repository, polling, webhook, task-management, and git command behavior; add prompt regression coverage and init verification.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
+    },
+    {
+      "id": "F050",
+      "description": "Merge the Bot-local git commit/push workflow into the /git command namespace by adding /git commit_push <message> as the primary approved commit/push entry point while preserving /git with no arguments as the existing branch/status/recent-commits inspection command and keeping /git_commit_push <message> as a backward-compatible alias; /git commit_push must reuse the existing fixed-argv shell-disabled Bot-local git safety model, selected whitelisted repository validation, non-empty commit message requirement, bounded preview, explicit approval, request-id correlated delivery, explicit previewed file staging, separate commit and push failure reporting, and push failure classification; unknown /git subcommands and missing commit messages must return clear usage guidance without mutation; update help, README, deployment and BotFather docs to prefer /git commit_push <message>; add parser, unit, harness, contract, smoke, and init coverage while preserving /agent, approval, /approval_test, repository, polling, webhook, and task-management behavior.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }
