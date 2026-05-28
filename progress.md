@@ -72,11 +72,11 @@ Implemented behavior:
 
 ## Last Completed Feature
 
-`F047` - Relax the `/agent` Codex prompt so repository agents can use their available local tools while still respecting sandbox, approval policy, and repository workflow rules.
+`F048` - Fix `/git_commit_push` approval delivery so command, reply, and inline callback approvals are correlated by the exact approved request ID instead of reusable request-local option IDs.
 
 ## Next Feature
 
-`F048` is implemented and awaiting evaluator verification.
+All planned features are currently complete.
 
 ## Known Issues
 
