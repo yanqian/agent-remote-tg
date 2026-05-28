@@ -71,11 +71,11 @@ Implemented behavior:
 
 ## Last Completed Feature
 
-`F046` - Add a Bot-local `/git_commit_push <message>` command that lets authorized Telegram chats commit and push selected repository changes after approval.
+`F047` - Relax the `/agent` Codex prompt so repository agents can use their available local tools while still respecting sandbox, approval policy, and repository workflow rules.
 
 ## Next Feature
 
-`F047` has been implemented by the Coding Agent and is awaiting evaluator verification.
+All planned features are currently complete.
 
 ## Known Issues
 
