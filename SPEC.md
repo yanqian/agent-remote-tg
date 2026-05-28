@@ -2363,3 +2363,65 @@ Exclude:
 - Run harness tests for `/use`, `/git_commit_push`, reject, approve, commit failure, push failure, and success using fake git execution.
 - Run contract tests for command whitelist, help output, README, deployment docs, and BotFather command menu.
 - Run `./init.sh`.
+
+## 31. Relax Agent Prompt Shell Prohibition While Preserving Bot Command Safety
+
+### 31.1 Goal
+
+Update the `/agent` Codex prompt so repository agents can use their available local tools for normal investigation, implementation, and verification.
+
+The current prompt language tells Codex to keep shell execution disabled, which is too broad. It can make the agent refuse to inspect logs, run `rg`, read files, run tests, or investigate local failures. This undermines `/agent` as a general repository command.
+
+The Bot must still keep its own process-spawning safety model: no arbitrary shell through Telegram, shell-disabled Bot spawns, fixed argv for Bot-local commands, and explicit approval for sensitive Bot-local operations.
+
+### 31.2 Safety Model
+
+There are two separate safety layers:
+
+- Bot process execution safety: Bot-owned commands must continue to use `shell=false` or equivalent fixed-argv process execution, and must not accept arbitrary shell snippets from Telegram.
+- Codex task behavior: Codex may use its own available tools as needed, but must respect the active sandbox, approval policy, repository rules, and user instructions.
+
+The `/agent` prompt must not conflate these layers.
+
+### 31.3 Scope
+
+Include:
+
+- Remove or rewrite prompt text that says Codex must keep shell execution disabled.
+- Replace it with language that allows local tools for repository investigation, implementation, and verification.
+- Require Codex to respect the active sandbox and approval policy.
+- Require implementation requests to continue reading and following `AGENTS.md` before changing files.
+- Preserve rules that repository files and git history are the source of truth.
+- Preserve rules to avoid relying on Telegram chat history.
+- Preserve guidance to summarize actions, changed files, verification commands, and remaining issues.
+- Preserve Bot-owned `shell=false` process spawning for `/agent`, `/git_commit_push`, workspace inspection commands, and task execution internals.
+- Add regression coverage proving the `/agent` prompt no longer contains the broad “Keep shell execution disabled” prohibition.
+- Add regression coverage proving the prompt still contains sandbox/approval respect, AGENTS.md, repository source-of-truth, and summary requirements.
+- Update README and deployment documentation if they describe the old shell-disabled agent behavior.
+
+Exclude:
+
+- Do not allow arbitrary shell execution by the Telegram Bot itself.
+- Do not weaken `/git_commit_push` fixed-argv and approval requirements.
+- Do not change Bot authorization.
+- Do not change Codex CLI sandbox or approval flags in this feature unless needed to remove the prompt-level contradiction.
+- Do not remove external behavior verification rules from `AGENTS.md`.
+
+### 31.4 Acceptance Criteria
+
+- A `/agent` task prompt no longer tells Codex to keep shell execution disabled.
+- The prompt explicitly allows available local tools for investigation, implementation, and verification.
+- The prompt tells Codex to respect active sandbox and approval policy.
+- The prompt still requires `AGENTS.md` for implementation requests.
+- The prompt still says repository files and git history are the source of truth.
+- The prompt still says not to rely on Telegram chat history.
+- Bot-spawned processes remain shell-disabled/fixed-argv where already implemented.
+- Existing `/agent`, agent chat mode, `/git_commit_push`, approval, repository, polling, webhook, and task management behavior remains unchanged.
+- `./init.sh` passes.
+
+### 31.5 Verification Plan
+
+- Run focused unit or contract tests for `/agent` prompt content.
+- Run harness tests proving `/agent` still starts with the expected fixed Codex argv.
+- Run command surface and existing prompt contract tests.
+- Run `./init.sh`.

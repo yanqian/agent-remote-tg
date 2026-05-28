@@ -413,6 +413,15 @@
       "attempts": 4,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F047",
+      "description": "Relax the /agent Codex prompt so repository agents can use their available local tools for investigation, implementation, and verification instead of being told to keep shell execution disabled; preserve Bot-owned shell=false and fixed-argv process safety, Telegram authorization, /git_commit_push approval constraints, repository files and git history as the source of truth, no reliance on Telegram chat history, AGENTS.md requirements for implementation requests, active sandbox and approval-policy respect, and action/change/verification/remaining-issue summaries; update docs if they describe the old prompt behavior; add unit, contract, harness, smoke, and init coverage proving the prompt no longer contains the broad shell-disabled prohibition while still preserving the required safety and repository workflow language.",
+      "passes": false,
+      "status": "todo",
+      "attempts": 0,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }
