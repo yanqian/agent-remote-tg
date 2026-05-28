@@ -422,6 +422,15 @@
       "attempts": 1,
       "last_error": "",
       "priority": "P0"
+    },
+    {
+      "id": "F048",
+      "description": "Fix /git_commit_push approval delivery so command, reply, and inline callback approvals are correlated by the exact approved request id instead of reusable request-local option ids such as opt_1 and approve_git_commit_push; preserve validation that the selected option belongs to that exact request; ensure long-lived runtime state with older approved git commit/push requests cannot cause a new approval to stage an older request's file list or record gitCommitPushResult on the wrong request; add harness coverage with multiple historical /git_commit_push requests using repeated approve option ids in one runtime state, proving the later request stages only its previewed file list, records results on itself, leaves older requests unmodified by the later result, and preserves existing approval, /approval_test, Codex approval bridge, /agent, repository, polling, webhook, and task-management behavior.",
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
+      "last_error": "",
+      "priority": "P0"
     }
   ]
 }

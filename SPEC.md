@@ -2425,3 +2425,72 @@ Exclude:
 - Run harness tests proving `/agent` still starts with the expected fixed Codex argv.
 - Run command surface and existing prompt contract tests.
 - Run `./init.sh`.
+
+## 32. Git Commit Push Approval Correlation By Request ID
+
+### 32.1 Goal
+
+Fix `/git_commit_push` approval delivery so approving a new git commit/push request in long-lived runtime state always executes the newly approved request, not an older request that happens to use the same approval option identifiers.
+
+The observed failure mode is:
+
+1. Runtime state contains an older approved `/git_commit_push` request.
+2. A later `/git_commit_push` request previews a different file list, such as `README.md`.
+3. The user approves the later request.
+4. Approval delivery locates a request by reusable option metadata such as `opt_1` and `approve_git_commit_push` instead of the approved request id.
+5. The Bot stages the older request's file list, then `git commit` sees the new file still unstaged and fails with `no changes added to commit`.
+
+### 32.2 Safety Model
+
+Approval option identifiers are request-local metadata and must not be treated as globally unique.
+
+Any action that mutates repository state after approval must be correlated to the exact approved request id. The selected option must still be validated against that request before running any mutating command.
+
+The fix must preserve the existing Bot safety model:
+
+- no arbitrary shell execution from Telegram;
+- fixed argv git commands only;
+- selected whitelisted repository boundaries;
+- approval required before mutating git operations;
+- no cross-request mutation or result recording.
+
+### 32.3 Scope
+
+Include:
+
+- Ensure approval command, reply, and callback resolution carries the approved `requestId` into delivery.
+- Make approval delivery look up the request by approved `requestId` first.
+- Validate that the selected option id and Codex option id match the selected option recorded on that exact request.
+- Preserve fallback behavior only where needed for non-mutating compatibility, without allowing `/git_commit_push` to resolve by reusable option ids.
+- Ensure `/git_commit_push` records git operation results on the exact approved request.
+- Add regression coverage with multiple historical `/git_commit_push` requests in one runtime state where approve options repeat.
+- The regression must prove approving the later request stages the later request's file list and does not re-run or mutate an older request.
+- Preserve existing approval commands, reply decisions, inline callback handling, `/approval_test`, Codex approval bridging, and non-git approval behavior.
+
+Exclude:
+
+- Do not change the public command surface.
+- Do not change git command argv shapes.
+- Do not add arbitrary shell support.
+- Do not clear historical approval requests as the fix.
+- Do not change repository whitelist or authorization behavior.
+- Do not solve Codex CLI sandbox, DNS, SSH agent, keychain, or GitHub credential inheritance.
+
+### 32.4 Acceptance Criteria
+
+- A new `/git_commit_push` approval is delivered by the approved request id.
+- Historical `/git_commit_push` requests with the same approve option ids cannot be selected for the new approval.
+- Approving a later request stages only that request's previewed file list.
+- Git commit/push success or failure result is recorded on the later request, not on an older request.
+- Approval command flow and inline callback flow both preserve exact request correlation.
+- Existing approval rejection, expiration, authorization, and incompatible-option checks still work.
+- Existing `/approval_test`, Codex approval bridge, `/agent`, repository, polling, webhook, and task-management behavior remains unchanged.
+- `./init.sh` passes.
+
+### 32.5 Verification Plan
+
+- Add or update harness coverage that creates multiple `/git_commit_push` requests with repeated approve option ids in one persistent runtime state.
+- Assert the later approval runs `git add --` with the later request's file list.
+- Assert the later request receives `gitCommitPushResult` and the older request is not overwritten by the later result.
+- Run focused harness tests for app approval and `/git_commit_push`.
+- Run `./init.sh`.
