@@ -180,7 +180,7 @@ function deliverApprovalSelection({ executor, result, chatId, gitRunner = null, 
   if (!result?.selectedOption || !result?.state) {
     return { ok: true, state: result?.state, response: result?.response };
   }
-  const request = findSelectedApprovalRequest(result.state, result.selectedOption);
+  const request = findSelectedApprovalRequest(result.state, result.requestId, result.selectedOption);
   if (!request) {
     return { ok: false, response: "Approval request option incompatible." };
   }
@@ -212,13 +212,21 @@ function deliverApprovalSelection({ executor, result, chatId, gitRunner = null, 
     : { ok: false, response: "Approval task is not active." };
 }
 
-function findSelectedApprovalRequest(state, selectedOption) {
-  for (const [requestId, request] of Object.entries(state?.approvalRequests ?? {})) {
-    if (request?.selectedOptionId === selectedOption.optionId && request?.selectedCodexOptionId === selectedOption.codexOptionId) {
-      return { ...request, requestId };
+function findSelectedApprovalRequest(state, requestId, selectedOption) {
+  const request = state?.approvalRequests?.[requestId];
+  if (!request || request?.selectedOptionId !== selectedOption.optionId || request?.selectedCodexOptionId !== selectedOption.codexOptionId) {
+    return null;
+  }
+  if (Array.isArray(request.options) && request.options.length > 0) {
+    const option = request.options.find((candidate) =>
+      candidate?.optionId === selectedOption.optionId &&
+      candidate?.codexOptionId === selectedOption.codexOptionId
+    );
+    if (!option) {
+      return null;
     }
   }
-  return null;
+  return { ...request, requestId };
 }
 
 export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId = null, options = {}) {

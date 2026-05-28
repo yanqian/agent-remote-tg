@@ -146,6 +146,7 @@ export function applyApprovalDecision({ requestId, decision, state, chatId, now 
 
   return {
     response: formatDecisionResponse(requestId, decision),
+    requestId,
     selectedOption: option,
     state: {
       ...normalized,
@@ -204,6 +205,7 @@ export function applyApprovalOptionSelection({ requestId, optionId, state, chatI
 
   return {
     response: formatOptionResponse(requestId, option),
+    requestId,
     selectedOption: option,
     state: {
       ...normalized,

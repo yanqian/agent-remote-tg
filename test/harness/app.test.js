@@ -283,6 +283,140 @@ test("app previews and approves Bot-local git commit push requests", async () =>
   }
 });
 
+test("app delivers git commit push approvals by exact request id when option ids repeat", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: "app",
+      cwd: repoDir,
+      tasks: {},
+      askSessions: {},
+      approvalRequests: {
+        gcp_old: gitCommitPushApprovalRequest({
+          requestId: "gcp_old",
+          status: "approved",
+          cwd: repoDir,
+          fileList: ["old.txt"],
+          selectedOptionId: "opt_1",
+          selectedCodexOptionId: "approve_git_commit_push",
+          gitCommitPushResult: {
+            ok: true,
+            phase: "complete",
+            response: "old result",
+            recordedAt: "2026-05-14T00:00:00.000Z",
+          },
+        }),
+        gcp_later: gitCommitPushApprovalRequest({
+          requestId: "gcp_later",
+          status: "pending",
+          cwd: repoDir,
+          fileList: ["README.md"],
+        }),
+      },
+      approvalAllowRules: {},
+      telegramUpdateOffset: null,
+    }, null, 2)}\n`);
+    const calls = [];
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      gitRunner: fakeGitRunner({
+        "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
+        "git add -- README.md": { ok: true },
+        "git commit -m Later commit": { ok: true, stdout: "[main abc123] Later commit\n" },
+        "git push origin main": { ok: true, stderr: "To github.com:owner/repo.git\n" },
+      }, calls),
+    });
+
+    assert.match(
+      app.handleMessage({ chatId: "123", text: "/approve gcp_later" }),
+      /^Approved request: gcp_later\nGit commit and push succeeded\./,
+    );
+    assert.deepEqual(calls.map((call) => call.args), [
+      ["rev-parse", "--abbrev-ref", "HEAD"],
+      ["add", "--", "README.md"],
+      ["commit", "-m", "Later commit"],
+      ["push", "origin", "main"],
+    ]);
+
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.approvalRequests.gcp_later.status, "approved");
+    assert.equal(state.approvalRequests.gcp_later.gitCommitPushResult.ok, true);
+    assert.deepEqual(state.approvalRequests.gcp_old.fileList, ["old.txt"]);
+    assert.equal(state.approvalRequests.gcp_old.gitCommitPushResult.response, "old result");
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
+test("app callback git commit push approval records results on the callback request only", () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
+  const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
+  try {
+    const statePath = join(rootDir, "runtime_state.json");
+    writeFileSync(statePath, `${JSON.stringify({
+      currentRepo: "app",
+      cwd: repoDir,
+      tasks: {},
+      askSessions: {},
+      approvalRequests: {
+        gcp_older: gitCommitPushApprovalRequest({
+          requestId: "gcp_older",
+          status: "approved",
+          cwd: repoDir,
+          fileList: ["older.js"],
+          selectedOptionId: "opt_1",
+          selectedCodexOptionId: "approve_git_commit_push",
+        }),
+        gcp_callback: gitCommitPushApprovalRequest({
+          requestId: "gcp_callback",
+          status: "pending",
+          cwd: repoDir,
+          fileList: ["src/new.js"],
+          commitMessage: "Callback commit",
+        }),
+      },
+      approvalAllowRules: {},
+      telegramUpdateOffset: null,
+    }, null, 2)}\n`);
+    const calls = [];
+    const app = createApp({
+      allowedChatIds: ["123"],
+      repos: { app: repoDir },
+      statePath,
+      gitRunner: fakeGitRunner({
+        "git rev-parse --abbrev-ref HEAD": { ok: true, stdout: "main\n" },
+        "git add -- src/new.js": { ok: true },
+        "git commit -m Callback commit": { ok: true, stdout: "[main def456] Callback commit\n" },
+        "git push origin main": { ok: true, stderr: "To github.com:owner/repo.git\n" },
+      }, calls),
+    });
+
+    assert.match(
+      app.handleCallbackQuery({ chatId: "123", data: "approval:gcp_callback:opt_1" }),
+      /^Approved request: gcp_callback\nGit commit and push succeeded\./,
+    );
+    assert.deepEqual(calls.map((call) => call.args), [
+      ["rev-parse", "--abbrev-ref", "HEAD"],
+      ["add", "--", "src/new.js"],
+      ["commit", "-m", "Callback commit"],
+      ["push", "origin", "main"],
+    ]);
+
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    assert.equal(state.approvalRequests.gcp_callback.status, "approved");
+    assert.equal(state.approvalRequests.gcp_callback.gitCommitPushResult.ok, true);
+    assert.equal(state.approvalRequests.gcp_older.gitCommitPushResult, undefined);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+});
+
 test("app rejects and reports Bot-local git commit push failures without running later phases", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
@@ -1105,6 +1239,54 @@ function createFakeChild({ pid }) {
   child.stderr = new PassThrough();
   child.kill = () => true;
   return child;
+}
+
+function gitCommitPushApprovalRequest({
+  requestId,
+  status,
+  cwd,
+  fileList,
+  commitMessage = "Later commit",
+  selectedOptionId,
+  selectedCodexOptionId,
+  gitCommitPushResult,
+}) {
+  return {
+    requestId,
+    status,
+    taskId: null,
+    chatId: "123",
+    repoAlias: "app",
+    source: "git_commit_push",
+    cwd,
+    branch: "main",
+    fileList,
+    commitMessage,
+    detail: {
+      category: "git_commit_push",
+      action: "commit_and_push",
+      command: "git add -- <previewed paths>; git commit -m <message>; git push origin <branch>",
+      path: cwd,
+      description: `Commit ${fileList.length} changed path(s) on main and push to origin/main.`,
+    },
+    options: [
+      { optionId: "opt_1", codexOptionId: "approve_git_commit_push", label: "Approve", decision: "approved" },
+      { optionId: "opt_2", codexOptionId: "reject_git_commit_push", label: "Reject", decision: "rejected" },
+    ],
+    selectedOptionId,
+    selectedCodexOptionId,
+    gitCommitPushResult,
+    createdAt: "2026-05-14T00:00:00.000Z",
+    expiresAt: "2099-01-01T00:00:00.000Z",
+    telegramMessageId: null,
+    allowRule: {
+      source: "git_commit_push",
+      repoAlias: "app",
+      cwd,
+      branch: "main",
+      fileList,
+    },
+  };
 }
 
 function fakeGitRunner(results, calls = []) {

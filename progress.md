@@ -68,6 +68,7 @@ Implemented behavior:
 - Temporary home-watch camera clip handling has been removed from this repository for F045: `/camera_clip` is no longer in the command whitelist, help output, app handler, startup configuration, Telegram transport, README, deployment docs, BotFather docs, source files, or default tests. Home-watch camera functionality now lives in `/Users/armstrong/Project/home-watch-tg`.
 - Bot-local git commit and push handling is implemented for F046: `/git_commit_push <message>` requires a selected whitelisted repository, previews the current branch, `git status --short --untracked-files=all`, staged files, and explicit paths, rejects unsafe directory summary paths, creates a pending approval request, validates that the request repo alias and cwd still match the configured whitelist at approval time, rechecks that the live branch still matches the approved preview before mutation, and only after `/approve` or inline approval runs shell-disabled fixed `git add -- <paths>`, `git commit -m <message>`, and `git push origin <branch>` commands with separate commit and push failure reporting. A local temporary-repository git probe verified the real `rev-parse`, `status --short --untracked-files=all`, `diff --cached --name-status`, `add -- <paths>`, and `commit -m` shapes used by the implementation.
 - Agent prompt shell-prohibition relaxation is implemented for F047: `/agent` prompts now allow available local tools for repository investigation, implementation, and verification, explicitly require respect for the active sandbox and approval policy, preserve repository files and git history as the source of truth, preserve `AGENTS.md` requirements for implementation requests, and keep Bot-owned shell-disabled fixed-argv process safety as a separate Bot responsibility. Unit, contract, harness, smoke, and full `./init.sh` coverage verify that the broad `Keep shell execution disabled` prompt prohibition is absent while the required safety and repository workflow language remains.
+- Git commit/push approval request-id correlation is implemented for F048: approval command, reply, and inline callback results now carry the exact approved request ID into delivery, delivery looks up that exact request before mutating repository state, selected options are still validated against the exact request, and regression harness coverage proves repeated git approval option IDs cannot make a later approval stage an older request's file list or record `gitCommitPushResult` on the wrong request.
 
 ## Last Completed Feature
 
@@ -75,7 +76,7 @@ Implemented behavior:
 
 ## Next Feature
 
-All planned features are currently complete.
+`F048` is implemented and awaiting evaluator verification.
 
 ## Known Issues
 
