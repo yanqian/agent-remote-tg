@@ -69,14 +69,15 @@ Implemented behavior:
 - Bot-local git commit and push handling is implemented for F046: `/git_commit_push <message>` requires a selected whitelisted repository, previews the current branch, `git status --short --untracked-files=all`, staged files, and explicit paths, rejects unsafe directory summary paths, creates a pending approval request, validates that the request repo alias and cwd still match the configured whitelist at approval time, rechecks that the live branch still matches the approved preview before mutation, and only after `/approve` or inline approval runs shell-disabled fixed `git add -- <paths>`, `git commit -m <message>`, and `git push origin <branch>` commands with separate commit and push failure reporting. A local temporary-repository git probe verified the real `rev-parse`, `status --short --untracked-files=all`, `diff --cached --name-status`, `add -- <paths>`, and `commit -m` shapes used by the implementation.
 - Agent prompt shell-prohibition relaxation is implemented for F047: `/agent` prompts now allow available local tools for repository investigation, implementation, and verification, explicitly require respect for the active sandbox and approval policy, preserve repository files and git history as the source of truth, preserve `AGENTS.md` requirements for implementation requests, and keep Bot-owned shell-disabled fixed-argv process safety as a separate Bot responsibility. Unit, contract, harness, smoke, and full `./init.sh` coverage verify that the broad `Keep shell execution disabled` prompt prohibition is absent while the required safety and repository workflow language remains.
 - Git commit/push approval request-id correlation is implemented for F048: approval command, reply, and inline callback results now carry the exact approved request ID into delivery, delivery looks up that exact request before mutating repository state, selected options are still validated against the exact request, and regression harness coverage proves repeated git approval option IDs cannot make a later approval stage an older request's file list or record `gitCommitPushResult` on the wrong request.
+- Agent Git write boundary guidance is implemented for F049: `/agent` prompts now explicitly allow read-only Git inspection, ordinary workspace file edits, and tests, while prohibiting Git staging, reset, commit, update-index writes, and push from inside the Codex task sandbox because `.git` metadata writes such as `.git/index.lock` can fail. Agent final responses now request changed files, verification commands, remaining issues, and a suggested commit message, with commit and push routed through the Bot-local git command path. README and deployment docs describe the boundary, and prompt unit/contract coverage verifies the required language.
 
 ## Last Completed Feature
 
-`F048` - Fix `/git_commit_push` approval delivery so command, reply, and inline callback approvals are correlated by the exact approved request ID instead of reusable request-local option IDs.
+`F049` - Update `/agent` prompt and documentation to make the Codex task Git write boundary explicit.
 
 ## Next Feature
 
-All planned features are currently complete.
+`F050` - Merge the Bot-local git commit/push workflow into the `/git` command namespace while preserving `/git_commit_push` as a compatibility alias.
 
 ## Known Issues
 

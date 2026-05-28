@@ -12,9 +12,13 @@ test("/agent prompt contains the required general agent contract", () => {
     "For implementation requests, read and follow AGENTS.md before changing files.",
     "Preserve unrelated user changes and existing git history.",
     "Use available local tools for repository investigation, implementation, and verification when needed.",
+    "You may inspect Git state with read-only commands such as git status, git diff, and git log.",
+    "You may edit ordinary workspace files and run tests, but do not attempt Git staging, reset, commit, update-index writes, or push from inside the Codex task sandbox.",
+    "Local probes show ordinary workspace writes can succeed while .git metadata writes such as .git/index.lock can fail in this task environment.",
+    "Leave repository publication to the Bot-local git command path for commit and push.",
     "Respect the active sandbox, approval policy, repository rules, and user instructions.",
     "The Telegram Bot remains responsible for its own shell-disabled fixed-argv process safety.",
-    "Summarize actions taken, changed files, verification commands, and remaining issues.",
+    "Summarize actions taken, changed files, verification commands, remaining issues, and a suggested commit message.",
   ]) {
     assert.ok(prompt.includes(requiredText), `missing prompt text: ${requiredText}`);
   }

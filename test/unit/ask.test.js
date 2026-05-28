@@ -8,8 +8,12 @@ test("buildAgentPrompt includes the required general agent rules and instruction
   assert.match(prompt, /Use repository files and git history as the source of truth\./);
   assert.match(prompt, /For implementation requests, read and follow AGENTS\.md before changing files\./);
   assert.match(prompt, /Use available local tools for repository investigation, implementation, and verification when needed\./);
+  assert.match(prompt, /You may inspect Git state with read-only commands such as git status, git diff, and git log\./);
+  assert.match(prompt, /You may edit ordinary workspace files and run tests, but do not attempt Git staging, reset, commit, update-index writes, or push from inside the Codex task sandbox\./);
+  assert.match(prompt, /Local probes show ordinary workspace writes can succeed while \.git metadata writes such as \.git\/index\.lock can fail in this task environment\./);
+  assert.match(prompt, /Leave repository publication to the Bot-local git command path for commit and push\./);
   assert.match(prompt, /Respect the active sandbox, approval policy, repository rules, and user instructions\./);
-  assert.match(prompt, /Summarize actions taken, changed files, verification commands, and remaining issues\./);
+  assert.match(prompt, /Summarize actions taken, changed files, verification commands, remaining issues, and a suggested commit message\./);
   assert.doesNotMatch(prompt, /Keep shell execution disabled/);
   assert.match(prompt, /Instruction:\nImplement the workflow\./);
 });
