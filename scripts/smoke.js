@@ -39,6 +39,9 @@ try {
   if (!commandList().includes("/git_commit_push")) {
     throw new Error("smoke command surface did not include /git_commit_push");
   }
+  if (!commandList().includes("/git")) {
+    throw new Error("smoke command surface did not include /git");
+  }
 
   const agentPrompt = buildAgentPrompt("Investigate and verify locally.");
   if (agentPrompt.includes("Keep shell execution disabled")) {

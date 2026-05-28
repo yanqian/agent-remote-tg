@@ -444,9 +444,9 @@
     {
       "id": "F050",
       "description": "Merge the Bot-local git commit/push workflow into the /git command namespace by adding /git commit_push <message> as the primary approved commit/push entry point while preserving /git with no arguments as the existing branch/status/recent-commits inspection command and keeping /git_commit_push <message> as a backward-compatible alias; /git commit_push must reuse the existing fixed-argv shell-disabled Bot-local git safety model, selected whitelisted repository validation, non-empty commit message requirement, bounded preview, explicit approval, request-id correlated delivery, explicit previewed file staging, separate commit and push failure reporting, and push failure classification; unknown /git subcommands and missing commit messages must return clear usage guidance without mutation; update help, README, deployment and BotFather docs to prefer /git commit_push <message>; add parser, unit, harness, contract, smoke, and init coverage while preserving /agent, approval, /approval_test, repository, polling, webhook, and task-management behavior.",
-      "passes": false,
-      "status": "todo",
-      "attempts": 0,
+      "passes": true,
+      "status": "done",
+      "attempts": 1,
       "last_error": "",
       "priority": "P0"
     }

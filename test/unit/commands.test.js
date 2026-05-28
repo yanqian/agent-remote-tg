@@ -13,6 +13,11 @@ test("parseCommand accepts commands without arguments", () => {
     command: "/repos",
     args: "",
   });
+  assert.deepEqual(parseCommand(" /git commit_push Publish changes "), {
+    ok: true,
+    command: "/git",
+    args: "commit_push Publish changes",
+  });
 });
 
 test("parseCommand trims required arguments", () => {
@@ -84,7 +89,8 @@ test("help response documents the exact command surface", () => {
     "/pwd - show the selected workspace",
     "/ls - list files in the selected workspace",
     "/git - show branch, status, and recent commits",
-    "/git_commit_push <message> - commit and push selected workspace changes after approval",
+    "/git commit_push <message> - commit and push selected workspace changes after approval",
+    "/git_commit_push <message> - compatibility alias for /git commit_push",
     "/agent <instruction> - start or continue a Codex agent task",
     "/agent new <instruction> - force a new agent session",
     "/agent resume <session_id|--last> <instruction> - resume an agent session",

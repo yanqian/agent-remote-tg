@@ -12,6 +12,7 @@ import {
 
 test("handleGitCommitPush requires workspace, message, branch, and changes before approval", () => {
   assert.equal(handleGitCommitPush("", {}, "123").response, "Usage: /git_commit_push <message>");
+  assert.equal(handleGitCommitPush("", {}, "123", undefined, undefined, null, "Usage: /git commit_push <message>").response, "Usage: /git commit_push <message>");
   assert.equal(
     handleGitCommitPush("Publish changes", {}, "123").response,
     "No workspace selected.\nUse /repos then /use <repo>.",

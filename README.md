@@ -13,7 +13,8 @@ Repository development state remains in repository files and git history. Telegr
 - `/pwd` - show the selected workspace path.
 - `/ls` - list files in the selected workspace.
 - `/git` - show the current branch, short status, and five recent commits.
-- `/git_commit_push <message>` - preview, approve, commit, and push selected workspace changes with fixed Bot-local git commands.
+- `/git commit_push <message>` - preview, approve, commit, and push selected workspace changes with fixed Bot-local git commands.
+- `/git_commit_push <message>` - compatibility alias for `/git commit_push <message>`.
 - `/agent <instruction>` - start or continue a Codex agent task in the selected workspace.
 - `/agent new <instruction>` - force a new agent session for the selected workspace.
 - `/agent resume <session_id|--last> <instruction>` - resume a specific agent session or Codex CLI's most recent session for the runtime user account.
@@ -39,8 +40,8 @@ repos - List configured repositories
 use - Select a repository by alias
 pwd - Show the selected workspace
 ls - List selected workspace files
-git - Show branch, status, and commits
-git_commit_push - Commit and push after approval
+git - Inspect Git status or commit_push after approval
+git_commit_push - Compatibility alias for git commit_push
 agent - Manage Codex agent sessions
 approve - Approve a pending agent request
 reject - Reject a pending agent request
@@ -61,7 +62,7 @@ The Bot is a control plane, not the owner of feature lifecycle decisions. It val
 
 Target repositories are expected to keep durable agent state in files such as `AGENTS.md`, `SPEC.md`, `feature_list.json`, `progress.md`, `test_plan.md`, `init.sh`, and `orchestrator.py` when repository workflow automation is requested through `/agent`.
 
-`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/agent`, `/agent new`, and `/agent resume ...` enter agent chat mode for the current chat and selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository continues the current session without the `/agent` prefix. Slash commands are still parsed as commands first. Use `/agent exit` to leave agent chat mode, `/agent session` to inspect the current session and mode status, and `/stop <task_id>` when a running task should be terminated. Bot-started Codex agents may inspect Git state with read-only commands such as `git status`, `git diff`, and `git log`, edit ordinary workspace files, and run tests. They are prompted not to attempt Git staging, reset, commit, update-index writes, or push from inside the Codex sandbox because local probes show ordinary workspace writes can succeed while `.git` metadata writes such as `.git/index.lock` can fail. Agent final responses should summarize changed files, verification, remaining issues, and a suggested commit message. When Bot-started Codex tasks emit permission prompts, the Bot stores a pending approval request and sends inline Telegram buttons that map to the Codex-provided options. `/git_commit_push <message>` is also Bot-local: it previews the selected repository branch, `git status --short`, staged files, and explicit paths to stage, then waits for `/approve` or inline approval before running fixed `git add -- <paths>`, `git commit -m <message>`, and `git push origin <branch>` argv without a shell. `/approval_test` creates a Bot-local pending request with approve, reject, always-allow, and always-reject options without starting Codex, running shell commands, requiring a workspace, or using child stdin. Only one active agent task is allowed per workspace for ordinary follow-up text; `work`, `continue`, and `run-orch` may appear only as legacy task records.
+`/agent` starts `codex exec --json` tasks for general repository work and session-aware follow-ups. `/agent`, `/agent new`, and `/agent resume ...` enter agent chat mode for the current chat and selected repository. After a Codex session is bound, authorized ordinary text in that chat and repository continues the current session without the `/agent` prefix. Slash commands are still parsed as commands first. Use `/agent exit` to leave agent chat mode, `/agent session` to inspect the current session and mode status, and `/stop <task_id>` when a running task should be terminated. Bot-started Codex agents may inspect Git state with read-only commands such as `git status`, `git diff`, and `git log`, edit ordinary workspace files, and run tests. They are prompted not to attempt Git staging, reset, commit, update-index writes, or push from inside the Codex sandbox because local probes show ordinary workspace writes can succeed while `.git` metadata writes such as `.git/index.lock` can fail. Agent final responses should summarize changed files, verification, remaining issues, and a suggested commit message. When Bot-started Codex tasks emit permission prompts, the Bot stores a pending approval request and sends inline Telegram buttons that map to the Codex-provided options. `/git commit_push <message>` is Bot-local: it previews the selected repository branch, `git status --short`, staged files, and explicit paths to stage, then waits for `/approve` or inline approval before running fixed `git add -- <paths>`, `git commit -m <message>`, and `git push origin <branch>` argv without a shell. `/git_commit_push <message>` remains available as a compatibility alias. `/approval_test` creates a Bot-local pending request with approve, reject, always-allow, and always-reject options without starting Codex, running shell commands, requiring a workspace, or using child stdin. Only one active agent task is allowed per workspace for ordinary follow-up text; `work`, `continue`, and `run-orch` may appear only as legacy task records.
 
 ## Transport Modes
 

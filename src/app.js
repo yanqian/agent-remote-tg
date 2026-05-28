@@ -10,7 +10,7 @@ import {
   handleApprovalReply,
   parseApprovalCallbackData,
 } from "./approval.js";
-import { HELP_RESPONSE } from "./constants.js";
+import { GIT_COMMIT_PUSH_USAGE_RESPONSE, GIT_USAGE_RESPONSE, HELP_RESPONSE } from "./constants.js";
 import { parseCommand } from "./commands.js";
 import { handleGitCommitPush, resolveGitCommitPushApproval } from "./git-commit-push.js";
 import {
@@ -240,7 +240,7 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
     case "/ls":
       return handleLs(state);
     case "/git":
-      return handleGit(state);
+      return handleGitCommand(parsed.args, repos, state, chatId, options);
     case "/git_commit_push":
       return handleGitCommitPush(parsed.args, state, chatId, options.gitRunner ?? undefined, new Date(), repos);
     case "/agent":
@@ -268,6 +268,30 @@ export function handleParsedCommand(parsed, repos, state, taskExecutor, chatId =
         stateChanged: false,
       };
   }
+}
+
+function handleGitCommand(args, repos, state, chatId, options) {
+  const trimmed = String(args ?? "").trim();
+  if (trimmed.length === 0) {
+    return handleGit(state);
+  }
+
+  const match = trimmed.match(/^(\S+)(?:\s+([\s\S]*))?$/);
+  const subcommand = match?.[1] ?? "";
+  const subcommandArgs = (match?.[2] ?? "").trim();
+  if (subcommand !== "commit_push") {
+    return { response: GIT_USAGE_RESPONSE, stateChanged: false };
+  }
+
+  return handleGitCommitPush(
+    subcommandArgs,
+    state,
+    chatId,
+    options.gitRunner ?? undefined,
+    new Date(),
+    repos,
+    GIT_COMMIT_PUSH_USAGE_RESPONSE,
+  );
 }
 
 function handleApprovalTest(state, chatId) {

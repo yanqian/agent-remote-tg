@@ -76,6 +76,7 @@ test("app handles /ls and /git in the selected workspace", () => {
       "Branch:\nmain\nStatus:\nclean\nRecent commits:\n" +
         execFileSync("git", ["log", "--oneline", "-1"], { cwd: repoDir, encoding: "utf8" }).trim(),
     );
+    assert.equal(app.handleMessage({ chatId: "123", text: "/git status" }), "Usage: /git [commit_push <message>]");
   } finally {
     rmSync(rootDir, { recursive: true, force: true });
     rmSync(repoDir, { recursive: true, force: true });
@@ -222,7 +223,7 @@ test("app creates and resolves Bot-local approval test requests", async () => {
   }
 });
 
-test("app previews and approves Bot-local git commit push requests", async () => {
+test("app previews and approves Bot-local /git commit_push requests", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-app-"));
   const repoDir = mkdtempSync(join(tmpdir(), "agent-remote-tg-repo-"));
   const calls = [];
@@ -247,10 +248,11 @@ test("app previews and approves Bot-local git commit push requests", async () =>
       },
     });
 
-    assert.equal(app.handleMessage({ chatId: "123", text: "/git_commit_push Publish changes" }), "No workspace selected.\nUse /repos then /use <repo>.");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/git commit_push Publish changes" }), "No workspace selected.\nUse /repos then /use <repo>.");
     assert.equal(app.handleMessage({ chatId: "123", text: "/use app" }), `Workspace switched:\napp\n${repoDir}`);
-    assert.equal(app.handleMessage({ chatId: "123", text: "/git_commit_push" }), "Usage: /git_commit_push <message>");
-    const preview = app.handleMessage({ chatId: "123", text: "/git_commit_push Publish changes" });
+    assert.equal(app.handleMessage({ chatId: "123", text: "/git commit_push" }), "Usage: /git commit_push <message>");
+    assert.equal(app.handleMessage({ chatId: "123", text: "/git rebase main" }), "Usage: /git [commit_push <message>]");
+    const preview = app.handleMessage({ chatId: "123", text: "/git commit_push Publish changes" });
     assert.match(preview, /^Git commit\/push approval request: gcp_/);
     assert.match(preview, /Status:\n M README\.md\n\?\? src\/new\.js/);
     assert.match(preview, /Files to stage:\nREADME\.md\nsrc\/new\.js/);

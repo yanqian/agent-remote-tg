@@ -70,6 +70,7 @@ Implemented behavior:
 - Agent prompt shell-prohibition relaxation is implemented for F047: `/agent` prompts now allow available local tools for repository investigation, implementation, and verification, explicitly require respect for the active sandbox and approval policy, preserve repository files and git history as the source of truth, preserve `AGENTS.md` requirements for implementation requests, and keep Bot-owned shell-disabled fixed-argv process safety as a separate Bot responsibility. Unit, contract, harness, smoke, and full `./init.sh` coverage verify that the broad `Keep shell execution disabled` prompt prohibition is absent while the required safety and repository workflow language remains.
 - Git commit/push approval request-id correlation is implemented for F048: approval command, reply, and inline callback results now carry the exact approved request ID into delivery, delivery looks up that exact request before mutating repository state, selected options are still validated against the exact request, and regression harness coverage proves repeated git approval option IDs cannot make a later approval stage an older request's file list or record `gitCommitPushResult` on the wrong request.
 - Agent Git write boundary guidance is implemented for F049: `/agent` prompts now explicitly allow read-only Git inspection, ordinary workspace file edits, and tests, while prohibiting Git staging, reset, commit, update-index writes, and push from inside the Codex task sandbox because `.git` metadata writes such as `.git/index.lock` can fail. Agent final responses now request changed files, verification commands, remaining issues, and a suggested commit message, with commit and push routed through the Bot-local git command path. README and deployment docs describe the boundary, and prompt unit/contract coverage verifies the required language.
+- Coding implementation for F050 is ready for evaluator review: `/git` now preserves no-argument branch/status/recent-commit inspection, `/git commit_push <message>` routes to the existing Bot-local fixed-argv approval workflow as the primary commit/push entry point, unknown `/git` subcommands and missing commit messages return usage guidance without mutation, and `/git_commit_push <message>` remains available as a compatibility alias. Help output, README, deployment and BotFather documentation, parser/unit coverage, harness coverage, contract coverage, smoke coverage, and focused verification have been updated.
 
 ## Last Completed Feature
 
@@ -77,7 +78,7 @@ Implemented behavior:
 
 ## Next Feature
 
-`F050` - Merge the Bot-local git commit/push workflow into the `/git` command namespace while preserving `/git_commit_push` as a compatibility alias.
+`F050` - Awaiting evaluator verification for the `/git commit_push <message>` namespace merge.
 
 ## Known Issues
 

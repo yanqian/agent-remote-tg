@@ -1,5 +1,6 @@
 import { relative, resolve } from "node:path";
 import { buildApprovalInlineKeyboard, buildApprovalTelegramMessage } from "./approval.js";
+import { LEGACY_GIT_COMMIT_PUSH_USAGE_RESPONSE } from "./constants.js";
 import { lookupRepo } from "./repositories.js";
 import { isValidApprovalRequestId, normalizeRuntimeState } from "./runtime-state.js";
 import { redactForTelegram, truncateTelegramResponse } from "./task-executor.js";
@@ -7,10 +8,10 @@ import { runWorkspaceCommand, requireWorkspace } from "./workspace.js";
 
 let gitCommitPushSequence = 0;
 
-export function handleGitCommitPush(message, state, chatId, runner = runWorkspaceCommand, now = new Date(), repos = null) {
+export function handleGitCommitPush(message, state, chatId, runner = runWorkspaceCommand, now = new Date(), repos = null, usage = LEGACY_GIT_COMMIT_PUSH_USAGE_RESPONSE) {
   const commitMessage = String(message ?? "").trim();
   if (commitMessage.length === 0) {
-    return { response: "Usage: /git_commit_push <message>", stateChanged: false };
+    return { response: usage, stateChanged: false };
   }
 
   const workspace = requireWorkspace(state);

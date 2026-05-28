@@ -32,6 +32,9 @@ export const COMMANDS_REQUIRING_ARGS = Object.freeze({
 export const NO_WORKSPACE_RESPONSE = "No workspace selected.\nUse /repos then /use <repo>.";
 export const UNAUTHORIZED_RESPONSE = "Unauthorized chat.";
 export const UNKNOWN_COMMAND_RESPONSE = "Unknown command.\nUse /help.";
+export const GIT_USAGE_RESPONSE = "Usage: /git [commit_push <message>]";
+export const GIT_COMMIT_PUSH_USAGE_RESPONSE = "Usage: /git commit_push <message>";
+export const LEGACY_GIT_COMMIT_PUSH_USAGE_RESPONSE = "Usage: /git_commit_push <message>";
 
 export const HELP_RESPONSE = [
   "Available commands:",
@@ -40,7 +43,8 @@ export const HELP_RESPONSE = [
   "/pwd - show the selected workspace",
   "/ls - list files in the selected workspace",
   "/git - show branch, status, and recent commits",
-  "/git_commit_push <message> - commit and push selected workspace changes after approval",
+  "/git commit_push <message> - commit and push selected workspace changes after approval",
+  "/git_commit_push <message> - compatibility alias for /git commit_push",
   "/agent <instruction> - start or continue a Codex agent task",
   "/agent new <instruction> - force a new agent session",
   "/agent resume <session_id|--last> <instruction> - resume an agent session",
